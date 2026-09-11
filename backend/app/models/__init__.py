@@ -6,6 +6,7 @@ from app.models.attendance import AttendanceRecord, AttendanceStatus
 from app.models.results import Subject, Result
 from app.models.fees import FeeInvoice, FeePayment
 from app.models.communication import Announcement, AnnouncementAudience
+from app.models.live_classes import LiveClass, LiveClassStatus
 
 __all__ = [
     "School",
@@ -24,4 +25,6 @@ __all__ = [
     "FeePayment",
     "Announcement",
     "AnnouncementAudience",
+    "LiveClass",
+    "LiveClassStatus",
 ]

@@ -132,6 +132,25 @@ export interface Announcement {
   created_at: string;
 }
 
+export type LiveClassStatus = "scheduled" | "live" | "ended";
+
+export interface LiveClass {
+  id: number;
+  school_id: number;
+  class_id: number | null;
+  title: string;
+  scheduled_start: string;
+  status: LiveClassStatus;
+  join_code: string;
+}
+
+export interface JoinToken {
+  token: string;
+  url: string;
+  room_name: string;
+  class_title: string;
+}
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -348,6 +367,28 @@ export const api = {
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       token
     ),
+
+  // --- Live classes ---
+
+  listLiveClasses: (token: string, schoolId: number) =>
+    request<LiveClass[]>(`/schools/${schoolId}/live-classes`, {}, token),
+
+  scheduleLiveClass: (
+    token: string,
+    schoolId: number,
+    payload: { title: string; scheduled_start: string; class_id?: number }
+  ) =>
+    request<LiveClass>(
+      `/schools/${schoolId}/live-classes`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  getHostToken: (token: string, schoolId: number, liveClassId: number) =>
+    request<JoinToken>(`/schools/${schoolId}/live-classes/${liveClassId}/host-token`, { method: "POST" }, token),
+
+  joinLiveClassByCode: (joinCode: string, name: string) =>
+    request<JoinToken>(`/live-classes/join/${joinCode}?name=${encodeURIComponent(name)}`),
 };
 
 export { ApiError };

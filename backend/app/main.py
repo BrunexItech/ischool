@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import Base, engine
-from app.routers import academics, attendance, auth, communication, fees, results, schools
+from app.routers import academics, attendance, auth, communication, fees, live_classes, results, schools
 
 app = FastAPI(title="iSchool API")
 
@@ -22,6 +22,8 @@ app.include_router(attendance.router)
 app.include_router(results.router)
 app.include_router(fees.router)
 app.include_router(communication.router)
+app.include_router(live_classes.router)
+app.include_router(live_classes.public_router)
 
 
 @app.on_event("startup")

@@ -10,5 +10,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24
     cors_origins: list[str] = ["http://localhost:3000"]
 
+    livekit_api_key: str = "devkey"
+    livekit_api_secret: str = "secret"
+    livekit_url: str = "ws://localhost:7880"
+
 
 settings = Settings()

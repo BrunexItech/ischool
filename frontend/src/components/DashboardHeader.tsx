@@ -20,6 +20,7 @@ const NAV_LINKS: { href: string; label: string; roles: string[] }[] = [
   { href: "/dashboard/attendance", label: "Attendance", roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/results", label: "Results", roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/fees", label: "Fees", roles: ["school_admin", "staff"] },
+  { href: "/dashboard/live-classes", label: "Live Classes", roles: ["school_admin", "teacher", "staff"] },
   {
     href: "/dashboard/announcements",
     label: "Announcements",

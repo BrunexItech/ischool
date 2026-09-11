@@ -25,6 +25,15 @@ services:
     volumes:
       - ./backend:/app
 
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+
   frontend:
     build: ./frontend
     restart: unless-stopped
