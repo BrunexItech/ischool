@@ -1,0 +1,32 @@
+import enum
+from datetime import datetime
+
+from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database import Base
+
+
+class AnnouncementAudience(str, enum.Enum):
+    ALL = "all"
+    TEACHERS = "teachers"
+    STAFF = "staff"
+    STUDENTS = "students"
+    PARENTS = "parents"
+
+
+class Announcement(Base):
+    __tablename__ = "announcements"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    school_id: Mapped[int] = mapped_column(ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    audience: Mapped[AnnouncementAudience] = mapped_column(Enum(AnnouncementAudience), default=AnnouncementAudience.ALL)
+    class_id: Mapped[int | None] = mapped_column(ForeignKey("school_classes.id", ondelete="CASCADE"), nullable=True)
+
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    school: Mapped["School"] = relationship("School")

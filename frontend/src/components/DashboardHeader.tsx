@@ -17,6 +17,14 @@ const NAV_LINKS: { href: string; label: string; roles: string[] }[] = [
   { href: "/dashboard/classes", label: "Classes", roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/students", label: "Students", roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/staff", label: "Staff", roles: ["school_admin"] },
+  { href: "/dashboard/attendance", label: "Attendance", roles: ["school_admin", "teacher", "staff"] },
+  { href: "/dashboard/results", label: "Results", roles: ["school_admin", "teacher", "staff"] },
+  { href: "/dashboard/fees", label: "Fees", roles: ["school_admin", "staff"] },
+  {
+    href: "/dashboard/announcements",
+    label: "Announcements",
+    roles: ["school_admin", "teacher", "staff", "student", "parent"],
+  },
 ];
 
 export function DashboardHeader() {

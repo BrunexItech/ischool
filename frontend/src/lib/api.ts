@@ -65,6 +65,73 @@ export interface Staff {
   phone: string | null;
 }
 
+export type AttendanceStatus = "present" | "absent" | "late" | "excused";
+
+export interface AttendanceRecord {
+  id: number;
+  school_id: number;
+  class_id: number;
+  student_id: number;
+  date: string;
+  status: AttendanceStatus;
+  recorded_by: number | null;
+}
+
+export interface Subject {
+  id: number;
+  school_id: number;
+  name: string;
+}
+
+export interface Result {
+  id: number;
+  school_id: number;
+  student_id: number;
+  subject_id: number;
+  term: string;
+  score: number;
+  grade: string | null;
+  remarks: string | null;
+}
+
+export interface FeePayment {
+  id: number;
+  invoice_id: number;
+  amount: number;
+  method: string;
+  reference: string | null;
+  paid_at: string;
+}
+
+export interface FeeInvoice {
+  id: number;
+  school_id: number;
+  student_id: number;
+  term: string;
+  amount_due: number;
+  amount_paid: number;
+  balance: number;
+  status: "unpaid" | "partial" | "paid";
+  due_date: string | null;
+}
+
+export interface FeeInvoiceDetail extends FeeInvoice {
+  payments: FeePayment[];
+}
+
+export type AnnouncementAudience = "all" | "teachers" | "staff" | "students" | "parents";
+
+export interface Announcement {
+  id: number;
+  school_id: number;
+  title: string;
+  body: string;
+  audience: AnnouncementAudience;
+  class_id: number | null;
+  created_by: number | null;
+  created_at: string;
+}
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -178,6 +245,106 @@ export const api = {
   ) =>
     request<Staff>(
       `/schools/${schoolId}/staff`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  // --- Attendance ---
+
+  listAttendance: (token: string, schoolId: number, classId: number, date: string) =>
+    request<AttendanceRecord[]>(
+      `/schools/${schoolId}/attendance?class_id=${classId}&date=${date}`,
+      {},
+      token
+    ),
+
+  markAttendance: (
+    token: string,
+    schoolId: number,
+    payload: { class_id: number; date: string; records: { student_id: number; status: AttendanceStatus }[] }
+  ) =>
+    request<AttendanceRecord[]>(
+      `/schools/${schoolId}/attendance`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  // --- Results ---
+
+  listSubjects: (token: string, schoolId: number) => request<Subject[]>(`/schools/${schoolId}/subjects`, {}, token),
+
+  createSubject: (token: string, schoolId: number, name: string) =>
+    request<Subject>(
+      `/schools/${schoolId}/subjects`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) },
+      token
+    ),
+
+  listResults: (token: string, schoolId: number, params: { student_id?: number; subject_id?: number; term?: string }) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))
+    ).toString();
+    return request<Result[]>(`/schools/${schoolId}/results${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  upsertResult: (
+    token: string,
+    schoolId: number,
+    payload: { student_id: number; subject_id: number; term: string; score: number; remarks?: string }
+  ) =>
+    request<Result>(
+      `/schools/${schoolId}/results`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  // --- Fees ---
+
+  listInvoices: (token: string, schoolId: number, studentId?: number) =>
+    request<FeeInvoice[]>(
+      `/schools/${schoolId}/fees/invoices${studentId ? `?student_id=${studentId}` : ""}`,
+      {},
+      token
+    ),
+
+  createInvoice: (
+    token: string,
+    schoolId: number,
+    payload: { student_id: number; term: string; amount_due: number; due_date?: string }
+  ) =>
+    request<FeeInvoice>(
+      `/schools/${schoolId}/fees/invoices`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  getInvoice: (token: string, schoolId: number, invoiceId: number) =>
+    request<FeeInvoiceDetail>(`/schools/${schoolId}/fees/invoices/${invoiceId}`, {}, token),
+
+  recordPayment: (
+    token: string,
+    schoolId: number,
+    invoiceId: number,
+    payload: { amount: number; method: string; reference?: string }
+  ) =>
+    request<FeeInvoiceDetail>(
+      `/schools/${schoolId}/fees/invoices/${invoiceId}/payments`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  // --- Communication ---
+
+  listAnnouncements: (token: string, schoolId: number) =>
+    request<Announcement[]>(`/schools/${schoolId}/announcements`, {}, token),
+
+  createAnnouncement: (
+    token: string,
+    schoolId: number,
+    payload: { title: string; body: string; audience: AnnouncementAudience; class_id?: number }
+  ) =>
+    request<Announcement>(
+      `/schools/${schoolId}/announcements`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       token
     ),
