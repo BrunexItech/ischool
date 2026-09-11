@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { GraduationCap } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { getTenantSlug } from "@/lib/tenant";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 interface Branding {
   name: string;
@@ -48,54 +53,59 @@ export default function LoginPage() {
     }
   }
 
-  const accentColor = branding?.primary_color ?? "#1D4ED8";
+  const schoolName = branding?.name ?? "iSchool";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 text-center">
-          {branding?.logo_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={branding.logo_url} alt={branding.name} className="mx-auto mb-3 h-12" />
-          )}
-          <h1 className="text-xl font-semibold text-gray-900">{branding?.name ?? "iSchool"}</h1>
-          <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
+    <div className="grid min-h-screen lg:grid-cols-2">
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-primary via-primary to-indigo-900 p-10 text-primary-foreground lg:flex">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.12),_transparent_50%)]" />
+        <div className="relative flex items-center gap-2">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-white/15">
+            <GraduationCap className="size-5" />
+          </div>
+          <span className="text-lg font-semibold">iSchool</span>
         </div>
+        <div className="relative space-y-3">
+          <h2 className="text-3xl font-semibold leading-tight">
+            Everything your school needs, in one place.
+          </h2>
+          <p className="max-w-md text-sm text-primary-foreground/80">
+            Attendance, results, fees, communication, and live classes — built for schools
+            and colleges, white-labeled for every institution on board.
+          </p>
+        </div>
+        <p className="relative text-xs text-primary-foreground/60">© {new Date().getFullYear()} iSchool</p>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
-              style={{ "--tw-ring-color": accentColor } as React.CSSProperties}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
-            />
-          </div>
+      <div className="flex items-center justify-center bg-background p-6">
+        <Card className="w-full max-w-sm border-none shadow-none lg:border lg:shadow-sm">
+          <CardHeader className="text-center">
+            {branding?.logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.logo_url} alt={schoolName} className="mx-auto mb-2 h-10" />
+            )}
+            <CardTitle className="text-xl">{schoolName}</CardTitle>
+            <CardDescription>Sign in to your account</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-md px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
-            style={{ backgroundColor: accentColor }}
-          >
-            {submitting ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
+              <Button type="submit" disabled={submitting} className="w-full">
+                {submitting ? "Signing in..." : "Sign in"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

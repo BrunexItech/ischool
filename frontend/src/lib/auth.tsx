@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing initial auth from localStorage, unavailable during SSR
         setToken(parsed.token);
         setUser(parsed.user);
       }

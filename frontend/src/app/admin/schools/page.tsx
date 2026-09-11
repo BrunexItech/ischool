@@ -2,8 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { GraduationCap, LogOut, Plus } from "lucide-react";
 import { api, ApiError, ModuleToggle, School } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const MODULE_LABELS: Record<string, string> = {
   students_staff: "Students & Staff",
@@ -14,8 +24,9 @@ const MODULE_LABELS: Record<string, string> = {
   communication: "Communication",
 };
 
-function OnboardForm({ onCreated }: { onCreated: (school: School) => void }) {
+function OnboardDialog({ onCreated }: { onCreated: (school: School) => void }) {
   const { token } = useAuth();
+  const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
     slug: "",
@@ -26,46 +37,67 @@ function OnboardForm({ onCreated }: { onCreated: (school: School) => void }) {
     admin_full_name: "",
     admin_password: "",
   });
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!token) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const school = await api.onboardSchool(token, form);
-      onCreated(school);
-      setForm({ ...form, name: "", slug: "", admin_email: "", admin_full_name: "", admin_password: "" });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to onboard school");
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    setSubmitting(true);
+    try {
+      const school = await api.onboardSchool(token, form);
+      onCreated(school);
+      setForm({ ...form, name: "", slug: "", admin_email: "", admin_full_name: "", admin_password: "" });
+      setOpen(false);
+      toast.success(`${school.name} onboarded`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to onboard school");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 rounded-lg border border-gray-200 bg-white p-6">
-      <h3 className="col-span-2 text-base font-medium text-gray-900">Onboard a new school</h3>
-
-      <input required placeholder="School name" value={form.name} onChange={(e) => set("name", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-      <input required placeholder="Slug (subdomain)" value={form.slug} onChange={(e) => set("slug", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-      <input required placeholder="Admin full name" value={form.admin_full_name} onChange={(e) => set("admin_full_name", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-      <input required type="email" placeholder="Admin email" value={form.admin_email} onChange={(e) => set("admin_email", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-      <input required type="password" placeholder="Admin password" value={form.admin_password} onChange={(e) => set("admin_password", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-      <input placeholder="Currency" value={form.currency} onChange={(e) => set("currency", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-
-      {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
-
-      <button disabled={submitting} type="submit" className="col-span-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
-        {submitting ? "Creating..." : "Create school"}
-      </button>
-    </form>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button><Plus /> Onboard school</Button>} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Onboard a new school</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 grid gap-1.5">
+            <Label>School name</Label>
+            <Input required value={form.name} onChange={(e) => set("name", e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Slug (subdomain)</Label>
+            <Input required value={form.slug} onChange={(e) => set("slug", e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Currency</Label>
+            <Input value={form.currency} onChange={(e) => set("currency", e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Admin full name</Label>
+            <Input required value={form.admin_full_name} onChange={(e) => set("admin_full_name", e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Admin email</Label>
+            <Input required type="email" value={form.admin_email} onChange={(e) => set("admin_email", e.target.value)} />
+          </div>
+          <div className="col-span-2 grid gap-1.5">
+            <Label>Admin password</Label>
+            <Input required type="password" value={form.admin_password} onChange={(e) => set("admin_password", e.target.value)} />
+          </div>
+          <Button disabled={submitting} type="submit" className="col-span-2">
+            {submitting ? "Creating..." : "Create school"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -85,11 +117,11 @@ function ModulesPanel({ school }: { school: School }) {
   }
 
   return (
-    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {modules.map((m) => (
-        <label key={m.module_key} className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-sm">
-          <input type="checkbox" checked={m.enabled} onChange={(e) => toggle(m.module_key, e.target.checked)} />
+        <label key={m.module_key} className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm">
           {MODULE_LABELS[m.module_key] ?? m.module_key}
+          <Switch checked={m.enabled} onCheckedChange={(v) => toggle(m.module_key, v)} />
         </label>
       ))}
     </div>
@@ -98,9 +130,8 @@ function ModulesPanel({ school }: { school: School }) {
 
 export default function AdminSchoolsPage() {
   const router = useRouter();
-  const { user, token, loading } = useAuth();
+  const { user, token, loading, logout } = useAuth();
   const [schools, setSchools] = useState<School[]>([]);
-  const [expanded, setExpanded] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== "super_admin")) router.replace("/login");
@@ -111,34 +142,64 @@ export default function AdminSchoolsPage() {
     api.listSchools(token).then(setSchools).catch(() => setSchools([]));
   }, [token]);
 
-  if (loading || !user) return null;
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Skeleton className="h-4 w-40" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="mb-4 text-lg font-semibold text-gray-900">Schools</h1>
-
-      <div className="mb-6">
-        <OnboardForm onCreated={(school) => setSchools((s) => [...s, school])} />
-      </div>
-
-      <div className="space-y-3">
-        {schools.map((school) => (
-          <div key={school.id} className="rounded-lg border border-gray-200 bg-white p-4">
-            <button
-              onClick={() => setExpanded(expanded === school.id ? null : school.id)}
-              className="flex w-full items-center justify-between text-left"
-            >
-              <div>
-                <p className="font-medium text-gray-900">{school.name}</p>
-                <p className="text-sm text-gray-500">{school.slug} · {school.country} · {school.currency}</p>
-              </div>
-              <span className="text-sm text-gray-400">{expanded === school.id ? "Hide modules" : "Manage modules"}</span>
-            </button>
-            {expanded === school.id && <ModulesPanel school={school} />}
+    <div className="min-h-screen bg-muted/30">
+      <header className="flex items-center justify-between border-b bg-background px-6 py-4">
+        <div className="flex items-center gap-2">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <GraduationCap className="size-4.5" />
           </div>
-        ))}
-        {schools.length === 0 && <p className="text-sm text-gray-500">No schools onboarded yet.</p>}
-      </div>
+          <div>
+            <p className="text-sm font-semibold leading-none">iSchool</p>
+            <p className="text-xs text-muted-foreground">Super Admin</p>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={logout}><LogOut /> Log out</Button>
+      </header>
+
+      <main className="mx-auto max-w-5xl p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Schools</h1>
+            <p className="text-sm text-muted-foreground">Onboard schools and manage which modules they can use.</p>
+          </div>
+          <OnboardDialog onCreated={(school) => setSchools((s) => [...s, school])} />
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {schools.map((school) => (
+            <Card key={school.id}>
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base">{school.name}</CardTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {school.slug} · {school.country} · {school.currency}
+                    </p>
+                  </div>
+                  <Badge variant={school.is_active ? "default" : "secondary"}>
+                    {school.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ModulesPanel school={school} />
+              </CardContent>
+            </Card>
+          ))}
+          {schools.length === 0 && (
+            <p className="py-12 text-center text-sm text-muted-foreground">No schools onboarded yet.</p>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

@@ -1,41 +1,68 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Users, ClipboardCheck, Award, Wallet, Video, Megaphone, ArrowRight, Settings2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { PageHeader } from "@/components/PageHeader";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+const QUICK_LINKS = [
+  { href: "/dashboard/students", label: "Students", description: "Enroll and manage student records", icon: Users, roles: ["school_admin", "teacher", "staff"] },
+  { href: "/dashboard/attendance", label: "Attendance", description: "Mark today's attendance by class", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff"] },
+  { href: "/dashboard/results", label: "Results", description: "Record scores and view grades", icon: Award, roles: ["school_admin", "teacher", "staff"] },
+  { href: "/dashboard/fees", label: "Fees", description: "Invoices, payments, and balances", icon: Wallet, roles: ["school_admin", "staff"] },
+  { href: "/dashboard/live-classes", label: "Live Classes", description: "Schedule and host video lessons", icon: Video, roles: ["school_admin", "teacher", "staff"] },
+  { href: "/dashboard/announcements", label: "Announcements", description: "Share updates with your school", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
+];
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
+  if (!user) return null;
 
-  useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [loading, user, router]);
-
-  if (loading || !user) return null;
+  const links = QUICK_LINKS.filter((l) => l.roles.includes(user.role));
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={`Welcome, ${user.full_name.split(" ")[0]}`}
+        description="Here's what's happening at your school today."
+      />
 
-      <main className="p-6">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-base font-medium text-gray-900">Welcome, {user.full_name}</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Classes, students, and staff are live. Attendance, results, fees, and communication
-            modules will land here next, gated by what your school has enabled.
-          </p>
-          {user.role === "super_admin" && (
-            <a
-              href="/admin/schools"
-              className="mt-4 inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Manage schools →
-            </a>
-          )}
-        </div>
-      </main>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {links.map((link) => (
+          <Link key={link.href} href={link.href}>
+            <Card className="h-full transition-colors hover:border-primary/40 hover:bg-accent/40">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <link.icon className="size-4.5" />
+                </div>
+                <ArrowRight className="size-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <CardTitle className="text-base">{link.label}</CardTitle>
+                <CardDescription className="mt-1">{link.description}</CardDescription>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      {user.role === "super_admin" && (
+        <Card className="border-dashed">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Settings2 className="size-4 text-muted-foreground" />
+              <CardTitle className="text-base">Super Admin</CardTitle>
+            </div>
+            <CardDescription>Onboard new schools and manage their modules and branding.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/admin/schools" className="text-sm font-medium text-primary hover:underline">
+              Go to schools console →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

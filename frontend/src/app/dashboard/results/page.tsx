@@ -1,14 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { api, ApiError, Result, SchoolClass, Student, Subject } from "@/lib/api";
+import { toast } from "sonner";
+import { api, ApiError, SchoolClass, Student, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { PageHeader } from "@/components/PageHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, Save } from "lucide-react";
 
 export default function ResultsPage() {
-  const router = useRouter();
-  const { user, token, loading } = useAuth();
+  const { user, token } = useAuth();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classId, setClassId] = useState<number | null>(null);
@@ -18,11 +24,6 @@ export default function ResultsPage() {
   const [scores, setScores] = useState<Record<number, string>>({});
   const [newSubject, setNewSubject] = useState("");
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [loading, user, router]);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
@@ -57,12 +58,12 @@ export default function ResultsPage() {
     setSubjects((s) => [...s, subject]);
     setSubjectId(subject.id);
     setNewSubject("");
+    toast.success(`${subject.name} added`);
   }
 
   async function handleSaveScores() {
     if (!token || !user?.school_id || subjectId === null) return;
     setSaving(true);
-    setMessage(null);
     try {
       const entries = Object.entries(scores).filter(([, v]) => v !== "");
       for (const [studentId, score] of entries) {
@@ -73,96 +74,92 @@ export default function ResultsPage() {
           score: Number(score),
         });
       }
-      setMessage("Results saved.");
+      toast.success("Results saved");
     } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : "Failed to save results");
+      toast.error(err instanceof ApiError ? err.message : "Failed to save results");
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading || !user) return null;
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
-      <main className="p-6">
-        <h1 className="mb-4 text-lg font-semibold text-gray-900">Results</h1>
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Results" description="Record subject scores and track grades by term." />
 
-        <form onSubmit={handleAddSubject} className="mb-4 flex items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Add subject</label>
-            <input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="e.g. English" className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <button type="submit" className="rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900">
-            Add
-          </button>
-        </form>
+      <Card>
+        <CardContent className="flex items-end gap-3 pt-6">
+          <form onSubmit={handleAddSubject} className="flex items-end gap-3">
+            <div className="grid gap-1.5">
+              <Label>Add subject</Label>
+              <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="e.g. English" className="w-48" />
+            </div>
+            <Button type="submit" variant="secondary"><Plus /> Add</Button>
+          </form>
+        </CardContent>
+      </Card>
 
-        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Class</label>
-            <select value={classId ?? ""} onChange={(e) => setClassId(Number(e.target.value))} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-3 pt-6">
+          <div className="grid gap-1.5">
+            <Label>Class</Label>
+            <Select value={classId ? String(classId) : ""} onValueChange={(v) => v && setClassId(Number(v))}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Subject</label>
-            <select value={subjectId ?? ""} onChange={(e) => setSubjectId(Number(e.target.value))} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+          <div className="grid gap-1.5">
+            <Label>Subject</Label>
+            <Select value={subjectId ? String(subjectId) : ""} onValueChange={(v) => v && setSubjectId(Number(v))}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>{subjects.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Term</label>
-            <input value={term} onChange={(e) => setTerm(e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          <div className="grid gap-1.5">
+            <Label>Term</Label>
+            <Input value={term} onChange={(e) => setTerm(e.target.value)} className="w-44" />
           </div>
-          <button
-            onClick={handleSaveScores}
-            disabled={saving || students.length === 0 || subjectId === null}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {saving ? "Saving..." : "Save scores"}
-          </button>
-          {message && <p className="text-sm text-gray-600">{message}</p>}
-        </div>
+          <Button onClick={handleSaveScores} disabled={saving || students.length === 0 || subjectId === null}>
+            <Save /> {saving ? "Saving..." : "Save scores"}
+          </Button>
+        </CardContent>
+      </Card>
 
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500">
-              <tr>
-                <th className="px-4 py-2 font-medium">Admission #</th>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Score (out of 100)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((s) => (
-                <tr key={s.id} className="border-t border-gray-100">
-                  <td className="px-4 py-2">{s.admission_number}</td>
-                  <td className="px-4 py-2">{s.first_name} {s.last_name}</td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={scores[s.id] ?? ""}
-                      onChange={(e) => setScores((sc) => ({ ...sc, [s.id]: e.target.value }))}
-                      className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                    />
-                  </td>
-                </tr>
-              ))}
-              {students.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-gray-400">
-                    No students in this class.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </main>
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Admission #</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead className="w-40">Score (out of 100)</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {students.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell className="font-mono text-xs text-muted-foreground">{s.admission_number}</TableCell>
+                <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={scores[s.id] ?? ""}
+                    onChange={(e) => setScores((sc) => ({ ...sc, [s.id]: e.target.value }))}
+                    className="w-24"
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+            {students.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                  No students in this class.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }

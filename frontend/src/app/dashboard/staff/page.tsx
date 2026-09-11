@@ -2,9 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { api, ApiError, Staff } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { PageHeader } from "@/components/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { UserPlus } from "lucide-react";
 
 export default function StaffPage() {
   const router = useRouter();
@@ -19,11 +28,10 @@ export default function StaffPage() {
     department: "",
     phone: "",
   });
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && (!user || (user.role !== "school_admin" && user.role !== "super_admin"))) {
+    if (!loading && user && user.role !== "school_admin" && user.role !== "super_admin") {
       router.replace("/dashboard");
     }
   }, [loading, user, router]);
@@ -41,7 +49,6 @@ export default function StaffPage() {
     e.preventDefault();
     if (!token || !user?.school_id) return;
     setSubmitting(true);
-    setError(null);
     try {
       const created = await api.createStaff(token, user.school_id, {
         email: form.email,
@@ -54,72 +61,96 @@ export default function StaffPage() {
       });
       setStaff((s) => [...s, created]);
       setForm({ email: "", full_name: "", password: "", role: "teacher", staff_number: "", department: "", phone: "" });
+      toast.success(`${created.full_name} added to staff`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to add staff member");
+      toast.error(err instanceof ApiError ? err.message : "Failed to add staff member");
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading || !user) return null;
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
-      <main className="p-6">
-        <h1 className="mb-4 text-lg font-semibold text-gray-900">Staff</h1>
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Staff" description="Manage teacher and staff accounts for your school." />
 
-        <form onSubmit={handleCreate} className="mb-6 grid grid-cols-2 gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-3">
-          <h3 className="col-span-2 text-sm font-medium text-gray-900 sm:col-span-3">Add a teacher or staff member</h3>
-          <input required type="email" placeholder="Email" value={form.email} onChange={(e) => set("email", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-          <input required placeholder="Full name" value={form.full_name} onChange={(e) => set("full_name", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-          <input required type="password" placeholder="Temporary password" value={form.password} onChange={(e) => set("password", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-          <select value={form.role} onChange={(e) => set("role", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="teacher">Teacher</option>
-            <option value="staff">Staff</option>
-          </select>
-          <input required placeholder="Staff number" value={form.staff_number} onChange={(e) => set("staff_number", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-          <input placeholder="Department" value={form.department} onChange={(e) => set("department", e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Add a teacher or staff member</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-1.5">
+              <Label>Email</Label>
+              <Input required type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Full name</Label>
+              <Input required value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Temporary password</Label>
+              <Input required type="password" value={form.password} onChange={(e) => set("password", e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Role</Label>
+              <Select value={form.role} onValueChange={(v) => v && set("role", v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="teacher">Teacher</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Staff number</Label>
+              <Input required value={form.staff_number} onChange={(e) => set("staff_number", e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Department</Label>
+              <Input value={form.department} onChange={(e) => set("department", e.target.value)} />
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <Button disabled={submitting} type="submit">
+                <UserPlus /> {submitting ? "Adding..." : "Add staff member"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
-          {error && <p className="col-span-2 text-sm text-red-600 sm:col-span-3">{error}</p>}
-
-          <button disabled={submitting} type="submit" className="col-span-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 sm:col-span-3">
-            {submitting ? "Adding..." : "Add staff member"}
-          </button>
-        </form>
-
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500">
-              <tr>
-                <th className="px-4 py-2 font-medium">Staff #</th>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Role</th>
-                <th className="px-4 py-2 font-medium">Department</th>
-                <th className="px-4 py-2 font-medium">Email</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map((s) => (
-                <tr key={s.id} className="border-t border-gray-100">
-                  <td className="px-4 py-2">{s.staff_number}</td>
-                  <td className="px-4 py-2">{s.full_name}</td>
-                  <td className="px-4 py-2 capitalize text-gray-500">{s.role}</td>
-                  <td className="px-4 py-2 text-gray-500">{s.department ?? "—"}</td>
-                  <td className="px-4 py-2 text-gray-500">{s.email}</td>
-                </tr>
-              ))}
-              {staff.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                    No staff added yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </main>
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Staff #</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Email</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {staff.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell className="font-mono text-xs text-muted-foreground">{s.staff_number}</TableCell>
+                <TableCell className="font-medium">{s.full_name}</TableCell>
+                <TableCell><Badge variant="secondary" className="capitalize">{s.role}</Badge></TableCell>
+                <TableCell className="text-muted-foreground">{s.department ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{s.email}</TableCell>
+              </TableRow>
+            ))}
+            {staff.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  No staff added yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }

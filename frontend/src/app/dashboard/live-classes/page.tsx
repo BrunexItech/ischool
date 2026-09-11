@@ -1,10 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Copy, Video } from "lucide-react";
 import { api, ApiError, LiveClass, SchoolClass } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { PageHeader } from "@/components/PageHeader";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function toLocalInputValue(iso: string) {
   const d = new Date(iso);
@@ -13,22 +21,15 @@ function toLocalInputValue(iso: string) {
 }
 
 export default function LiveClassesPage() {
-  const router = useRouter();
-  const { user, token, loading } = useAuth();
+  const { user, token } = useAuth();
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [title, setTitle] = useState("");
   const [classId, setClassId] = useState("");
   const [scheduledStart, setScheduledStart] = useState(toLocalInputValue(new Date().toISOString()));
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const canSchedule = user?.role === "school_admin" || user?.role === "teacher" || user?.role === "super_admin";
-
-  useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [loading, user, router]);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
@@ -45,7 +46,6 @@ export default function LiveClassesPage() {
     e.preventDefault();
     if (!token || !user?.school_id) return;
     setSubmitting(true);
-    setError(null);
     try {
       const created = await api.scheduleLiveClass(token, user.school_id, {
         title,
@@ -54,8 +54,9 @@ export default function LiveClassesPage() {
       });
       setLiveClasses((lc) => [created, ...lc]);
       setTitle("");
+      toast.success("Live class scheduled");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to schedule live class");
+      toast.error(err instanceof ApiError ? err.message : "Failed to schedule live class");
     } finally {
       setSubmitting(false);
     }
@@ -69,75 +70,74 @@ export default function LiveClassesPage() {
   async function copyLink(lc: LiveClass) {
     try {
       await navigator.clipboard.writeText(joinLink(lc.join_code));
-      setCopiedId(lc.id);
-      setTimeout(() => setCopiedId(null), 2000);
+      toast.success("Join link copied");
     } catch {
-      // clipboard API unavailable — the link is still visible on screen to copy manually
+      toast.error("Couldn't copy — copy the link manually");
     }
   }
 
-  if (loading || !user) return null;
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
-      <main className="p-6">
-        <h1 className="mb-4 text-lg font-semibold text-gray-900">Live Classes</h1>
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Live Classes" description="Schedule and host video lessons for your students." />
 
-        {canSchedule && (
-          <form onSubmit={handleSchedule} className="mb-6 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Title</label>
-              <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Maths Live Lesson" className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Class</label>
-              <select value={classId} onChange={(e) => setClassId(e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <option value="">Whole school</option>
-                {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Starts</label>
-              <input type="datetime-local" value={scheduledStart} onChange={(e) => setScheduledStart(e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-            </div>
-            <button disabled={submitting} type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
-              {submitting ? "Scheduling..." : "Schedule"}
-            </button>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-          </form>
-        )}
+      {canSchedule && (
+        <Card>
+          <CardContent className="pt-6">
+            <form onSubmit={handleSchedule} className="flex flex-wrap items-end gap-3">
+              <div className="grid gap-1.5">
+                <Label>Title</Label>
+                <Input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Maths Live Lesson" className="w-56" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Class</Label>
+                <Select value={classId} onValueChange={(v) => setClassId(v ?? "")}>
+                  <SelectTrigger className="w-44"><SelectValue placeholder="Whole school" /></SelectTrigger>
+                  <SelectContent>
+                    {classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Starts</Label>
+                <Input type="datetime-local" value={scheduledStart} onChange={(e) => setScheduledStart(e.target.value)} className="w-56" />
+              </div>
+              <Button disabled={submitting} type="submit">
+                {submitting ? "Scheduling..." : "Schedule"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
-        <div className="space-y-3">
-          {liveClasses.map((lc) => (
-            <div key={lc.id} className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3">
+        {liveClasses.map((lc) => (
+          <Card key={lc.id}>
+            <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Video className="size-4.5" />
+                </div>
                 <div>
-                  <p className="font-medium text-gray-900">{lc.title}</p>
-                  <p className="text-sm text-gray-500">
-                    {classNameFor(lc.class_id)} · {new Date(lc.scheduled_start).toLocaleString()}
+                  <p className="font-medium leading-none">{lc.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    <Badge variant="secondary" className="mr-2">{classNameFor(lc.class_id)}</Badge>
+                    {new Date(lc.scheduled_start).toLocaleString()}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => copyLink(lc)}
-                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    {copiedId === lc.id ? "Link copied!" : "Copy student join link"}
-                  </button>
-                  <a
-                    href={`/dashboard/live-classes/${lc.id}/room`}
-                    className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
-                  >
-                    Join as host
-                  </a>
-                </div>
               </div>
-            </div>
-          ))}
-          {liveClasses.length === 0 && <p className="text-sm text-gray-500">No live classes scheduled yet.</p>}
-        </div>
-      </main>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => copyLink(lc)}>
+                  <Copy /> Student join link
+                </Button>
+                <Button size="sm" render={<Link href={`/live-classes/${lc.id}/room`}>Join as host</Link>} />
+              </div>
+            </CardHeader>
+          </Card>
+        ))}
+        {liveClasses.length === 0 && (
+          <p className="py-8 text-center text-sm text-muted-foreground">No live classes scheduled yet.</p>
+        )}
+      </div>
     </div>
   );
 }
