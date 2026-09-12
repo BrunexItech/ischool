@@ -14,6 +14,8 @@ import {
   Megaphone,
   Video,
   HeartHandshake,
+  ClipboardList,
+  History,
   ChevronsUpDown,
   LogOut,
 } from "lucide-react";
@@ -42,6 +44,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/students", label: "Students", icon: Users, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/staff", label: "Staff", icon: UserSquare2, roles: ["school_admin"] },
+  { href: "/dashboard/teacher-assignments", label: "Teaching Assignments", icon: ClipboardList, roles: ["school_admin"] },
   { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/results", label: "Results", icon: Award, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["school_admin", "staff"] },
@@ -49,6 +52,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
   { href: "/dashboard/children", label: "My Children", icon: HeartHandshake, roles: ["parent"] },
   { href: "/dashboard/my-records", label: "My Records", icon: Award, roles: ["student"] },
+  { href: "/dashboard/activity-log", label: "Activity Log", icon: History, roles: ["school_admin"] },
 ];
 
 function initials(name: string) {

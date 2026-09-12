@@ -3,8 +3,10 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.audit import record_audit
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.core.teaching import ensure_can_manage_attendance
 from app.models.attendance import AttendanceRecord
 from app.models.user import User, UserRole
 from app.schemas.attendance import AttendanceMarkRequest, AttendanceRecordOut
@@ -53,6 +55,7 @@ def mark_attendance(
     """Upserts one record per student for the given class/date — resubmitting
     the same day just corrects it, which is how a teacher actually uses this."""
     ensure_school_access(current_user, school_id)
+    ensure_can_manage_attendance(db, current_user, payload.class_id)
 
     existing = {
         r.student_id: r
@@ -65,6 +68,17 @@ def mark_attendance(
     for entry in payload.records:
         record = existing.get(entry.student_id)
         if record:
+            if record.status != entry.status:
+                record_audit(
+                    db,
+                    school_id=school_id,
+                    actor_id=current_user.id,
+                    action="attendance.update",
+                    entity_type="attendance_record",
+                    entity_id=record.id,
+                    before={"status": record.status.value},
+                    after={"status": entry.status.value},
+                )
             record.status = entry.status
             record.recorded_by = current_user.id
         else:

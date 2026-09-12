@@ -156,6 +156,25 @@ export interface JoinToken {
   class_title: string;
 }
 
+export interface TeacherAssignment {
+  id: number;
+  school_id: number;
+  teacher_user_id: number;
+  class_id: number;
+  subject_id: number | null;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  action: string;
+  entity_type: string;
+  entity_id: number;
+  actor_name: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  created_at: string;
+}
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -460,6 +479,30 @@ export const api = {
 
   getChildFees: (token: string, studentId: number) =>
     request<FeeInvoice[]>(`/portal/students/${studentId}/fees`, {}, token),
+
+  // --- Teacher assignments ---
+
+  listTeacherAssignments: (token: string, schoolId: number) =>
+    request<TeacherAssignment[]>(`/schools/${schoolId}/teacher-assignments`, {}, token),
+
+  createTeacherAssignment: (
+    token: string,
+    schoolId: number,
+    payload: { teacher_user_id: number; class_id: number; subject_id?: number }
+  ) =>
+    request<TeacherAssignment>(
+      `/schools/${schoolId}/teacher-assignments`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteTeacherAssignment: (token: string, schoolId: number, assignmentId: number) =>
+    request<void>(`/schools/${schoolId}/teacher-assignments/${assignmentId}`, { method: "DELETE" }, token),
+
+  // --- Audit log ---
+
+  listAuditLog: (token: string, schoolId: number) =>
+    request<AuditLogEntry[]>(`/schools/${schoolId}/audit-log`, {}, token),
 };
 
 export { ApiError };

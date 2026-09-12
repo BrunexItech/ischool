@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.audit import record_audit
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.core.teaching import ensure_can_grade
+from app.models.academics import Student
 from app.models.results import Result, Subject
 from app.models.user import User, UserRole
 from app.schemas.results import ResultOut, ResultUpsert, SubjectCreate, SubjectOut
@@ -104,6 +107,11 @@ def upsert_result(
     matching how a teacher actually enters grades over time."""
     ensure_school_access(current_user, school_id)
 
+    student = db.query(Student).filter_by(school_id=school_id, id=payload.student_id).first()
+    if student is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
+    ensure_can_grade(db, current_user, student.class_id, payload.subject_id)
+
     result = (
         db.query(Result)
         .filter_by(school_id=school_id, student_id=payload.student_id, subject_id=payload.subject_id, term=payload.term)
@@ -112,11 +120,14 @@ def upsert_result(
     grade = payload.grade or _grade_for(payload.score)
 
     if result:
+        before = {"score": float(result.score), "grade": result.grade, "remarks": result.remarks}
         result.score = payload.score
         result.grade = grade
         result.remarks = payload.remarks
         result.recorded_by = current_user.id
+        action = "result.update"
     else:
+        before = None
         result = Result(
             school_id=school_id,
             student_id=payload.student_id,
@@ -128,6 +139,19 @@ def upsert_result(
             recorded_by=current_user.id,
         )
         db.add(result)
+        db.flush()
+        action = "result.create"
+
+    record_audit(
+        db,
+        school_id=school_id,
+        actor_id=current_user.id,
+        action=action,
+        entity_type="result",
+        entity_id=result.id,
+        before=before,
+        after={"score": payload.score, "grade": grade, "remarks": payload.remarks},
+    )
 
     db.commit()
     db.refresh(result)

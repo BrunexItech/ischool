@@ -8,6 +8,8 @@ from app.models.fees import FeeInvoice, FeePayment
 from app.models.communication import Announcement, AnnouncementAudience
 from app.models.live_classes import LiveClass, LiveClassStatus
 from app.models.auth_token import AuthToken, AuthTokenType
+from app.models.audit_log import AuditLog
+from app.models.teacher_assignment import TeacherAssignment
 
 __all__ = [
     "School",
@@ -30,4 +32,6 @@ __all__ = [
     "LiveClassStatus",
     "AuthToken",
     "AuthTokenType",
+    "AuditLog",
+    "TeacherAssignment",
 ]

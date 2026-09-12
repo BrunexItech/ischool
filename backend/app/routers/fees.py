@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.audit import record_audit
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.models.fees import FeeInvoice, FeePayment
@@ -73,6 +74,18 @@ def create_invoice(
     ensure_school_access(current_user, school_id)
     invoice = FeeInvoice(school_id=school_id, **payload.model_dump())
     db.add(invoice)
+    db.flush()
+
+    record_audit(
+        db,
+        school_id=school_id,
+        actor_id=current_user.id,
+        action="fee_invoice.create",
+        entity_type="fee_invoice",
+        entity_id=invoice.id,
+        after={"student_id": invoice.student_id, "term": invoice.term, "amount_due": float(invoice.amount_due)},
+    )
+
     db.commit()
     db.refresh(invoice)
     return _invoice_out(invoice)
@@ -126,6 +139,18 @@ def record_payment(
     )
     invoice.amount_paid = float(invoice.amount_paid) + payload.amount
     db.add(payment)
+    db.flush()
+
+    record_audit(
+        db,
+        school_id=school_id,
+        actor_id=current_user.id,
+        action="fee_payment.create",
+        entity_type="fee_payment",
+        entity_id=payment.id,
+        after={"invoice_id": invoice.id, "amount": payload.amount, "method": payload.method, "reference": payload.reference},
+    )
+
     db.commit()
     db.refresh(invoice)
 
