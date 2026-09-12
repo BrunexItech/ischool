@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api, ApiError, FeeInvoice, FeeInvoiceDetail, Student } from "@/lib/api";
+import { api, AcademicTerm, ApiError, FeeInvoice, FeeInvoiceDetail, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -126,13 +126,19 @@ export default function FeesPage() {
   const { user, token } = useAuth();
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [form, setForm] = useState({ student_id: "", term: "Term 1 2026", amount_due: "" });
+  const [terms, setTerms] = useState<AcademicTerm[]>([]);
+  const [form, setForm] = useState({ student_id: "", term: "", amount_due: "" });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
     api.listInvoices(token, user.school_id).then(setInvoices);
     api.listStudents(token, user.school_id).then(setStudents);
+    api.listAcademicTerms(token, user.school_id).then((ts) => {
+      setTerms(ts);
+      const current = ts.find((t) => t.is_current) ?? ts[0];
+      if (current) setForm((f) => ({ ...f, term: current.name }));
+    });
   }, [token, user?.school_id]);
 
   function studentLabel(studentId: number) {
@@ -180,7 +186,16 @@ export default function FeesPage() {
             </div>
             <div className="grid gap-1.5">
               <Label>Term</Label>
-              <Input value={form.term} onChange={(e) => setForm((f) => ({ ...f, term: e.target.value }))} className="w-40" />
+              {terms.length > 0 ? (
+                <Select required value={form.term} onValueChange={(v) => v && setForm((f) => ({ ...f, term: v }))}>
+                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {terms.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input required value={form.term} onChange={(e) => setForm((f) => ({ ...f, term: e.target.value }))} placeholder="Add a term first" className="w-40" />
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label>Amount due (KES)</Label>

@@ -173,6 +173,15 @@ export interface Notification {
   created_at: string;
 }
 
+export interface AcademicTerm {
+  id: number;
+  school_id: number;
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
+}
+
 export interface AuditLogEntry {
   id: number;
   action: string;
@@ -524,6 +533,25 @@ export const api = {
 
   markAllNotificationsRead: (token: string) =>
     request<{ message: string }>("/notifications/read-all", { method: "PATCH" }, token),
+
+  // --- Academic terms ---
+
+  listAcademicTerms: (token: string, schoolId: number) =>
+    request<AcademicTerm[]>(`/schools/${schoolId}/academic-terms`, {}, token),
+
+  createAcademicTerm: (
+    token: string,
+    schoolId: number,
+    payload: { name: string; start_date?: string; end_date?: string }
+  ) =>
+    request<AcademicTerm>(
+      `/schools/${schoolId}/academic-terms`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  setCurrentAcademicTerm: (token: string, schoolId: number, termId: number) =>
+    request<AcademicTerm>(`/schools/${schoolId}/academic-terms/${termId}/set-current`, { method: "PATCH" }, token),
 };
 
 export { ApiError };

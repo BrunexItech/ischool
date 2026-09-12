@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.routers import (
+    academic_terms,
     academics,
     attendance,
     audit,
@@ -41,6 +42,7 @@ app.include_router(portal.router)
 app.include_router(audit.router)
 app.include_router(teaching.router)
 app.include_router(notifications.router)
+app.include_router(academic_terms.router)
 
 
 @app.on_event("startup")

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api, ApiError, SchoolClass, Student, Subject } from "@/lib/api";
+import { api, AcademicTerm, ApiError, SchoolClass, Student, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +19,8 @@ export default function ResultsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classId, setClassId] = useState<number | null>(null);
   const [subjectId, setSubjectId] = useState<number | null>(null);
-  const [term, setTerm] = useState("Term 1 2026");
+  const [terms, setTerms] = useState<AcademicTerm[]>([]);
+  const [term, setTerm] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [scores, setScores] = useState<Record<number, string>>({});
   const [newSubject, setNewSubject] = useState("");
@@ -34,6 +35,11 @@ export default function ResultsPage() {
     api.listSubjects(token, user.school_id).then((ss) => {
       setSubjects(ss);
       if (ss.length > 0) setSubjectId(ss[0].id);
+    });
+    api.listAcademicTerms(token, user.school_id).then((ts) => {
+      setTerms(ts);
+      const current = ts.find((t) => t.is_current) ?? ts[0];
+      if (current) setTerm(current.name);
     });
   }, [token, user?.school_id]);
 
@@ -116,7 +122,16 @@ export default function ResultsPage() {
           </div>
           <div className="grid gap-1.5">
             <Label>Term</Label>
-            <Input value={term} onChange={(e) => setTerm(e.target.value)} className="w-44" />
+            {terms.length > 0 ? (
+              <Select value={term} onValueChange={(v) => v && setTerm(v)}>
+                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {terms.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Add a term first" className="w-44" />
+            )}
           </div>
           <Button onClick={handleSaveScores} disabled={saving || students.length === 0 || subjectId === null}>
             <Save /> {saving ? "Saving..." : "Save scores"}
