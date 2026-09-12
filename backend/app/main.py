@@ -11,6 +11,7 @@ from app.routers import (
     communication,
     fees,
     live_classes,
+    notifications,
     portal,
     results,
     schools,
@@ -39,6 +40,7 @@ app.include_router(live_classes.public_router)
 app.include_router(portal.router)
 app.include_router(audit.router)
 app.include_router(teaching.router)
+app.include_router(notifications.router)
 
 
 @app.on_event("startup")

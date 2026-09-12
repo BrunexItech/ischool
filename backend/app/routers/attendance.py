@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.core.notify import notify
 from app.core.teaching import ensure_can_manage_attendance
-from app.models.attendance import AttendanceRecord
+from app.models.academics import Student
+from app.models.attendance import AttendanceRecord, AttendanceStatus
 from app.models.user import User, UserRole
 from app.schemas.attendance import AttendanceMarkRequest, AttendanceRecordOut
 
@@ -63,10 +65,16 @@ def mark_attendance(
         .filter_by(school_id=school_id, class_id=payload.class_id, date=payload.date)
         .all()
     }
+    students = {
+        s.id: s
+        for s in db.query(Student).filter(Student.id.in_([e.student_id for e in payload.records])).all()
+    }
+    NOTABLE = (AttendanceStatus.ABSENT, AttendanceStatus.LATE)
 
     results = []
     for entry in payload.records:
         record = existing.get(entry.student_id)
+        should_notify = False
         if record:
             if record.status != entry.status:
                 record_audit(
@@ -79,6 +87,7 @@ def mark_attendance(
                     before={"status": record.status.value},
                     after={"status": entry.status.value},
                 )
+                should_notify = entry.status in NOTABLE
             record.status = entry.status
             record.recorded_by = current_user.id
         else:
@@ -91,7 +100,18 @@ def mark_attendance(
                 recorded_by=current_user.id,
             )
             db.add(record)
+            should_notify = entry.status in NOTABLE
         results.append(record)
+
+        student = students.get(entry.student_id)
+        if should_notify and student is not None and student.guardian_user_id is not None:
+            notify(
+                db,
+                school_id=school_id,
+                user_id=student.guardian_user_id,
+                title=f"{student.first_name} was marked {entry.status.value}",
+                body=f"{student.first_name} {student.last_name} was marked {entry.status.value} on {payload.date}.",
+            )
 
     db.commit()
     for r in results:

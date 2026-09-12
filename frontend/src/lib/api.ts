@@ -164,6 +164,15 @@ export interface TeacherAssignment {
   subject_id: number | null;
 }
 
+export interface Notification {
+  id: number;
+  title: string;
+  body: string;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface AuditLogEntry {
   id: number;
   action: string;
@@ -503,6 +512,18 @@ export const api = {
 
   listAuditLog: (token: string, schoolId: number) =>
     request<AuditLogEntry[]>(`/schools/${schoolId}/audit-log`, {}, token),
+
+  // --- Notifications ---
+
+  listNotifications: (token: string) => request<Notification[]>("/notifications", {}, token),
+
+  getUnreadNotificationCount: (token: string) => request<{ count: number }>("/notifications/unread-count", {}, token),
+
+  markNotificationRead: (token: string, notificationId: number) =>
+    request<Notification>(`/notifications/${notificationId}/read`, { method: "PATCH" }, token),
+
+  markAllNotificationsRead: (token: string) =>
+    request<{ message: string }>("/notifications/read-all", { method: "PATCH" }, token),
 };
 
 export { ApiError };

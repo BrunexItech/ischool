@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.core.notify import notify
+from app.models.academics import Student
 from app.models.fees import FeeInvoice, FeePayment
 from app.models.user import User, UserRole
 from app.schemas.fees import FeeInvoiceCreate, FeeInvoiceDetailOut, FeeInvoiceOut, FeePaymentCreate, FeePaymentOut
@@ -85,6 +87,16 @@ def create_invoice(
         entity_id=invoice.id,
         after={"student_id": invoice.student_id, "term": invoice.term, "amount_due": float(invoice.amount_due)},
     )
+
+    student = db.query(Student).filter_by(id=invoice.student_id).first()
+    if student is not None and student.guardian_user_id is not None:
+        notify(
+            db,
+            school_id=school_id,
+            user_id=student.guardian_user_id,
+            title=f"New invoice for {student.first_name}",
+            body=f"A new invoice of KES {float(invoice.amount_due):,.2f} was issued for {invoice.term}.",
+        )
 
     db.commit()
     db.refresh(invoice)

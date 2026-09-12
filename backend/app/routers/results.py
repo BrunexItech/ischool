@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.core.notify import notify
 from app.core.teaching import ensure_can_grade
 from app.models.academics import Student
 from app.models.results import Result, Subject
@@ -152,6 +153,15 @@ def upsert_result(
         before=before,
         after={"score": payload.score, "grade": grade, "remarks": payload.remarks},
     )
+
+    if student.guardian_user_id is not None:
+        notify(
+            db,
+            school_id=school_id,
+            user_id=student.guardian_user_id,
+            title=f"New result for {student.first_name}",
+            body=f"{student.first_name} {student.last_name} scored {payload.score} ({grade}) for {payload.term}.",
+        )
 
     db.commit()
     db.refresh(result)
