@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_roles
-from app.core.security import hash_password
+from app.core.security import ensure_password_strength, hash_password
 from app.models.module import MODULE_KEYS, SchoolModule
 from app.models.school import School
 from app.models.user import User, UserRole
@@ -47,6 +47,7 @@ def onboard_school(payload: SchoolCreate, db: Session = Depends(get_db)):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That slug is already taken")
     if db.query(User).filter_by(email=payload.admin_email).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That admin email is already registered")
+    ensure_password_strength(payload.admin_password)
 
     school = School(
         name=payload.name,
@@ -67,6 +68,7 @@ def onboard_school(payload: SchoolCreate, db: Session = Depends(get_db)):
         full_name=payload.admin_full_name,
         hashed_password=hash_password(payload.admin_password),
         role=UserRole.SCHOOL_ADMIN,
+        must_change_password=True,
     )
     db.add(admin)
 

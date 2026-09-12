@@ -13,10 +13,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/login");
+    if (loading) return;
+    if (!user) {
+      router.replace("/login");
+    } else if (user.must_change_password) {
+      router.replace("/change-password");
+    }
   }, [loading, user, router]);
 
-  if (loading || !user) {
+  if (loading || !user || user.must_change_password) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="w-64 space-y-3">

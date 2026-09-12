@@ -7,8 +7,9 @@ interface AuthState {
   token: string | null;
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
+  setSession: (token: string, user: User) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -35,11 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
+  function setSession(newToken: string, newUser: User) {
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: newToken, user: newUser }));
+  }
+
   async function login(email: string, password: string) {
     const result = await api.login(email, password);
-    setToken(result.access_token);
-    setUser(result.user);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: result.access_token, user: result.user }));
+    setSession(result.access_token, result.user);
+    return result.user;
   }
 
   function logout() {
@@ -48,7 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
   }
 
-  return <AuthContext.Provider value={{ token, user, loading, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ token, user, loading, login, logout, setSession }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

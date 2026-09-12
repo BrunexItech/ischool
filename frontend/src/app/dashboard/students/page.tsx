@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ResetPasswordDialog } from "@/components/ResetPasswordDialog";
 import { CheckCircle2, KeyRound, UserPlus, XCircle } from "lucide-react";
 
 function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpdated: (s: Student) => void }) {
@@ -80,7 +81,9 @@ function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpda
               <Badge variant="secondary" className="gap-1"><XCircle className="size-3.5" /> Not set up</Badge>
             )}
           </div>
-          {!student.has_student_account && (
+          {student.has_student_account && student.user_id ? (
+            <ResetPasswordDialog userId={student.user_id} label={`${student.first_name} ${student.last_name}`} />
+          ) : (
             <form onSubmit={handleCreateStudentAccount} className="flex flex-wrap items-end gap-2">
               <Input required type="email" placeholder="Student email" value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} className="w-48" />
               <Input required type="password" placeholder="Password" value={studentPassword} onChange={(e) => setStudentPassword(e.target.value)} className="w-40" />
@@ -100,7 +103,9 @@ function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpda
               <Badge variant="secondary" className="gap-1"><XCircle className="size-3.5" /> Not set up</Badge>
             )}
           </div>
-          {!student.has_guardian_account && (
+          {student.has_guardian_account && student.guardian_user_id ? (
+            <ResetPasswordDialog userId={student.guardian_user_id} label={student.guardian_name || "Guardian"} />
+          ) : (
             <form onSubmit={handleCreateGuardianAccount} className="flex flex-wrap items-end gap-2">
               <Input required type="email" placeholder="Guardian email" value={guardianEmail} onChange={(e) => setGuardianEmail(e.target.value)} className="w-48" />
               <Input required type="password" placeholder="Password" value={guardianPassword} onChange={(e) => setGuardianPassword(e.target.value)} className="w-40" />

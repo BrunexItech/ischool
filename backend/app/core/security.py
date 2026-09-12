@@ -1,11 +1,21 @@
 from datetime import datetime, timedelta, timezone
 
+from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+MIN_PASSWORD_LENGTH = 8
+
+
+def ensure_password_strength(password: str) -> None:
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
+        )
 
 
 def hash_password(password: str) -> str:

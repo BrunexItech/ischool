@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ResetPasswordDialog } from "@/components/ResetPasswordDialog";
 import { UserPlus } from "lucide-react";
 
 export default function StaffPage() {
@@ -129,6 +130,7 @@ export default function StaffPage() {
               <TableHead>Role</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -139,11 +141,14 @@ export default function StaffPage() {
                 <TableCell><Badge variant="secondary" className="capitalize">{s.role}</Badge></TableCell>
                 <TableCell className="text-muted-foreground">{s.department ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{s.email}</TableCell>
+                <TableCell className="text-right">
+                  <ResetPasswordDialog userId={s.user_id} label={s.full_name} />
+                </TableCell>
               </TableRow>
             ))}
             {staff.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                   No staff added yet.
                 </TableCell>
               </TableRow>

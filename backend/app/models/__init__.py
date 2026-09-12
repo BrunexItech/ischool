@@ -7,6 +7,7 @@ from app.models.results import Subject, Result
 from app.models.fees import FeeInvoice, FeePayment
 from app.models.communication import Announcement, AnnouncementAudience
 from app.models.live_classes import LiveClass, LiveClassStatus
+from app.models.auth_token import AuthToken, AuthTokenType
 
 __all__ = [
     "School",
@@ -27,4 +28,6 @@ __all__ = [
     "AnnouncementAudience",
     "LiveClass",
     "LiveClassStatus",
+    "AuthToken",
+    "AuthTokenType",
 ]

@@ -62,6 +62,8 @@ class StudentOut(BaseModel):
     is_active: bool
     has_student_account: bool
     has_guardian_account: bool
+    user_id: int | None
+    guardian_user_id: int | None
 
 
 class StudentAccountCreate(BaseModel):

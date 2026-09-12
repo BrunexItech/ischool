@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
-from app.core.security import hash_password
+from app.core.security import ensure_password_strength, hash_password
 from app.models.academics import SchoolClass, StaffProfile, Student
 from app.models.user import User, UserRole
 from app.schemas.academics import (
@@ -17,6 +17,7 @@ from app.schemas.academics import (
     StudentOut,
     StudentUpdate,
 )
+from app.schemas.user import AdminResetPasswordRequest, UserOut
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["students & staff"])
 
@@ -174,6 +175,7 @@ def create_student_account(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This student already has a portal account")
     if db.query(User).filter_by(email=payload.email).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That email is already registered")
+    ensure_password_strength(payload.password)
 
     user = User(
         school_id=school_id,
@@ -181,6 +183,7 @@ def create_student_account(
         full_name=f"{student.first_name} {student.last_name}",
         hashed_password=hash_password(payload.password),
         role=UserRole.STUDENT,
+        must_change_password=True,
     )
     db.add(user)
     db.flush()
@@ -219,12 +222,14 @@ def create_guardian_account(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "That email is already registered to a different account")
         guardian = existing
     else:
+        ensure_password_strength(payload.password)
         guardian = User(
             school_id=school_id,
             email=payload.email,
             full_name=payload.full_name or student.guardian_name or "Guardian",
             hashed_password=hash_password(payload.password),
             role=UserRole.PARENT,
+            must_change_password=True,
         )
         db.add(guardian)
         db.flush()
@@ -283,6 +288,7 @@ def create_staff(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That email is already registered")
     if db.query(StaffProfile).filter_by(school_id=school_id, staff_number=payload.staff_number).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That staff number is already in use")
+    ensure_password_strength(payload.password)
 
     user = User(
         school_id=school_id,
@@ -290,6 +296,7 @@ def create_staff(
         full_name=payload.full_name,
         hashed_password=hash_password(payload.password),
         role=payload.role,
+        must_change_password=True,
     )
     db.add(user)
     db.flush()  # get user.id before creating the profile row
@@ -305,3 +312,34 @@ def create_staff(
     db.commit()
     db.refresh(profile)
     return _staff_out(profile)
+
+
+# --- Account management ---
+
+
+@router.post(
+    "/users/{user_id}/reset-password",
+    response_model=UserOut,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+)
+def admin_reset_password(
+    school_id: int,
+    user_id: int,
+    payload: AdminResetPasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """A school admin sets a new password directly for an account they manage
+    (staff, student, or guardian) — e.g. when someone is locked out and can't
+    self-serve a reset. The user must change it again at next login."""
+    ensure_school_access(current_user, school_id)
+    target = db.query(User).filter_by(id=user_id, school_id=school_id).first()
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    ensure_password_strength(payload.new_password)
+    target.hashed_password = hash_password(payload.new_password)
+    target.must_change_password = True
+    db.commit()
+    db.refresh(target)
+    return target

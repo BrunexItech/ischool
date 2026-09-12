@@ -9,6 +9,7 @@ export interface User {
   full_name: string;
   role: UserRole;
   is_active: boolean;
+  must_change_password: boolean;
 }
 
 export interface School {
@@ -53,6 +54,8 @@ export interface Student {
   is_active: boolean;
   has_student_account: boolean;
   has_guardian_account: boolean;
+  user_id: number | null;
+  guardian_user_id: number | null;
 }
 
 export interface Staff {
@@ -181,6 +184,38 @@ export const api = {
       body: form.toString(),
     });
   },
+
+  changePassword: (token: string, currentPassword: string, newPassword: string) =>
+    request<{ access_token: string; token_type: string; user: User }>(
+      "/auth/change-password",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      },
+      token
+    ),
+
+  forgotPassword: (email: string) =>
+    request<{ message: string }>("/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (resetToken: string, newPassword: string) =>
+    request<{ access_token: string; token_type: string; user: User }>("/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: resetToken, new_password: newPassword }),
+    }),
+
+  adminResetPassword: (token: string, schoolId: number, userId: number, newPassword: string) =>
+    request<{ id: number }>(
+      `/schools/${schoolId}/users/${userId}/reset-password`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ new_password: newPassword }) },
+      token
+    ),
 
   getSchoolBySlug: (slug: string) =>
     request<{ name: string; slug: string; logo_url: string | null; primary_color: string; secondary_color: string }>(

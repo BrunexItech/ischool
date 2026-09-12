@@ -14,5 +14,18 @@ class Settings(BaseSettings):
     livekit_api_secret: str = "secret"
     livekit_url: str = "ws://localhost:7880"
 
+    # Email — unset by default; the mailer logs instead of sending until these are provided.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str = "iSchool <noreply@ischool.local>"
+
+    frontend_url: str = "http://localhost:3000"
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.smtp_host and self.smtp_user and self.smtp_password)
+
 
 settings = Settings()
