@@ -7,6 +7,7 @@ import { Copy, Video } from "lucide-react";
 import { api, ApiError, LiveClass, SchoolClass } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,13 +29,16 @@ export default function LiveClassesPage() {
   const [classId, setClassId] = useState("");
   const [scheduledStart, setScheduledStart] = useState(toLocalInputValue(new Date().toISOString()));
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const canSchedule = user?.role === "school_admin" || user?.role === "teacher" || user?.role === "super_admin";
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listLiveClasses(token, user.school_id).then(setLiveClasses);
-    api.listClasses(token, user.school_id).then(setClasses);
+    Promise.all([
+      api.listLiveClasses(token, user.school_id).then(setLiveClasses),
+      api.listClasses(token, user.school_id).then(setClasses),
+    ]).finally(() => setLoading(false));
   }, [token, user?.school_id]);
 
   function classNameFor(classId: number | null) {
@@ -74,6 +78,15 @@ export default function LiveClassesPage() {
     } catch {
       toast.error("Couldn't copy — copy the link manually");
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Live Classes" description="Schedule and host video lessons for your students." />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

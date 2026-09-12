@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, ApiError, AttendanceStatus, SchoolClass, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,13 +35,14 @@ export default function AttendancePage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [statuses, setStatuses] = useState<Record<number, AttendanceStatus>>({});
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
     api.listClasses(token, user.school_id).then((cs) => {
       setClasses(cs);
       if (cs.length > 0) setClassId(cs[0].id);
-    });
+    }).finally(() => setLoading(false));
   }, [token, user?.school_id]);
 
   useEffect(() => {
@@ -74,6 +76,15 @@ export default function AttendancePage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Attendance" description="Mark daily attendance for a class." />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

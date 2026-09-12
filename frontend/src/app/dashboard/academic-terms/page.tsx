@@ -7,6 +7,7 @@ import { CheckCircle2, Plus } from "lucide-react";
 import { api, AcademicTerm, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ export default function AcademicTermsPage() {
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
   const [form, setForm] = useState({ name: "", start_date: "", end_date: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && user && user.role !== "school_admin") router.replace("/dashboard");
@@ -27,7 +29,7 @@ export default function AcademicTermsPage() {
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listAcademicTerms(token, user.school_id).then(setTerms);
+    api.listAcademicTerms(token, user.school_id).then(setTerms).finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
 
   async function handleCreate(e: React.FormEvent) {
@@ -55,6 +57,18 @@ export default function AcademicTermsPage() {
     await api.setCurrentAcademicTerm(token, user.school_id, id);
     setTerms((all) => all.map((t) => ({ ...t, is_current: t.id === id })));
     toast.success("Current term updated");
+  }
+
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="Academic Terms"
+          description="The terms your school uses everywhere — results, fees, and reporting all pick from this list."
+        />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, AttendanceRecord, FeeInvoice, Result } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageLoader } from "@/components/Spinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -26,13 +27,18 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return;
-    api.getChildAttendance(token, studentId).then(setAttendance).catch(() => setAttendance([]));
-    api.getChildResults(token, studentId).then(setResults).catch(() => setResults([]));
-    api.getChildFees(token, studentId).then(setInvoices).catch(() => setInvoices([]));
+    Promise.all([
+      api.getChildAttendance(token, studentId).then(setAttendance).catch(() => setAttendance([])),
+      api.getChildResults(token, studentId).then(setResults).catch(() => setResults([])),
+      api.getChildFees(token, studentId).then(setInvoices).catch(() => setInvoices([])),
+    ]).finally(() => setLoading(false));
   }, [token, studentId]);
+
+  if (loading) return <PageLoader />;
 
   return (
     <Tabs defaultValue="attendance">

@@ -7,6 +7,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { api, ApiError, SchoolClass, Staff, Subject, TeacherAssignment } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ export default function TeacherAssignmentsPage() {
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState(ANY_SUBJECT);
   const [submitting, setSubmitting] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && user && user.role !== "school_admin") router.replace("/dashboard");
@@ -33,10 +35,12 @@ export default function TeacherAssignmentsPage() {
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listTeacherAssignments(token, user.school_id).then(setAssignments);
-    api.listStaff(token, user.school_id).then((s) => setTeachers(s.filter((x) => x.role === "teacher")));
-    api.listClasses(token, user.school_id).then(setClasses);
-    api.listSubjects(token, user.school_id).then(setSubjects);
+    Promise.all([
+      api.listTeacherAssignments(token, user.school_id).then(setAssignments),
+      api.listStaff(token, user.school_id).then((s) => setTeachers(s.filter((x) => x.role === "teacher"))),
+      api.listClasses(token, user.school_id).then(setClasses),
+      api.listSubjects(token, user.school_id).then(setSubjects),
+    ]).finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
 
   function teacherName(id: number) {
@@ -78,6 +82,18 @@ export default function TeacherAssignmentsPage() {
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to remove assignment");
     }
+  }
+
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="Teaching Assignments"
+          description="Control which classes and subjects each teacher can mark attendance for or grade."
+        />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

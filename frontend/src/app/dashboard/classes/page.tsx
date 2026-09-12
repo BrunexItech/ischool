@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, ApiError, SchoolClass } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,6 +77,7 @@ function PromoteDialog({ schoolClass, allClasses, onPromoted }: { schoolClass: S
 export default function ClassesPage() {
   const { user, token } = useAuth();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -84,7 +86,7 @@ export default function ClassesPage() {
 
   function refreshClasses() {
     if (!token || !user?.school_id) return;
-    api.listClasses(token, user.school_id).then(setClasses).catch(() => setClasses([]));
+    api.listClasses(token, user.school_id).then(setClasses).catch(() => setClasses([])).finally(() => setLoading(false));
   }
 
   useEffect(refreshClasses, [token, user?.school_id]);
@@ -107,6 +109,15 @@ export default function ClassesPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Classes" description="Manage the classes and grade levels at your school." />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

@@ -7,7 +7,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/Spinner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -25,10 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (loading || !user || user.must_change_password) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="w-64 space-y-3">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-        </div>
+        <PageLoader label="Loading your dashboard..." />
       </div>
     );
   }

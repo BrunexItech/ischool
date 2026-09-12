@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { api, ApiError, Staff } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ export default function StaffPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [form, setForm] = useState({
     email: "",
     full_name: "",
@@ -39,7 +41,7 @@ export default function StaffPage() {
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listStaff(token, user.school_id).then(setStaff).catch(() => setStaff([]));
+    api.listStaff(token, user.school_id).then(setStaff).catch(() => setStaff([])).finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
@@ -68,6 +70,15 @@ export default function StaffPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Staff" description="Manage teacher and staff accounts for your school." />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

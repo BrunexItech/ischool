@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, AcademicTerm, ApiError, FeeInvoice, FeeInvoiceDetail, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -129,16 +130,19 @@ export default function FeesPage() {
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
   const [form, setForm] = useState({ student_id: "", term: "", amount_due: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listInvoices(token, user.school_id).then(setInvoices);
-    api.listStudents(token, user.school_id).then(setStudents);
-    api.listAcademicTerms(token, user.school_id).then((ts) => {
-      setTerms(ts);
-      const current = ts.find((t) => t.is_current) ?? ts[0];
-      if (current) setForm((f) => ({ ...f, term: current.name }));
-    });
+    Promise.all([
+      api.listInvoices(token, user.school_id).then(setInvoices),
+      api.listStudents(token, user.school_id).then(setStudents),
+      api.listAcademicTerms(token, user.school_id).then((ts) => {
+        setTerms(ts);
+        const current = ts.find((t) => t.is_current) ?? ts[0];
+        if (current) setForm((f) => ({ ...f, term: current.name }));
+      }),
+    ]).finally(() => setLoading(false));
   }, [token, user?.school_id]);
 
   function studentLabel(studentId: number) {
@@ -164,6 +168,15 @@ export default function FeesPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Fees" description="Create invoices and track payments by term." />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

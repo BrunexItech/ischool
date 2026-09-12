@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, ApiError, SchoolClass, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -140,6 +141,7 @@ export default function StudentsPage() {
   const { user, token } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     admission_number: "",
     first_name: "",
@@ -154,8 +156,10 @@ export default function StudentsPage() {
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listStudents(token, user.school_id).then(setStudents).catch(() => setStudents([]));
-    api.listClasses(token, user.school_id).then(setClasses).catch(() => setClasses([]));
+    Promise.all([
+      api.listStudents(token, user.school_id).then(setStudents).catch(() => setStudents([])),
+      api.listClasses(token, user.school_id).then(setClasses).catch(() => setClasses([])),
+    ]).finally(() => setLoading(false));
   }, [token, user?.school_id]);
 
   function classNameFor(classId: number | null) {
@@ -188,6 +192,15 @@ export default function StudentsPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Students" description="Enroll students and keep their records up to date." />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

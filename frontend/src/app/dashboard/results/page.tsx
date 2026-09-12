@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, AcademicTerm, ApiError, SchoolClass, Student, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,22 +26,25 @@ export default function ResultsPage() {
   const [scores, setScores] = useState<Record<number, string>>({});
   const [newSubject, setNewSubject] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listClasses(token, user.school_id).then((cs) => {
-      setClasses(cs);
-      if (cs.length > 0) setClassId(cs[0].id);
-    });
-    api.listSubjects(token, user.school_id).then((ss) => {
-      setSubjects(ss);
-      if (ss.length > 0) setSubjectId(ss[0].id);
-    });
-    api.listAcademicTerms(token, user.school_id).then((ts) => {
-      setTerms(ts);
-      const current = ts.find((t) => t.is_current) ?? ts[0];
-      if (current) setTerm(current.name);
-    });
+    Promise.all([
+      api.listClasses(token, user.school_id).then((cs) => {
+        setClasses(cs);
+        if (cs.length > 0) setClassId(cs[0].id);
+      }),
+      api.listSubjects(token, user.school_id).then((ss) => {
+        setSubjects(ss);
+        if (ss.length > 0) setSubjectId(ss[0].id);
+      }),
+      api.listAcademicTerms(token, user.school_id).then((ts) => {
+        setTerms(ts);
+        const current = ts.find((t) => t.is_current) ?? ts[0];
+        if (current) setTerm(current.name);
+      }),
+    ]).finally(() => setLoading(false));
   }, [token, user?.school_id]);
 
   useEffect(() => {
@@ -86,6 +90,15 @@ export default function ResultsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Results" description="Record subject scores and track grades by term." />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/Spinner";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -47,7 +48,7 @@ export default function ForgotPasswordPage() {
                 <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <Button type="submit" disabled={submitting} className="w-full">
-                {submitting ? "Sending..." : "Send reset link"}
+                {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Sending..." : "Send reset link"}
               </Button>
             </form>
           )}

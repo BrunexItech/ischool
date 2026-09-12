@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader, Spinner } from "@/components/Spinner";
 
 const MODULE_LABELS: Record<string, string> = {
   students_staff: "Students & Staff",
@@ -104,16 +104,25 @@ function OnboardDialog({ onCreated }: { onCreated: (school: School) => void }) {
 function ModulesPanel({ school }: { school: School }) {
   const { token } = useAuth();
   const [modules, setModules] = useState<ModuleToggle[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return;
-    api.listModules(token, school.id).then(setModules).catch(() => setModules([]));
+    api.listModules(token, school.id).then(setModules).catch(() => setModules([])).finally(() => setLoading(false));
   }, [token, school.id]);
 
   async function toggle(moduleKey: string, enabled: boolean) {
     if (!token) return;
     const updated = await api.toggleModule(token, school.id, moduleKey, enabled);
     setModules((mods) => mods.map((m) => (m.module_key === moduleKey ? updated : m)));
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Spinner size={18} />
+      </div>
+    );
   }
 
   return (
@@ -132,6 +141,7 @@ export default function AdminSchoolsPage() {
   const router = useRouter();
   const { user, token, loading, logout } = useAuth();
   const [schools, setSchools] = useState<School[]>([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== "super_admin")) router.replace("/login");
@@ -139,13 +149,13 @@ export default function AdminSchoolsPage() {
 
   useEffect(() => {
     if (!token) return;
-    api.listSchools(token).then(setSchools).catch(() => setSchools([]));
+    api.listSchools(token).then(setSchools).catch(() => setSchools([])).finally(() => setSchoolsLoading(false));
   }, [token]);
 
-  if (loading || !user) {
+  if (loading || !user || schoolsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Skeleton className="h-4 w-40" />
+        <PageLoader label="Loading schools console..." />
       </div>
     );
   }

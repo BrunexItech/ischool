@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/Spinner";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -46,7 +47,7 @@ function ResetPasswordForm() {
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" disabled={submitting} className="w-full">
-        {submitting ? "Resetting..." : "Reset password"}
+        {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Resetting..." : "Reset password"}
       </Button>
     </form>
   );

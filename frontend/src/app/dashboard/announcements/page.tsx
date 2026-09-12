@@ -6,6 +6,7 @@ import { Megaphone, Send } from "lucide-react";
 import { api, Announcement, AnnouncementAudience, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -23,12 +24,13 @@ export default function AnnouncementsPage() {
   const [body, setBody] = useState("");
   const [audience, setAudience] = useState<AnnouncementAudience>("all");
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const canPost = user?.role === "school_admin" || user?.role === "teacher" || user?.role === "super_admin";
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listAnnouncements(token, user.school_id).then(setAnnouncements);
+    api.listAnnouncements(token, user.school_id).then(setAnnouncements).finally(() => setLoading(false));
   }, [token, user?.school_id]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -46,6 +48,15 @@ export default function AnnouncementsPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Announcements" description="Share updates with your school community." />
+        <PageLoader />
+      </div>
+    );
   }
 
   return (

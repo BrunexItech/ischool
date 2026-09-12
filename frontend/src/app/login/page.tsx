@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/Spinner";
 
 interface Branding {
   name: string;
@@ -107,7 +108,7 @@ export default function LoginPage() {
               {error && <p className="text-sm text-destructive">{error}</p>}
 
               <Button type="submit" disabled={submitting} className="w-full">
-                {submitting ? "Signing in..." : "Sign in"}
+                {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Signing in..." : "Sign in"}
               </Button>
             </form>
           </CardContent>

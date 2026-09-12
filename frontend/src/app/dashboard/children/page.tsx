@@ -7,12 +7,14 @@ import { ArrowRight, GraduationCap } from "lucide-react";
 import { api, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export default function MyChildrenPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
   const [children, setChildren] = useState<Student[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && user && user.role !== "parent") router.replace("/dashboard");
@@ -20,8 +22,17 @@ export default function MyChildrenPage() {
 
   useEffect(() => {
     if (!token) return;
-    api.listMyChildren(token).then(setChildren).catch(() => setChildren([]));
+    api.listMyChildren(token).then(setChildren).catch(() => setChildren([])).finally(() => setDataLoading(false));
   }, [token]);
+
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="My Children" description="View attendance, results, and fees for each of your children." />
+        <PageLoader />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

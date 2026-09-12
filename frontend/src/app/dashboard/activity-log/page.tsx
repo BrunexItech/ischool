@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, AuditLogEntry } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/Spinner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,6 +32,7 @@ export default function ActivityLogPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && user && user.role !== "school_admin") router.replace("/dashboard");
@@ -38,8 +40,17 @@ export default function ActivityLogPage() {
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listAuditLog(token, user.school_id).then(setEntries);
+    api.listAuditLog(token, user.school_id).then(setEntries).finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
+
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Activity Log" description="Every grade, attendance, and fee change — who, what, and when." />
+        <PageLoader />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
