@@ -4,6 +4,7 @@ import "@livekit/components-styles";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LiveKitRoom, VideoConference } from "@livekit/components-react";
+import { Loader2 } from "lucide-react";
 import { api, ApiError, JoinToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -30,7 +31,7 @@ export default function HostRoomPage({ params }: { params: Promise<{ id: string 
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-sidebar text-sidebar-foreground">
         <p>{error}</p>
       </div>
     );
@@ -38,8 +39,9 @@ export default function HostRoomPage({ params }: { params: Promise<{ id: string 
 
   if (!joinToken) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
-        <p>Connecting to the class...</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-sidebar text-sidebar-foreground">
+        <Loader2 className="size-5 animate-spin text-primary" />
+        <p className="text-sm text-sidebar-foreground/70">Connecting to the class...</p>
       </div>
     );
   }

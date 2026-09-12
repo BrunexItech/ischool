@@ -51,6 +51,8 @@ export interface Student {
   guardian_phone: string | null;
   guardian_email: string | null;
   is_active: boolean;
+  has_student_account: boolean;
+  has_guardian_account: boolean;
 }
 
 export interface Staff {
@@ -247,6 +249,25 @@ export const api = {
       token
     ),
 
+  createStudentAccount: (token: string, schoolId: number, studentId: number, payload: { email: string; password: string }) =>
+    request<Student>(
+      `/schools/${schoolId}/students/${studentId}/student-account`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  createGuardianAccount: (
+    token: string,
+    schoolId: number,
+    studentId: number,
+    payload: { email: string; password: string; full_name?: string }
+  ) =>
+    request<Student>(
+      `/schools/${schoolId}/students/${studentId}/guardian-account`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
   listStaff: (token: string, schoolId: number) => request<Staff[]>(`/schools/${schoolId}/staff`, {}, token),
 
   createStaff: (
@@ -389,6 +410,21 @@ export const api = {
 
   joinLiveClassByCode: (joinCode: string, name: string) =>
     request<JoinToken>(`/live-classes/join/${joinCode}?name=${encodeURIComponent(name)}`),
+
+  // --- Portal (parent/student self-service) ---
+
+  listMyChildren: (token: string) => request<Student[]>("/portal/children", {}, token),
+
+  getMyStudentRecord: (token: string) => request<Student>("/portal/me", {}, token),
+
+  getChildAttendance: (token: string, studentId: number) =>
+    request<AttendanceRecord[]>(`/portal/students/${studentId}/attendance`, {}, token),
+
+  getChildResults: (token: string, studentId: number) =>
+    request<Result[]>(`/portal/students/${studentId}/results`, {}, token),
+
+  getChildFees: (token: string, studentId: number) =>
+    request<FeeInvoice[]>(`/portal/students/${studentId}/fees`, {}, token),
 };
 
 export { ApiError };

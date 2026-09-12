@@ -43,11 +43,30 @@ class Student(Base):
     guardian_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     guardian_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # Portal accounts — both optional; a student/parent only gets one once the
+    # school issues it via the Students page.
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), unique=True, nullable=True
+    )
+    guardian_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     school: Mapped["School"] = relationship("School", back_populates="students")
     school_class: Mapped["SchoolClass | None"] = relationship("SchoolClass", back_populates="students")
+    user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
+    guardian_user: Mapped["User | None"] = relationship("User", foreign_keys=[guardian_user_id])
+
+    @property
+    def has_student_account(self) -> bool:
+        return self.user_id is not None
+
+    @property
+    def has_guardian_account(self) -> bool:
+        return self.guardian_user_id is not None
 
 
 class StaffProfile(Base):

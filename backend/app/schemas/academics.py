@@ -60,6 +60,19 @@ class StudentOut(BaseModel):
     guardian_phone: str | None
     guardian_email: str | None
     is_active: bool
+    has_student_account: bool
+    has_guardian_account: bool
+
+
+class StudentAccountCreate(BaseModel):
+    email: str
+    password: str
+
+
+class GuardianAccountCreate(BaseModel):
+    email: str
+    password: str
+    full_name: str | None = None
 
 
 class StaffCreate(BaseModel):

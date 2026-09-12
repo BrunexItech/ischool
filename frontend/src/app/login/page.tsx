@@ -57,7 +57,7 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-primary via-primary to-indigo-900 p-10 text-primary-foreground lg:flex">
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-primary via-primary to-sidebar p-10 text-primary-foreground lg:flex">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.12),_transparent_50%)]" />
         <div className="relative flex items-center gap-2">
           <div className="flex size-9 items-center justify-center rounded-lg bg-white/15">

@@ -3,7 +3,11 @@
 import "@livekit/components-styles";
 import { use, useState } from "react";
 import { LiveKitRoom, VideoConference } from "@livekit/components-react";
+import { GraduationCap } from "lucide-react";
 import { api, ApiError, JoinToken } from "@/lib/api";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export default function GuestJoinPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -45,28 +49,25 @@ export default function GuestJoinPage({ params }: { params: Promise<{ code: stri
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold text-gray-900">Join the class</h1>
-        <p className="mb-6 text-sm text-gray-500">Enter your name to join the live lesson.</p>
-        <form onSubmit={handleJoin} className="space-y-4">
-          <input
-            required
-            placeholder="Your name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            disabled={submitting}
-            type="submit"
-            className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {submitting ? "Joining..." : "Join class"}
-          </button>
-        </form>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <GraduationCap className="size-5" />
+          </div>
+          <CardTitle>Join the class</CardTitle>
+          <CardDescription>Enter your name to join the live lesson.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleJoin} className="space-y-4">
+            <Input required placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button disabled={submitting} type="submit" className="w-full">
+              {submitting ? "Joining..." : "Join class"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

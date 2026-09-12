@@ -7,10 +7,12 @@ from app.core.security import hash_password
 from app.models.academics import SchoolClass, StaffProfile, Student
 from app.models.user import User, UserRole
 from app.schemas.academics import (
+    GuardianAccountCreate,
     SchoolClassCreate,
     SchoolClassOut,
     StaffCreate,
     StaffOut,
+    StudentAccountCreate,
     StudentCreate,
     StudentOut,
     StudentUpdate,
@@ -145,6 +147,89 @@ def update_student(
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(student, field, value)
 
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+@router.post(
+    "/students/{student_id}/student-account",
+    response_model=StudentOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*ENROLL_ROLES)), Depends(require_feature("students_staff"))],
+)
+def create_student_account(
+    school_id: int,
+    student_id: int,
+    payload: StudentAccountCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Issues the student their own portal login."""
+    ensure_school_access(current_user, school_id)
+    student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
+    if student is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
+    if student.user_id is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This student already has a portal account")
+    if db.query(User).filter_by(email=payload.email).first():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That email is already registered")
+
+    user = User(
+        school_id=school_id,
+        email=payload.email,
+        full_name=f"{student.first_name} {student.last_name}",
+        hashed_password=hash_password(payload.password),
+        role=UserRole.STUDENT,
+    )
+    db.add(user)
+    db.flush()
+    student.user_id = user.id
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+@router.post(
+    "/students/{student_id}/guardian-account",
+    response_model=StudentOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*ENROLL_ROLES)), Depends(require_feature("students_staff"))],
+)
+def create_guardian_account(
+    school_id: int,
+    student_id: int,
+    payload: GuardianAccountCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Issues a parent/guardian portal login. If a guardian account with this
+    email already exists at the school (a sibling already enrolled it), this
+    just links this student to that same account instead of erroring."""
+    ensure_school_access(current_user, school_id)
+    student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
+    if student is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
+    if student.guardian_user_id is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This student already has a linked guardian account")
+
+    existing = db.query(User).filter_by(email=payload.email).first()
+    if existing is not None:
+        if existing.role != UserRole.PARENT or existing.school_id != school_id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "That email is already registered to a different account")
+        guardian = existing
+    else:
+        guardian = User(
+            school_id=school_id,
+            email=payload.email,
+            full_name=payload.full_name or student.guardian_name or "Guardian",
+            hashed_password=hash_password(payload.password),
+            role=UserRole.PARENT,
+        )
+        db.add(guardian)
+        db.flush()
+
+    student.guardian_user_id = guardian.id
     db.commit()
     db.refresh(student)
     return student

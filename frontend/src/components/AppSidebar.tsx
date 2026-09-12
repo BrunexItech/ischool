@@ -13,6 +13,7 @@ import {
   Wallet,
   Megaphone,
   Video,
+  HeartHandshake,
   ChevronsUpDown,
   LogOut,
 } from "lucide-react";
@@ -37,7 +38,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["school_admin", "teacher", "staff"] },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
   { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/students", label: "Students", icon: Users, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/staff", label: "Staff", icon: UserSquare2, roles: ["school_admin"] },
@@ -46,6 +47,8 @@ const NAV_ITEMS = [
   { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["school_admin", "staff"] },
   { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
+  { href: "/dashboard/children", label: "My Children", icon: HeartHandshake, roles: ["parent"] },
+  { href: "/dashboard/my-records", label: "My Records", icon: Award, roles: ["student"] },
 ];
 
 function initials(name: string) {

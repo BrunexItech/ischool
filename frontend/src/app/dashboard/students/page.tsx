@@ -10,9 +10,111 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CheckCircle2, KeyRound, UserPlus, XCircle } from "lucide-react";
+
+function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpdated: (s: Student) => void }) {
+  const { token, user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [studentEmail, setStudentEmail] = useState("");
+  const [studentPassword, setStudentPassword] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState(student.guardian_email ?? "");
+  const [guardianPassword, setGuardianPassword] = useState("");
+  const [submittingStudent, setSubmittingStudent] = useState(false);
+  const [submittingGuardian, setSubmittingGuardian] = useState(false);
+
+  async function handleCreateStudentAccount(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !user?.school_id) return;
+    setSubmittingStudent(true);
+    try {
+      const updated = await api.createStudentAccount(token, user.school_id, student.id, {
+        email: studentEmail,
+        password: studentPassword,
+      });
+      onUpdated(updated);
+      toast.success("Student login created");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to create student login");
+    } finally {
+      setSubmittingStudent(false);
+    }
+  }
+
+  async function handleCreateGuardianAccount(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !user?.school_id) return;
+    setSubmittingGuardian(true);
+    try {
+      const updated = await api.createGuardianAccount(token, user.school_id, student.id, {
+        email: guardianEmail,
+        password: guardianPassword,
+        full_name: student.guardian_name || undefined,
+      });
+      onUpdated(updated);
+      toast.success("Guardian login created");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to create guardian login");
+    } finally {
+      setSubmittingGuardian(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="outline" size="sm"><KeyRound /> Portal access</Button>} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{student.first_name} {student.last_name} — Portal access</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>Student login</span>
+            {student.has_student_account ? (
+              <Badge className="gap-1"><CheckCircle2 className="size-3.5" /> Active</Badge>
+            ) : (
+              <Badge variant="secondary" className="gap-1"><XCircle className="size-3.5" /> Not set up</Badge>
+            )}
+          </div>
+          {!student.has_student_account && (
+            <form onSubmit={handleCreateStudentAccount} className="flex flex-wrap items-end gap-2">
+              <Input required type="email" placeholder="Student email" value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} className="w-48" />
+              <Input required type="password" placeholder="Password" value={studentPassword} onChange={(e) => setStudentPassword(e.target.value)} className="w-40" />
+              <Button size="sm" type="submit" disabled={submittingStudent}>{submittingStudent ? "Creating..." : "Create login"}</Button>
+            </form>
+          )}
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>Guardian login</span>
+            {student.has_guardian_account ? (
+              <Badge className="gap-1"><CheckCircle2 className="size-3.5" /> Active</Badge>
+            ) : (
+              <Badge variant="secondary" className="gap-1"><XCircle className="size-3.5" /> Not set up</Badge>
+            )}
+          </div>
+          {!student.has_guardian_account && (
+            <form onSubmit={handleCreateGuardianAccount} className="flex flex-wrap items-end gap-2">
+              <Input required type="email" placeholder="Guardian email" value={guardianEmail} onChange={(e) => setGuardianEmail(e.target.value)} className="w-48" />
+              <Input required type="password" placeholder="Password" value={guardianPassword} onChange={(e) => setGuardianPassword(e.target.value)} className="w-40" />
+              <Button size="sm" type="submit" disabled={submittingGuardian}>{submittingGuardian ? "Creating..." : "Create login"}</Button>
+            </form>
+          )}
+          <p className="text-xs text-muted-foreground">
+            If this email already has a guardian account (a sibling is already enrolled), this student is simply linked to it.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function StudentsPage() {
   const { user, token } = useAuth();
@@ -130,6 +232,7 @@ export default function StudentsPage() {
               <TableHead>Name</TableHead>
               <TableHead>Class</TableHead>
               <TableHead>Guardian</TableHead>
+              {canEnroll && <TableHead className="text-right">Portal</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -141,11 +244,19 @@ export default function StudentsPage() {
                   {classNameFor(s.class_id) ? <Badge variant="secondary">{classNameFor(s.class_id)}</Badge> : <span className="text-muted-foreground">—</span>}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{s.guardian_name ?? "—"}</TableCell>
+                {canEnroll && (
+                  <TableCell className="text-right">
+                    <PortalAccountsDialog
+                      student={s}
+                      onUpdated={(updated) => setStudents((all) => all.map((st) => (st.id === updated.id ? updated : st)))}
+                    />
+                  </TableCell>
+                )}
               </TableRow>
             ))}
             {students.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={canEnroll ? 5 : 4} className="h-24 text-center text-muted-foreground">
                   No students enrolled yet.
                 </TableCell>
               </TableRow>
