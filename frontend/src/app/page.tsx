@@ -57,6 +57,12 @@ export default function Home() {
           ))}
         </div>
       </main>
+
+      <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t px-6 py-6 text-sm text-muted-foreground">
+        <span>© {new Date().getFullYear()} iSchool</span>
+        <Link href="/privacy" className="hover:text-foreground hover:underline">Privacy Policy</Link>
+        <Link href="/terms" className="hover:text-foreground hover:underline">Terms of Service</Link>
+      </footer>
     </div>
   );
 }

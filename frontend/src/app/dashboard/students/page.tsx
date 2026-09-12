@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ResetPasswordDialog } from "@/components/ResetPasswordDialog";
 import { CheckCircle2, KeyRound, UserPlus, XCircle } from "lucide-react";
 
@@ -24,6 +25,8 @@ function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpda
   const [studentPassword, setStudentPassword] = useState("");
   const [guardianEmail, setGuardianEmail] = useState(student.guardian_email ?? "");
   const [guardianPassword, setGuardianPassword] = useState("");
+  const [studentConsent, setStudentConsent] = useState(false);
+  const [guardianConsent, setGuardianConsent] = useState(false);
   const [submittingStudent, setSubmittingStudent] = useState(false);
   const [submittingGuardian, setSubmittingGuardian] = useState(false);
 
@@ -84,10 +87,16 @@ function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpda
           {student.has_student_account && student.user_id ? (
             <ResetPasswordDialog userId={student.user_id} label={`${student.first_name} ${student.last_name}`} />
           ) : (
-            <form onSubmit={handleCreateStudentAccount} className="flex flex-wrap items-end gap-2">
-              <Input required type="email" placeholder="Student email" value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} className="w-48" />
-              <Input required type="password" placeholder="Password" value={studentPassword} onChange={(e) => setStudentPassword(e.target.value)} className="w-40" />
-              <Button size="sm" type="submit" disabled={submittingStudent}>{submittingStudent ? "Creating..." : "Create login"}</Button>
+            <form onSubmit={handleCreateStudentAccount} className="space-y-2">
+              <div className="flex flex-wrap items-end gap-2">
+                <Input required type="email" placeholder="Student email" value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} className="w-48" />
+                <Input required type="password" placeholder="Password" value={studentPassword} onChange={(e) => setStudentPassword(e.target.value)} className="w-40" />
+              </div>
+              <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Checkbox required checked={studentConsent} onCheckedChange={(v) => setStudentConsent(v === true)} className="mt-0.5" />
+                I confirm the required consent has been obtained to create this account and process this student&apos;s data.
+              </label>
+              <Button size="sm" type="submit" disabled={submittingStudent || !studentConsent}>{submittingStudent ? "Creating..." : "Create login"}</Button>
             </form>
           )}
         </div>
@@ -106,10 +115,16 @@ function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpda
           {student.has_guardian_account && student.guardian_user_id ? (
             <ResetPasswordDialog userId={student.guardian_user_id} label={student.guardian_name || "Guardian"} />
           ) : (
-            <form onSubmit={handleCreateGuardianAccount} className="flex flex-wrap items-end gap-2">
-              <Input required type="email" placeholder="Guardian email" value={guardianEmail} onChange={(e) => setGuardianEmail(e.target.value)} className="w-48" />
-              <Input required type="password" placeholder="Password" value={guardianPassword} onChange={(e) => setGuardianPassword(e.target.value)} className="w-40" />
-              <Button size="sm" type="submit" disabled={submittingGuardian}>{submittingGuardian ? "Creating..." : "Create login"}</Button>
+            <form onSubmit={handleCreateGuardianAccount} className="space-y-2">
+              <div className="flex flex-wrap items-end gap-2">
+                <Input required type="email" placeholder="Guardian email" value={guardianEmail} onChange={(e) => setGuardianEmail(e.target.value)} className="w-48" />
+                <Input required type="password" placeholder="Password" value={guardianPassword} onChange={(e) => setGuardianPassword(e.target.value)} className="w-40" />
+              </div>
+              <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Checkbox required checked={guardianConsent} onCheckedChange={(v) => setGuardianConsent(v === true)} className="mt-0.5" />
+                I confirm the guardian has consented to this account and to iSchool processing their and their child&apos;s data.
+              </label>
+              <Button size="sm" type="submit" disabled={submittingGuardian || !guardianConsent}>{submittingGuardian ? "Creating..." : "Create login"}</Button>
             </form>
           )}
           <p className="text-xs text-muted-foreground">
