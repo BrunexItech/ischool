@@ -295,6 +295,13 @@ export const api = {
       token
     ),
 
+  promoteClass: (token: string, schoolId: number, classId: number, toClassId: number | null) =>
+    request<{ moved_count: number; from_class_id: number; to_class_id: number | null; graduated: boolean }>(
+      `/schools/${schoolId}/classes/${classId}/promote`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to_class_id: toClassId }) },
+      token
+    ),
+
   listStudents: (token: string, schoolId: number, classId?: number) =>
     request<Student[]>(
       `/schools/${schoolId}/students${classId ? `?class_id=${classId}` : ""}`,

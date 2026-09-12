@@ -21,6 +21,17 @@ class SchoolClassOut(BaseModel):
     homeroom_teacher_id: int | None
 
 
+class PromoteClassRequest(BaseModel):
+    to_class_id: int | None = None  # omit/null to graduate the class instead of moving it
+
+
+class PromoteClassResult(BaseModel):
+    moved_count: int
+    from_class_id: int
+    to_class_id: int | None
+    graduated: bool
+
+
 class StudentCreate(BaseModel):
     admission_number: str
     first_name: str

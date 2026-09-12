@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.audit import record_audit
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.security import ensure_password_strength, hash_password
@@ -8,6 +9,8 @@ from app.models.academics import SchoolClass, StaffProfile, Student
 from app.models.user import User, UserRole
 from app.schemas.academics import (
     GuardianAccountCreate,
+    PromoteClassRequest,
+    PromoteClassResult,
     SchoolClassCreate,
     SchoolClassOut,
     StaffCreate,
@@ -63,6 +66,59 @@ def create_class(
     db.commit()
     db.refresh(school_class)
     return school_class
+
+
+@router.post(
+    "/classes/{class_id}/promote",
+    response_model=PromoteClassResult,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+)
+def promote_class(
+    school_id: int,
+    class_id: int,
+    payload: PromoteClassRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk-moves every active student out of a class at year-end. Pass
+    to_class_id to promote them into the next class, or omit it to graduate
+    them (cleared class, marked inactive) — e.g. a final-year class leaving
+    the school."""
+    ensure_school_access(current_user, school_id)
+
+    source = db.query(SchoolClass).filter_by(school_id=school_id, id=class_id).first()
+    if source is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Class not found")
+
+    target = None
+    if payload.to_class_id is not None:
+        target = db.query(SchoolClass).filter_by(school_id=school_id, id=payload.to_class_id).first()
+        if target is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Target class not found")
+        if target.id == source.id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Target class must be different from the source class")
+
+    students = db.query(Student).filter_by(school_id=school_id, class_id=class_id, is_active=True).all()
+    graduated = payload.to_class_id is None
+    for student in students:
+        student.class_id = payload.to_class_id
+        if graduated:
+            student.is_active = False
+
+    record_audit(
+        db,
+        school_id=school_id,
+        actor_id=current_user.id,
+        action="class.graduate" if graduated else "class.promote",
+        entity_type="school_class",
+        entity_id=source.id,
+        after={"to_class_id": payload.to_class_id, "moved_count": len(students)},
+    )
+
+    db.commit()
+    return PromoteClassResult(
+        moved_count=len(students), from_class_id=class_id, to_class_id=payload.to_class_id, graduated=graduated
+    )
 
 
 # --- Students ---

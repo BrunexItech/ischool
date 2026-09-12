@@ -9,8 +9,69 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, ArrowUpRight } from "lucide-react";
+
+const GRADUATE = "graduate";
+
+function PromoteDialog({ schoolClass, allClasses, onPromoted }: { schoolClass: SchoolClass; allClasses: SchoolClass[]; onPromoted: () => void }) {
+  const { token, user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const otherClasses = allClasses.filter((c) => c.id !== schoolClass.id);
+
+  async function handlePromote() {
+    if (!token || !user?.school_id || !target) return;
+    setSubmitting(true);
+    try {
+      const toClassId = target === GRADUATE ? null : Number(target);
+      const result = await api.promoteClass(token, user.school_id, schoolClass.id, toClassId);
+      toast.success(
+        result.graduated
+          ? `${result.moved_count} student(s) graduated`
+          : `${result.moved_count} student(s) promoted`
+      );
+      setOpen(false);
+      onPromoted();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to promote class");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="outline" size="sm"><ArrowUpRight /> Promote</Button>} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Promote {schoolClass.name}</DialogTitle>
+          <DialogDescription>
+            Moves every active student out of {schoolClass.name}. This can&apos;t be undone in bulk — you&apos;d
+            have to move students back one by one.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-1.5">
+          <Label>Move to</Label>
+          <Select value={target} onValueChange={(v) => v && setTarget(v)}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Select a class..." /></SelectTrigger>
+            <SelectContent>
+              {otherClasses.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+              <SelectItem value={GRADUATE}>Graduate (leaving the school)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button onClick={handlePromote} disabled={submitting || !target}>
+          {submitting ? "Promoting..." : "Confirm promotion"}
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function ClassesPage() {
   const { user, token } = useAuth();
@@ -21,10 +82,12 @@ export default function ClassesPage() {
 
   const canManage = user?.role === "school_admin" || user?.role === "super_admin";
 
-  useEffect(() => {
+  function refreshClasses() {
     if (!token || !user?.school_id) return;
     api.listClasses(token, user.school_id).then(setClasses).catch(() => setClasses([]));
-  }, [token, user?.school_id]);
+  }
+
+  useEffect(refreshClasses, [token, user?.school_id]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -79,6 +142,7 @@ export default function ClassesPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Grade level</TableHead>
+              {canManage && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -86,11 +150,16 @@ export default function ClassesPage() {
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell className="text-muted-foreground">{c.grade_level ?? "—"}</TableCell>
+                {canManage && (
+                  <TableCell className="text-right">
+                    <PromoteDialog schoolClass={c} allClasses={classes} onPromoted={refreshClasses} />
+                  </TableCell>
+                )}
               </TableRow>
             ))}
             {classes.length === 0 && (
               <TableRow>
-                <TableCell colSpan={2} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={canManage ? 3 : 2} className="h-24 text-center text-muted-foreground">
                   No classes yet.
                 </TableCell>
               </TableRow>
