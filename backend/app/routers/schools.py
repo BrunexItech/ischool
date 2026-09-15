@@ -49,12 +49,16 @@ def onboard_school(payload: SchoolCreate, db: Session = Depends(get_db)):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That admin email is already registered")
     ensure_password_strength(payload.admin_password)
 
+    if payload.parent_school_id is not None and db.get(School, payload.parent_school_id) is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That parent school does not exist")
+
     school = School(
         name=payload.name,
         slug=payload.slug,
         country=payload.country,
         currency=payload.currency,
         timezone=payload.timezone,
+        parent_school_id=payload.parent_school_id,
     )
     db.add(school)
     db.flush()  # get school.id before creating dependent rows
@@ -75,6 +79,16 @@ def onboard_school(payload: SchoolCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(school)
     return school
+
+
+@router.get(
+    "/{school_id}/branches",
+    response_model=list[SchoolOut],
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+)
+def list_branches(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ensure_school_access(current_user, school_id)
+    return db.query(School).filter_by(parent_school_id=school_id).all()
 
 
 @router.patch(

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { GraduationCap, LogOut, Plus } from "lucide-react";
+import { GitBranch, GraduationCap, LogOut, Plus } from "lucide-react";
 import { api, ApiError, ModuleToggle, School } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageLoader, Spinner } from "@/components/Spinner";
+
+const NO_PARENT = "none";
 
 const MODULE_LABELS: Record<string, string> = {
   students_staff: "Students & Staff",
@@ -30,7 +33,7 @@ const MODULE_LABELS: Record<string, string> = {
   pickup_dropoff: "Pickup / Drop-off Log",
 };
 
-function OnboardDialog({ onCreated }: { onCreated: (school: School) => void }) {
+function OnboardDialog({ schools, onCreated }: { schools: School[]; onCreated: (school: School) => void }) {
   const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -43,6 +46,7 @@ function OnboardDialog({ onCreated }: { onCreated: (school: School) => void }) {
     admin_full_name: "",
     admin_password: "",
   });
+  const [parentSchoolId, setParentSchoolId] = useState(NO_PARENT);
   const [submitting, setSubmitting] = useState(false);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
@@ -54,9 +58,13 @@ function OnboardDialog({ onCreated }: { onCreated: (school: School) => void }) {
     if (!token) return;
     setSubmitting(true);
     try {
-      const school = await api.onboardSchool(token, form);
+      const school = await api.onboardSchool(token, {
+        ...form,
+        parent_school_id: parentSchoolId === NO_PARENT ? undefined : Number(parentSchoolId),
+      });
       onCreated(school);
       setForm({ ...form, name: "", slug: "", admin_email: "", admin_full_name: "", admin_password: "" });
+      setParentSchoolId(NO_PARENT);
       setOpen(false);
       toast.success(`${school.name} onboarded`);
     } catch (err) {
@@ -85,6 +93,18 @@ function OnboardDialog({ onCreated }: { onCreated: (school: School) => void }) {
           <div className="grid gap-1.5">
             <Label>Currency</Label>
             <Input value={form.currency} onChange={(e) => set("currency", e.target.value)} />
+          </div>
+          <div className="col-span-2 grid gap-1.5">
+            <Label>Parent school (optional — makes this a branch/campus)</Label>
+            <Select value={parentSchoolId} onValueChange={(v) => v && setParentSchoolId(v)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_PARENT}>None — a standalone school</SelectItem>
+                {schools.filter((s) => s.parent_school_id === null).map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-1.5">
             <Label>Admin full name</Label>
@@ -187,30 +207,37 @@ export default function AdminSchoolsPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Schools</h1>
             <p className="text-sm text-muted-foreground">Onboard schools and manage which modules they can use.</p>
           </div>
-          <OnboardDialog onCreated={(school) => setSchools((s) => [...s, school])} />
+          <OnboardDialog schools={schools} onCreated={(school) => setSchools((s) => [...s, school])} />
         </div>
 
         <div className="flex flex-col gap-4">
-          {schools.map((school) => (
-            <Card key={school.id}>
-              <CardHeader>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <CardTitle className="text-base">{school.name}</CardTitle>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {school.slug} · {school.country} · {school.currency}
-                    </p>
+          {schools
+            .filter((s) => s.parent_school_id === null)
+            .flatMap((parent) => [parent, ...schools.filter((s) => s.parent_school_id === parent.id)])
+            .map((school) => (
+              <Card key={school.id} className={school.parent_school_id !== null ? "ml-6 border-dashed" : undefined}>
+                <CardHeader>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        {school.parent_school_id !== null && <GitBranch className="size-4 text-muted-foreground" />}
+                        {school.name}
+                      </CardTitle>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {school.slug} · {school.country} · {school.currency}
+                        {school.branch_count > 0 && ` · ${school.branch_count} branch${school.branch_count > 1 ? "es" : ""}`}
+                      </p>
+                    </div>
+                    <Badge variant={school.is_active ? "default" : "secondary"}>
+                      {school.is_active ? "Active" : "Inactive"}
+                    </Badge>
                   </div>
-                  <Badge variant={school.is_active ? "default" : "secondary"}>
-                    {school.is_active ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ModulesPanel school={school} />
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent>
+                  <ModulesPanel school={school} />
+                </CardContent>
+              </Card>
+            ))}
           {schools.length === 0 && (
             <p className="py-12 text-center text-sm text-muted-foreground">No schools onboarded yet.</p>
           )}

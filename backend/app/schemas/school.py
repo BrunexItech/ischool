@@ -10,6 +10,7 @@ class SchoolCreate(BaseModel):
     admin_email: str
     admin_full_name: str
     admin_password: str
+    parent_school_id: int | None = None
 
 
 class SchoolBrandingUpdate(BaseModel):
@@ -34,6 +35,8 @@ class SchoolOut(BaseModel):
     currency: str
     timezone: str
     is_active: bool
+    parent_school_id: int | None
+    branch_count: int
 
 
 class SchoolPublicOut(BaseModel):

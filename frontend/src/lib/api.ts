@@ -24,6 +24,8 @@ export interface School {
   currency: string;
   timezone: string;
   is_active: boolean;
+  parent_school_id: number | null;
+  branch_count: number;
 }
 
 export interface ModuleToggle {
@@ -430,8 +432,11 @@ export const api = {
       admin_email: string;
       admin_full_name: string;
       admin_password: string;
+      parent_school_id?: number;
     }
   ) => request<School>("/schools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }, token),
+
+  listBranches: (token: string, schoolId: number) => request<School[]>(`/schools/${schoolId}/branches`, {}, token),
 
   listModules: (token: string, schoolId: number) =>
     request<ModuleToggle[]>(`/schools/${schoolId}/modules`, {}, token),
