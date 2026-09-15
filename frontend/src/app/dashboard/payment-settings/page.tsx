@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Smartphone } from "lucide-react";
+import { CheckCircle2, XCircle, Smartphone, CreditCard } from "lucide-react";
 import { api, ApiError, PaymentConfigStatus } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
@@ -20,14 +20,21 @@ export default function PaymentSettingsPage() {
   const { user, token, loading } = useAuth();
   const [status, setStatus] = useState<PaymentConfigStatus | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
-  const [form, setForm] = useState({
+
+  const [mpesaForm, setMpesaForm] = useState({
     mpesa_shortcode: "",
     mpesa_consumer_key: "",
     mpesa_consumer_secret: "",
     mpesa_passkey: "",
     mpesa_env: "sandbox" as "sandbox" | "production",
   });
-  const [submitting, setSubmitting] = useState(false);
+  const [mpesaSubmitting, setMpesaSubmitting] = useState(false);
+
+  const [cardForm, setCardForm] = useState({
+    flutterwave_public_key: "",
+    flutterwave_secret_key: "",
+  });
+  const [cardSubmitting, setCardSubmitting] = useState(false);
 
   useEffect(() => {
     if (!loading && user && user.role !== "school_admin") router.replace("/dashboard");
@@ -38,26 +45,42 @@ export default function PaymentSettingsPage() {
     api.getPaymentConfig(token, user.school_id).then(setStatus).finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleMpesaSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !user?.school_id) return;
-    setSubmitting(true);
+    setMpesaSubmitting(true);
     try {
-      const updated = await api.setPaymentConfig(token, user.school_id, form);
+      const updated = await api.setPaymentConfig(token, user.school_id, mpesaForm);
       setStatus(updated);
-      setForm({ mpesa_shortcode: "", mpesa_consumer_key: "", mpesa_consumer_secret: "", mpesa_passkey: "", mpesa_env: "sandbox" });
+      setMpesaForm({ mpesa_shortcode: "", mpesa_consumer_key: "", mpesa_consumer_secret: "", mpesa_passkey: "", mpesa_env: "sandbox" });
       toast.success("M-Pesa payment settings saved");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Failed to save payment settings");
+      toast.error(err instanceof ApiError ? err.message : "Failed to save M-Pesa settings");
     } finally {
-      setSubmitting(false);
+      setMpesaSubmitting(false);
+    }
+  }
+
+  async function handleCardSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !user?.school_id) return;
+    setCardSubmitting(true);
+    try {
+      const updated = await api.setPaymentConfig(token, user.school_id, cardForm);
+      setStatus(updated);
+      setCardForm({ flutterwave_public_key: "", flutterwave_secret_key: "" });
+      toast.success("Card payment settings saved");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to save card settings");
+    } finally {
+      setCardSubmitting(false);
     }
   }
 
   if (dataLoading) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Payment Settings" description="Connect your school's own M-Pesa paybill so parents can pay fees directly." />
+        <PageHeader title="Payment Settings" description="Connect your school's own payment providers so parents can pay fees directly." />
         <PageLoader />
       </div>
     );
@@ -65,16 +88,14 @@ export default function PaymentSettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Payment Settings" description="Connect your school's own M-Pesa paybill so parents can pay fees directly." />
+      <PageHeader title="Payment Settings" description="Connect your school's own payment providers so parents can pay fees directly." />
 
       <Card className="border-dashed">
         <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">
           <Smartphone className="size-4.5 shrink-0" />
-          Money goes straight from a parent&apos;s phone into <strong>your school&apos;s own</strong> M-Pesa paybill —
-          iSchool never holds or touches the funds. You&apos;ll need your Safaricom Daraja app credentials from{" "}
-          <a href="https://developer.safaricom.co.ke" target="_blank" rel="noreferrer" className="text-primary hover:underline">
-            developer.safaricom.co.ke
-          </a>.
+          Every payment goes straight into <strong>your school&apos;s own</strong> account — iSchool never holds or
+          touches the funds, for M-Pesa or cards. Connect either or both; parents will see only the methods you&apos;ve
+          set up. You can disable either at any time by clearing its credentials.
         </CardContent>
       </Card>
 
@@ -82,27 +103,27 @@ export default function PaymentSettingsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">M-Pesa (Safaricom Daraja)</CardTitle>
-            {status?.is_configured ? (
+            {status?.mpesa_configured ? (
               <Badge className="gap-1"><CheckCircle2 className="size-3.5" /> Connected — {status.mpesa_shortcode} ({status.mpesa_env})</Badge>
             ) : (
               <Badge variant="secondary" className="gap-1"><XCircle className="size-3.5" /> Not connected</Badge>
             )}
           </div>
           <CardDescription>
-            {status?.is_configured
+            {status?.mpesa_configured
               ? "Saving new credentials below will replace the current connection."
-              : "Enter your paybill/till number and Daraja app credentials."}
+              : "Enter your paybill/till number and Daraja app credentials from developer.safaricom.co.ke."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+          <form onSubmit={handleMpesaSubmit} className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>Paybill / Till number</Label>
-              <Input required value={form.mpesa_shortcode} onChange={(e) => setForm((f) => ({ ...f, mpesa_shortcode: e.target.value }))} />
+              <Input required value={mpesaForm.mpesa_shortcode} onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_shortcode: e.target.value }))} />
             </div>
             <div className="grid gap-1.5">
               <Label>Environment</Label>
-              <Select value={form.mpesa_env} onValueChange={(v) => v && setForm((f) => ({ ...f, mpesa_env: v as "sandbox" | "production" }))}>
+              <Select value={mpesaForm.mpesa_env} onValueChange={(v) => v && setMpesaForm((f) => ({ ...f, mpesa_env: v as "sandbox" | "production" }))}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sandbox">Sandbox (testing)</SelectItem>
@@ -112,19 +133,55 @@ export default function PaymentSettingsPage() {
             </div>
             <div className="grid gap-1.5">
               <Label>Consumer Key</Label>
-              <Input required value={form.mpesa_consumer_key} onChange={(e) => setForm((f) => ({ ...f, mpesa_consumer_key: e.target.value }))} />
+              <Input required value={mpesaForm.mpesa_consumer_key} onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_consumer_key: e.target.value }))} />
             </div>
             <div className="grid gap-1.5">
               <Label>Consumer Secret</Label>
-              <Input required type="password" value={form.mpesa_consumer_secret} onChange={(e) => setForm((f) => ({ ...f, mpesa_consumer_secret: e.target.value }))} />
+              <Input required type="password" value={mpesaForm.mpesa_consumer_secret} onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_consumer_secret: e.target.value }))} />
             </div>
             <div className="col-span-full grid gap-1.5">
               <Label>Passkey</Label>
-              <Input required type="password" value={form.mpesa_passkey} onChange={(e) => setForm((f) => ({ ...f, mpesa_passkey: e.target.value }))} />
+              <Input required type="password" value={mpesaForm.mpesa_passkey} onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_passkey: e.target.value }))} />
             </div>
             <div className="col-span-full">
-              <Button type="submit" disabled={submitting}>
-                {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Saving..." : "Save M-Pesa settings"}
+              <Button type="submit" disabled={mpesaSubmitting}>
+                {mpesaSubmitting && <Spinner size={16} className="text-current" />} {mpesaSubmitting ? "Saving..." : "Save M-Pesa settings"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Card payments (Flutterwave)</CardTitle>
+            {status?.card_configured ? (
+              <Badge className="gap-1"><CheckCircle2 className="size-3.5" /> Connected</Badge>
+            ) : (
+              <Badge variant="secondary" className="gap-1"><XCircle className="size-3.5" /> Not connected</Badge>
+            )}
+          </div>
+          <CardDescription>
+            {status?.card_configured
+              ? "Saving a new secret key below will replace the current connection."
+              : "Enter your Flutterwave API keys from dashboard.flutterwave.com to accept Visa/Mastercard payments."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCardSubmit} className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label>Public Key</Label>
+              <Input required value={cardForm.flutterwave_public_key} onChange={(e) => setCardForm((f) => ({ ...f, flutterwave_public_key: e.target.value }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Secret Key</Label>
+              <Input required type="password" value={cardForm.flutterwave_secret_key} onChange={(e) => setCardForm((f) => ({ ...f, flutterwave_secret_key: e.target.value }))} />
+            </div>
+            <div className="col-span-full">
+              <Button type="submit" disabled={cardSubmitting}>
+                {cardSubmitting && <Spinner size={16} className="text-current" />}
+                <CreditCard className="size-4" /> {cardSubmitting ? "Saving..." : "Save card settings"}
               </Button>
             </div>
           </form>

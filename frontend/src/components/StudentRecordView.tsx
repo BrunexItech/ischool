@@ -2,8 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Smartphone, XCircle } from "lucide-react";
-import { api, ApiError, AttendanceRecord, FeeInvoice, PaymentTransaction, Result, StudentTransport } from "@/lib/api";
+import { CheckCircle2, CreditCard, Smartphone, XCircle } from "lucide-react";
+import {
+  api,
+  ApiError,
+  AttendanceRecord,
+  FeeInvoice,
+  PaymentMethods,
+  PaymentTransaction,
+  Result,
+  StudentTransport,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageLoader, Spinner } from "@/components/Spinner";
@@ -126,12 +135,36 @@ function PayWithMpesaDialog({ studentId, invoice, onPaid }: { studentId: number;
   );
 }
 
+function PayWithCardButton({ studentId, invoice }: { studentId: number; invoice: FeeInvoice }) {
+  const { token } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleClick() {
+    if (!token) return;
+    setSubmitting(true);
+    try {
+      const { checkout_url } = await api.payInvoiceWithCard(token, studentId, invoice.id, {});
+      window.location.href = checkout_url;
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to start card payment");
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleClick} disabled={submitting}>
+      {submitting ? <Spinner size={16} className="text-current" /> : <CreditCard />} {submitting ? "Redirecting..." : "Pay with Card"}
+    </Button>
+  );
+}
+
 export function StudentRecordView({ studentId }: { studentId: number }) {
   const { token } = useAuth();
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [transport, setTransport] = useState<StudentTransport | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
   const [loading, setLoading] = useState(true);
 
   function refreshFees() {
@@ -146,6 +179,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       api.getChildResults(token, studentId).then(setResults).catch(() => setResults([])),
       api.getChildFees(token, studentId).then(setInvoices).catch(() => setInvoices([])),
       api.getChildTransport(token, studentId).then(setTransport).catch(() => setTransport(null)),
+      api.getChildPaymentMethods(token, studentId).then(setPaymentMethods).catch(() => setPaymentMethods(null)),
     ]).finally(() => setLoading(false));
   }, [token, studentId]);
 
@@ -231,7 +265,12 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
                   <TableCell><Badge variant={FEE_STATUS_VARIANT[inv.status]} className="capitalize">{inv.status}</Badge></TableCell>
                   <TableCell className="text-right">
                     {inv.status !== "paid" && (
-                      <PayWithMpesaDialog studentId={studentId} invoice={inv} onPaid={refreshFees} />
+                      <div className="flex justify-end gap-2">
+                        {paymentMethods?.mpesa && (
+                          <PayWithMpesaDialog studentId={studentId} invoice={inv} onPaid={refreshFees} />
+                        )}
+                        {paymentMethods?.card && <PayWithCardButton studentId={studentId} invoice={inv} />}
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>

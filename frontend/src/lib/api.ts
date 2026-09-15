@@ -221,9 +221,16 @@ export interface StudentTransport {
 }
 
 export interface PaymentConfigStatus {
-  is_configured: boolean;
+  mpesa_configured: boolean;
   mpesa_shortcode: string | null;
   mpesa_env: string | null;
+  card_configured: boolean;
+  flutterwave_public_key: string | null;
+}
+
+export interface PaymentMethods {
+  mpesa: boolean;
+  card: boolean;
 }
 
 export interface PaymentTransaction {
@@ -236,6 +243,11 @@ export interface PaymentTransaction {
   method: string | null;
   created_at: string;
   completed_at: string | null;
+}
+
+export interface CardPaymentInitiated {
+  transaction: PaymentTransaction;
+  checkout_url: string;
 }
 
 export interface AuditLogEntry {
@@ -680,19 +692,24 @@ export const api = {
   setPaymentConfig: (
     token: string,
     schoolId: number,
-    payload: {
+    payload: Partial<{
       mpesa_shortcode: string;
       mpesa_consumer_key: string;
       mpesa_consumer_secret: string;
       mpesa_passkey: string;
       mpesa_env: "sandbox" | "production";
-    }
+      flutterwave_public_key: string;
+      flutterwave_secret_key: string;
+    }>
   ) =>
     request<PaymentConfigStatus>(
       `/schools/${schoolId}/payment-config`,
       { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       token
     ),
+
+  getChildPaymentMethods: (token: string, studentId: number) =>
+    request<PaymentMethods>(`/portal/students/${studentId}/payment-methods`, {}, token),
 
   payInvoiceWithMpesa: (
     token: string,
@@ -710,6 +727,26 @@ export const api = {
     request<PaymentTransaction>(
       `/portal/students/${studentId}/fees/${invoiceId}/pay/mpesa/${transactionId}/status`,
       {},
+      token
+    ),
+
+  payInvoiceWithCard: (token: string, studentId: number, invoiceId: number, payload: { amount?: number }) =>
+    request<CardPaymentInitiated>(
+      `/portal/students/${studentId}/fees/${invoiceId}/pay/card`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  verifyCardPayment: (
+    token: string,
+    studentId: number,
+    invoiceId: number,
+    transactionId: number,
+    payload: { flutterwave_transaction_id: string }
+  ) =>
+    request<PaymentTransaction>(
+      `/portal/students/${studentId}/fees/${invoiceId}/pay/card/${transactionId}/verify`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       token
     ),
 };
