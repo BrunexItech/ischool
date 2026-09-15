@@ -12,6 +12,7 @@ from app.core.rate_limit import clear_attempts, is_locked_out, record_failed_att
 from app.core.security import create_access_token, ensure_password_strength, hash_password, verify_password
 from app.core.config import settings
 from app.models.auth_token import AuthToken, AuthTokenType
+from app.models.school import School, SubscriptionStatus
 from app.models.user import User
 from app.schemas.user import (
     ChangePasswordRequest,
@@ -39,6 +40,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password")
     if not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account is disabled")
+    if user.school_id is not None:
+        school = db.get(School, user.school_id)
+        if school is not None and school.subscription_status == SubscriptionStatus.SUSPENDED:
+            raise HTTPException(
+                status.HTTP_402_PAYMENT_REQUIRED,
+                "This school's iSchool subscription is suspended — contact iSchool support to reactivate.",
+            )
 
     clear_attempts(rate_limit_key)
     token = create_access_token(subject=str(user.id))

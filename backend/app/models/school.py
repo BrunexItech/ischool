@@ -1,9 +1,23 @@
-from datetime import datetime
+import enum
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+TRIAL_DAYS = 14
+
+
+class SubscriptionStatus(str, enum.Enum):
+    TRIALING = "trialing"
+    ACTIVE = "active"
+    PAST_DUE = "past_due"
+    SUSPENDED = "suspended"
+
+
+def _default_trial_end() -> datetime:
+    return datetime.now(timezone.utc) + timedelta(days=TRIAL_DAYS)
 
 
 class School(Base):
@@ -32,6 +46,17 @@ class School(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    # iSchool's own revenue from this school — entirely separate from the
+    # fees a school collects from its own parents. No payment collection is
+    # wired to this yet: a super-admin assigns a plan and flips the status
+    # by hand once a school has paid outside the system.
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True)
+    subscription_status: Mapped[SubscriptionStatus] = mapped_column(
+        Enum(SubscriptionStatus), default=SubscriptionStatus.TRIALING
+    )
+    trial_ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_default_trial_end)
+
+    plan: Mapped["Plan | None"] = relationship("Plan", back_populates="schools")
     modules: Mapped[list["SchoolModule"]] = relationship(
         "SchoolModule", back_populates="school", cascade="all, delete-orphan"
     )

@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     encryption_key: str | None = None
 
+    # Error tracking — unset by default; the app runs identically without
+    # it, just with nothing watching for crashes in production.
+    sentry_dsn: str | None = None
+    environment: str = "development"
+
     @property
     def email_enabled(self) -> bool:
         return bool(self.smtp_host and self.smtp_user and self.smtp_password)

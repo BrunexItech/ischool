@@ -1,11 +1,24 @@
+import logging
 from pathlib import Path
 
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.database import Base, engine
+from app.core.logging import configure_logging
+
+configure_logging()
+
+if settings.sentry_dsn:
+    try:
+        sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment, traces_sample_rate=0.2)
+    except Exception:
+        # A bad DSN should degrade to "no error tracking", never take the
+        # whole backend down at boot.
+        logging.getLogger(__name__).exception("Failed to initialize Sentry — continuing without it")
 from app.routers import (
     academic_terms,
     academics,
@@ -24,6 +37,7 @@ from app.routers import (
     notifications,
     payments,
     pickup_dropoff,
+    plans,
     portal,
     results,
     schools,
@@ -64,6 +78,7 @@ app.include_router(analytics.router)
 app.include_router(finance.router)
 app.include_router(pickup_dropoff.router)
 app.include_router(exams.router)
+app.include_router(plans.router)
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)

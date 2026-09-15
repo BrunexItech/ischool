@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GitBranch, GraduationCap, LogOut, Plus } from "lucide-react";
-import { api, ApiError, ModuleToggle, School } from "@/lib/api";
+import { api, ApiError, ModuleToggle, Plan, School } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageLoader, Spinner } from "@/components/Spinner";
 
 const NO_PARENT = "none";
+const NO_PLAN = "none";
+
+const SUBSCRIPTION_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"> = {
+  trialing: "secondary",
+  active: "default",
+  past_due: "secondary",
+  suspended: "destructive",
+};
 
 const MODULE_LABELS: Record<string, string> = {
   students_staff: "Students & Staff",
@@ -128,6 +136,136 @@ function OnboardDialog({ schools, onCreated }: { schools: School[]; onCreated: (
   );
 }
 
+function PlansSection({ plans, onChanged }: { plans: Plan[]; onChanged: (plan: Plan) => void }) {
+  const { token } = useAuth();
+  const [form, setForm] = useState({ name: "", price: "", currency: "USD", billing_period: "monthly" as "monthly" | "annual", max_students: "" });
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !form.name || !form.price) return;
+    setSubmitting(true);
+    try {
+      const plan = await api.createPlan(token, {
+        name: form.name,
+        price: Number(form.price),
+        currency: form.currency,
+        billing_period: form.billing_period,
+        max_students: form.max_students ? Number(form.max_students) : undefined,
+      });
+      onChanged(plan);
+      setForm({ name: "", price: "", currency: "USD", billing_period: "monthly", max_students: "" });
+      toast.success(`${plan.name} plan created`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to create plan");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function toggleActive(plan: Plan) {
+    if (!token) return;
+    const updated = await api.updatePlan(token, plan.id, { is_active: !plan.is_active });
+    onChanged(updated);
+  }
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="text-base">Subscription plans</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
+          <Input required placeholder="Plan name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-36" />
+          <Input required type="number" min={0} placeholder="Price" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} className="w-24" />
+          <Input placeholder="Currency" value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))} className="w-20" />
+          <Select value={form.billing_period} onValueChange={(v) => v && setForm((f) => ({ ...f, billing_period: v as "monthly" | "annual" }))}>
+            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="annual">Annual</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="number" min={1} placeholder="Max students" value={form.max_students} onChange={(e) => setForm((f) => ({ ...f, max_students: e.target.value }))} className="w-32" />
+          <Button size="sm" type="submit" disabled={submitting}><Plus /> {submitting ? "Adding..." : "Add plan"}</Button>
+        </form>
+        <div className="flex flex-wrap gap-2">
+          {plans.map((p) => (
+            <Badge key={p.id} variant={p.is_active ? "secondary" : "outline"} className="gap-2">
+              {p.name} — {p.currency} {p.price}/{p.billing_period === "monthly" ? "mo" : "yr"}
+              <button type="button" className="text-xs underline" onClick={() => toggleActive(p)}>
+                {p.is_active ? "retire" : "reactivate"}
+              </button>
+            </Badge>
+          ))}
+          {plans.length === 0 && <p className="text-sm text-muted-foreground">No plans yet — schools stay on their free trial until one is assigned.</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SubscriptionPanel({ school, plans, onUpdated }: { school: School; plans: Plan[]; onUpdated: (school: School) => void }) {
+  const { token } = useAuth();
+  const [saving, setSaving] = useState(false);
+
+  async function handleStatusChange(status: string) {
+    if (!token) return;
+    setSaving(true);
+    try {
+      const updated = await api.updateSubscription(token, school.id, { subscription_status: status });
+      onUpdated(updated);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update subscription");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePlanChange(planId: string) {
+    if (!token) return;
+    setSaving(true);
+    try {
+      const updated = await api.updateSubscription(token, school.id, { plan_id: planId === NO_PLAN ? null : Number(planId) });
+      onUpdated(updated);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update subscription");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const trialEnds = new Date(school.trial_ends_at);
+  const planName = plans.find((p) => p.id === school.plan_id)?.name;
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-dashed p-3 text-sm">
+      <Badge variant={SUBSCRIPTION_STATUS_VARIANT[school.subscription_status]} className="capitalize">
+        {school.subscription_status.replace("_", " ")}
+      </Badge>
+      {school.subscription_status === "trialing" && (
+        <span className="text-xs text-muted-foreground">Trial ends {trialEnds.toLocaleDateString()}</span>
+      )}
+      <Select value={school.subscription_status} onValueChange={(v) => v && handleStatusChange(v)} disabled={saving}>
+        <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="trialing">Trialing</SelectItem>
+          <SelectItem value="active">Active</SelectItem>
+          <SelectItem value="past_due">Past due</SelectItem>
+          <SelectItem value="suspended">Suspended</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={school.plan_id ? String(school.plan_id) : NO_PLAN} onValueChange={(v) => v && handlePlanChange(v)} disabled={saving}>
+        <SelectTrigger className="w-40"><SelectValue placeholder="No plan">{planName ?? "No plan"}</SelectValue></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NO_PLAN}>No plan</SelectItem>
+          {plans.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function ModulesPanel({ school }: { school: School }) {
   const { token } = useAuth();
   const [modules, setModules] = useState<ModuleToggle[]>([]);
@@ -168,6 +306,7 @@ export default function AdminSchoolsPage() {
   const router = useRouter();
   const { user, token, loading, logout } = useAuth();
   const [schools, setSchools] = useState<School[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [schoolsLoading, setSchoolsLoading] = useState(true);
 
   useEffect(() => {
@@ -176,8 +315,19 @@ export default function AdminSchoolsPage() {
 
   useEffect(() => {
     if (!token) return;
-    api.listSchools(token).then(setSchools).catch(() => setSchools([])).finally(() => setSchoolsLoading(false));
+    Promise.all([
+      api.listSchools(token).then(setSchools).catch(() => setSchools([])),
+      api.listPlans(token).then(setPlans).catch(() => setPlans([])),
+    ]).finally(() => setSchoolsLoading(false));
   }, [token]);
+
+  function handlePlanChanged(plan: Plan) {
+    setPlans((ps) => (ps.some((p) => p.id === plan.id) ? ps.map((p) => (p.id === plan.id ? plan : p)) : [...ps, plan]));
+  }
+
+  function handleSchoolUpdated(updated: School) {
+    setSchools((ss) => ss.map((s) => (s.id === updated.id ? updated : s)));
+  }
 
   if (loading || !user || schoolsLoading) {
     return (
@@ -211,6 +361,8 @@ export default function AdminSchoolsPage() {
           <OnboardDialog schools={schools} onCreated={(school) => setSchools((s) => [...s, school])} />
         </div>
 
+        <PlansSection plans={plans} onChanged={handlePlanChanged} />
+
         <div className="flex flex-col gap-4">
           {schools
             .filter((s) => s.parent_school_id === null)
@@ -235,6 +387,7 @@ export default function AdminSchoolsPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  <SubscriptionPanel school={school} plans={plans} onUpdated={handleSchoolUpdated} />
                   <ModulesPanel school={school} />
                 </CardContent>
               </Card>

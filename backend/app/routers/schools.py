@@ -9,6 +9,7 @@ from app.core.uploads import save_image
 from app.models.module import MODULE_KEYS, SchoolModule
 from app.models.school import School
 from app.models.user import User, UserRole
+from app.schemas.plan import SubscriptionUpdate
 from app.schemas.school import (
     ModuleToggleOut,
     ModuleToggleUpdate,
@@ -93,6 +94,27 @@ def get_school(school_id: int, db: Session = Depends(get_db), current_user: User
     school = db.get(School, school_id)
     if school is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
+    return school
+
+
+@router.patch(
+    "/{school_id}/subscription",
+    response_model=SchoolOut,
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
+)
+def update_subscription(school_id: int, payload: SubscriptionUpdate, db: Session = Depends(get_db)):
+    """iSchool's own billing relationship with this school — separate from
+    anything the school charges its own parents. No payment collection is
+    wired to this; a super-admin sets these by hand for now."""
+    school = db.get(School, school_id)
+    if school is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(school, field, value)
+
+    db.commit()
+    db.refresh(school)
     return school
 
 

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -37,6 +39,9 @@ class SchoolOut(BaseModel):
     is_active: bool
     parent_school_id: int | None
     branch_count: int
+    plan_id: int | None
+    subscription_status: str
+    trial_ends_at: datetime
 
 
 class SchoolPublicOut(BaseModel):

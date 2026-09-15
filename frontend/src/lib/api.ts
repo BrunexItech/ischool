@@ -26,6 +26,19 @@ export interface School {
   is_active: boolean;
   parent_school_id: number | null;
   branch_count: number;
+  plan_id: number | null;
+  subscription_status: "trialing" | "active" | "past_due" | "suspended";
+  trial_ends_at: string;
+}
+
+export interface Plan {
+  id: number;
+  name: string;
+  price: number;
+  currency: string;
+  billing_period: "monthly" | "annual";
+  max_students: number | null;
+  is_active: boolean;
 }
 
 export interface ModuleToggle {
@@ -528,6 +541,27 @@ export const api = {
   ) => request<School>("/schools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }, token),
 
   getSchool: (token: string, schoolId: number) => request<School>(`/schools/${schoolId}`, {}, token),
+
+  updateSubscription: (
+    token: string,
+    schoolId: number,
+    payload: Partial<{ plan_id: number | null; subscription_status: string; trial_ends_at: string }>
+  ) =>
+    request<School>(
+      `/schools/${schoolId}/subscription`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listPlans: (token: string) => request<Plan[]>("/plans", {}, token),
+
+  createPlan: (
+    token: string,
+    payload: { name: string; price: number; currency: string; billing_period: "monthly" | "annual"; max_students?: number }
+  ) => request<Plan>("/plans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }, token),
+
+  updatePlan: (token: string, planId: number, payload: Partial<{ is_active: boolean }>) =>
+    request<Plan>(`/plans/${planId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }, token),
 
   listBranches: (token: string, schoolId: number) => request<School[]>(`/schools/${schoolId}/branches`, {}, token),
 

@@ -1,4 +1,5 @@
-from app.models.school import School
+from app.models.school import School, SubscriptionStatus
+from app.models.plan import Plan, BillingPeriod
 from app.models.module import SchoolModule, MODULE_KEYS
 from app.models.user import User, UserRole
 from app.models.academics import SchoolClass, Student, StaffProfile
@@ -66,4 +67,7 @@ __all__ = [
     "ExamSubmission",
     "ExamSubmissionStatus",
     "ExamAnswer",
+    "SubscriptionStatus",
+    "Plan",
+    "BillingPeriod",
 ]
