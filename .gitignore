@@ -5,6 +5,7 @@ __pycache__/
 venv/
 backend/.env
 backend/backups/
+backend/uploads/
 backend/.coverage
 backend/htmlcov/
 backend/.pytest_cache/

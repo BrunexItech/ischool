@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_roles
 from app.core.security import ensure_password_strength, hash_password
+from app.core.uploads import save_image
 from app.models.module import MODULE_KEYS, SchoolModule
 from app.models.school import School
 from app.models.user import User, UserRole
@@ -82,6 +84,19 @@ def onboard_school(payload: SchoolCreate, db: Session = Depends(get_db)):
 
 
 @router.get(
+    "/{school_id}",
+    response_model=SchoolOut,
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+)
+def get_school(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ensure_school_access(current_user, school_id)
+    school = db.get(School, school_id)
+    if school is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
+    return school
+
+
+@router.get(
     "/{school_id}/branches",
     response_model=list[SchoolOut],
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
@@ -96,7 +111,13 @@ def list_branches(school_id: int, db: Session = Depends(get_db), current_user: U
     response_model=SchoolOut,
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
 )
-def update_branding(school_id: int, payload: SchoolBrandingUpdate, db: Session = Depends(get_db)):
+def update_branding(
+    school_id: int,
+    payload: SchoolBrandingUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(current_user, school_id)
     school = db.get(School, school_id)
     if school is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
@@ -104,6 +125,29 @@ def update_branding(school_id: int, payload: SchoolBrandingUpdate, db: Session =
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(school, field, value)
 
+    db.commit()
+    db.refresh(school)
+    return school
+
+
+@router.post(
+    "/{school_id}/branding/logo",
+    response_model=SchoolOut,
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+)
+def upload_school_logo(
+    school_id: int,
+    logo: UploadFile,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(current_user, school_id)
+    school = db.get(School, school_id)
+    if school is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
+
+    relative_path = save_image(logo, subdir=f"schools/{school_id}", base_name="logo")
+    school.logo_url = f"{settings.backend_url}/uploads/{relative_path}"
     db.commit()
     db.refresh(school)
     return school

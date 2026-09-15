@@ -527,7 +527,26 @@ export const api = {
     }
   ) => request<School>("/schools", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }, token),
 
+  getSchool: (token: string, schoolId: number) => request<School>(`/schools/${schoolId}`, {}, token),
+
   listBranches: (token: string, schoolId: number) => request<School[]>(`/schools/${schoolId}/branches`, {}, token),
+
+  updateBranding: (
+    token: string,
+    schoolId: number,
+    payload: Partial<{ name: string; logo_url: string; primary_color: string; secondary_color: string; custom_domain: string }>
+  ) =>
+    request<School>(
+      `/schools/${schoolId}/branding`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  uploadSchoolLogo: (token: string, schoolId: number, file: File) => {
+    const form = new FormData();
+    form.append("logo", file);
+    return request<School>(`/schools/${schoolId}/branding/logo`, { method: "POST", body: form }, token);
+  },
 
   listModules: (token: string, schoolId: number) =>
     request<ModuleToggle[]>(`/schools/${schoolId}/modules`, {}, token),

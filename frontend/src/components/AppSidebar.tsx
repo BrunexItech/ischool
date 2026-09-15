@@ -25,6 +25,7 @@ import {
   UserCheck,
   FileText,
   CreditCard,
+  Palette,
   ChevronsUpDown,
   LogOut,
 } from "lucide-react";
@@ -103,6 +104,7 @@ const NAV_SECTIONS = [
     label: "Administration",
     items: [
       { href: "/dashboard/staff", label: "Staff", icon: UserSquare2, roles: ["school_admin"] },
+      { href: "/dashboard/branding", label: "Branding", icon: Palette, roles: ["school_admin"] },
       { href: "/dashboard/activity-log", label: "Activity Log", icon: History, roles: ["school_admin"] },
     ],
   },
