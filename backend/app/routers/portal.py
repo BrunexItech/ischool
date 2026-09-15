@@ -13,6 +13,7 @@ from app.core.mpesa import MpesaError, initiate_stk_push, query_stk_status
 from app.core.payments import apply_payment
 from app.models.academics import Student
 from app.models.attendance import AttendanceRecord
+from app.models.award import Award
 from app.models.fees import FeeInvoice
 from app.models.meals import MealMenu
 from app.models.payment_config import SchoolPaymentConfig
@@ -29,6 +30,7 @@ from app.schemas.payments import (
     PaymentTransactionOut,
     VerifyCardPaymentRequest,
 )
+from app.schemas.award import AwardOut
 from app.schemas.meals import MealMenuOut
 from app.schemas.results import ResultOut
 from app.schemas.transport import StudentTransportOut
@@ -178,6 +180,16 @@ def get_child_meal_menu(
     if date_to is not None:
         query = query.filter(MealMenu.date <= date_to)
     return query.order_by(MealMenu.date, MealMenu.meal_type).all()
+
+
+@router.get(
+    "/students/{student_id}/awards",
+    response_model=list[AwardOut],
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("awards"))],
+)
+def get_child_awards(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    student = _owned_student(db, current_user, student_id)
+    return db.query(Award).filter_by(student_id=student.id).order_by(Award.date_awarded.desc()).all()
 
 
 def _owned_invoice(db: Session, student: Student, invoice_id: int) -> FeeInvoice:

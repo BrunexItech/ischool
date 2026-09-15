@@ -13,6 +13,7 @@ MODULE_KEYS = [
     "communication",
     "transport",
     "meals",
+    "awards",
 ]
 
 

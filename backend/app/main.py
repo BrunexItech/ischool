@@ -9,6 +9,7 @@ from app.routers import (
     attendance,
     audit,
     auth,
+    awards,
     communication,
     fees,
     live_classes,
@@ -49,6 +50,7 @@ app.include_router(academic_terms.router)
 app.include_router(transport.router)
 app.include_router(payments.router)
 app.include_router(meals.router)
+app.include_router(awards.router)
 
 
 @app.on_event("startup")

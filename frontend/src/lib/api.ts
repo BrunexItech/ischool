@@ -220,6 +220,18 @@ export interface StudentTransport {
   driver_phone: string | null;
 }
 
+export interface Award {
+  id: number;
+  school_id: number;
+  student_id: number | null;
+  staff_user_id: number | null;
+  recipient_name: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  date_awarded: string;
+}
+
 export interface MealMenuEntry {
   id: number;
   school_id: number;
@@ -730,6 +742,33 @@ export const api = {
     const qs = params.toString();
     return request<MealMenuEntry[]>(`/portal/students/${studentId}/meal-menu${qs ? `?${qs}` : ""}`, {}, token);
   },
+
+  // --- Awards ---
+
+  listAwards: (token: string, schoolId: number) => request<Award[]>(`/schools/${schoolId}/awards`, {}, token),
+
+  createAward: (
+    token: string,
+    schoolId: number,
+    payload: {
+      student_id?: number;
+      staff_user_id?: number;
+      title: string;
+      description?: string;
+      category?: string;
+      date_awarded: string;
+    }
+  ) =>
+    request<Award>(
+      `/schools/${schoolId}/awards`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteAward: (token: string, schoolId: number, awardId: number) =>
+    request<void>(`/schools/${schoolId}/awards/${awardId}`, { method: "DELETE" }, token),
+
+  getChildAwards: (token: string, studentId: number) => request<Award[]>(`/portal/students/${studentId}/awards`, {}, token),
 
   // --- Payments ---
 

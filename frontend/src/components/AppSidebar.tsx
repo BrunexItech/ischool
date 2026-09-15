@@ -55,6 +55,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["school_admin", "staff"] },
   { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["school_admin", "staff"] },
   { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["school_admin", "staff"] },
+  { href: "/dashboard/awards", label: "Awards", icon: Award, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/payment-settings", label: "Payment Settings", icon: CreditCard, roles: ["school_admin"] },
   { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },

@@ -6,6 +6,7 @@ import { CheckCircle2, CreditCard, Smartphone, XCircle } from "lucide-react";
 import {
   api,
   ApiError,
+  Award,
   AttendanceRecord,
   FeeInvoice,
   MealMenuEntry,
@@ -166,6 +167,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [transport, setTransport] = useState<StudentTransport | null>(null);
   const [mealMenu, setMealMenu] = useState<MealMenuEntry[]>([]);
+  const [awards, setAwards] = useState<Award[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -182,6 +184,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       api.getChildFees(token, studentId).then(setInvoices).catch(() => setInvoices([])),
       api.getChildTransport(token, studentId).then(setTransport).catch(() => setTransport(null)),
       api.getChildMealMenu(token, studentId).then(setMealMenu).catch(() => setMealMenu([])),
+      api.getChildAwards(token, studentId).then(setAwards).catch(() => setAwards([])),
       api.getChildPaymentMethods(token, studentId).then(setPaymentMethods).catch(() => setPaymentMethods(null)),
     ]).finally(() => setLoading(false));
   }, [token, studentId]);
@@ -196,6 +199,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
         <TabsTrigger value="fees">Fees</TabsTrigger>
         <TabsTrigger value="transport">Transport</TabsTrigger>
         <TabsTrigger value="meals">Meals</TabsTrigger>
+        <TabsTrigger value="awards">Awards</TabsTrigger>
       </TabsList>
 
       <TabsContent value="attendance" className="mt-4">
@@ -326,6 +330,32 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
               ))}
               {mealMenu.length === 0 && (
                 <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted-foreground">No menu published yet.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="awards" className="mt-4">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Award</TableHead>
+                <TableHead>Category</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {awards.map((a) => (
+                <TableRow key={a.id}>
+                  <TableCell>{new Date(a.date_awarded).toLocaleDateString()}</TableCell>
+                  <TableCell className="font-medium">{a.title}</TableCell>
+                  <TableCell>{a.category ? <Badge variant="outline" className="capitalize">{a.category}</Badge> : "—"}</TableCell>
+                </TableRow>
+              ))}
+              {awards.length === 0 && (
+                <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted-foreground">No awards yet.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

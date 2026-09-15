@@ -24,6 +24,7 @@ const MODULE_LABELS: Record<string, string> = {
   communication: "Communication",
   transport: "Transport",
   meals: "Meals",
+  awards: "Awards & Recognition",
 };
 
 function OnboardDialog({ onCreated }: { onCreated: (school: School) => void }) {
