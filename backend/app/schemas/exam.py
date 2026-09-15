@@ -130,3 +130,4 @@ class ExamForStudentListOut(ExamOut):
 class ExamStartOut(BaseModel):
     exam: ExamForStudentOut
     submission: ExamSubmissionOut
+    answers: list[ExamAnswerOut]

@@ -719,9 +719,16 @@ export const api = {
   getChildExams: (token: string, studentId: number) => request<ExamForStudentListItem[]>(`/portal/students/${studentId}/exams`, {}, token),
 
   startExam: (token: string, studentId: number, examId: number) =>
-    request<{ exam: ExamForStudent; submission: ExamSubmission }>(
+    request<{ exam: ExamForStudent; submission: ExamSubmission; answers: ExamSubmissionAnswer[] }>(
       `/portal/students/${studentId}/exams/${examId}/start`,
       { method: "POST" },
+      token
+    ),
+
+  autosaveExamAnswer: (token: string, studentId: number, examId: number, questionId: number, answerText: string) =>
+    request<{ saved: boolean }>(
+      `/portal/students/${studentId}/exams/${examId}/answer`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question_id: questionId, answer_text: answerText }) },
       token
     ),
 

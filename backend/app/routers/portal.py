@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_feature, require_roles
+from app.core.exam_grading import finalize_submission, upsert_answer
 from app.core.mpesa import MpesaError, initiate_stk_push, query_stk_status
 from app.core.payments import apply_payment
 from app.core.pesapal import PesapalError, get_transaction_status, submit_order
@@ -16,7 +17,7 @@ from app.models.academics import Student
 from app.models.activity import Activity, ActivityParticipant
 from app.models.attendance import AttendanceRecord
 from app.models.award import Award
-from app.models.exam import Exam, ExamAnswer, ExamQuestionType, ExamSubmission, ExamSubmissionStatus
+from app.models.exam import Exam, ExamAnswer, ExamSubmission, ExamSubmissionStatus
 from app.models.fees import FeeInvoice
 from app.models.meals import MealMenu
 from app.models.pickup_dropoff import PickupDropoffLog
@@ -36,6 +37,8 @@ from app.schemas.payments import (
 from app.schemas.activity import StudentActivityOut
 from app.schemas.award import AwardOut
 from app.schemas.exam import (
+    ExamAnswerOut,
+    ExamAnswerSubmit,
     ExamForStudentListOut,
     ExamForStudentOut,
     ExamOut,
@@ -318,7 +321,41 @@ def start_exam(student_id: int, exam_id: int, db: Session = Depends(get_db), cur
         db.commit()
         db.refresh(submission)
 
-    return ExamStartOut(exam=_exam_for_student_out(exam), submission=ExamSubmissionOut.model_validate(submission))
+    existing_answers = db.query(ExamAnswer).filter_by(submission_id=submission.id).all()
+    return ExamStartOut(
+        exam=_exam_for_student_out(exam),
+        submission=ExamSubmissionOut.model_validate(submission),
+        answers=[ExamAnswerOut.model_validate(a) for a in existing_answers],
+    )
+
+
+@router.patch(
+    "/students/{student_id}/exams/{exam_id}/answer",
+    dependencies=[Depends(require_roles(UserRole.STUDENT)), Depends(require_feature("exams"))],
+)
+def autosave_exam_answer(
+    student_id: int,
+    exam_id: int,
+    payload: ExamAnswerSubmit,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Saves one answer as the student works through the exam — so a closed
+    tab or dead connection doesn't lose everything they'd already done; the
+    background sweep (scripts/finalize_expired_exams.py) grades whatever was
+    last autosaved once the time limit passes."""
+    student = _owned_student(db, current_user, student_id)
+    exam = _get_exam_for_student(db, student, exam_id)
+
+    submission = db.query(ExamSubmission).filter_by(exam_id=exam.id, student_id=student.id).first()
+    if submission is None or submission.status != ExamSubmissionStatus.IN_PROGRESS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No exam session in progress — start the exam first")
+    if payload.question_id not in {q.id for q in exam.questions}:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That question does not belong to this exam")
+
+    upsert_answer(db, submission, payload.question_id, payload.answer_text)
+    db.commit()
+    return {"saved": True}
 
 
 @router.post(
@@ -340,34 +377,7 @@ def submit_exam(
     if submission is None or submission.status != ExamSubmissionStatus.IN_PROGRESS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "No exam session in progress — start the exam first")
 
-    questions_by_id = {q.id: q for q in exam.questions}
-    has_short_answer = False
-    for answer_payload in payload.answers:
-        question = questions_by_id.get(answer_payload.question_id)
-        if question is None:
-            continue
-
-        awarded_marks = None
-        if question.question_type == ExamQuestionType.MCQ:
-            try:
-                selected = int(answer_payload.answer_text)
-            except ValueError:
-                selected = None
-            awarded_marks = float(question.marks) if selected == question.correct_option_index else 0.0
-        else:
-            has_short_answer = True
-
-        db.add(
-            ExamAnswer(
-                submission_id=submission.id,
-                question_id=question.id,
-                answer_text=answer_payload.answer_text,
-                awarded_marks=awarded_marks,
-            )
-        )
-
-    submission.status = ExamSubmissionStatus.SUBMITTED if has_short_answer else ExamSubmissionStatus.GRADED
-    submission.submitted_at = datetime.now(timezone.utc)
+    finalize_submission(db, exam, submission, payload.answers)
     db.commit()
     db.refresh(submission)
     return submission

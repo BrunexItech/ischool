@@ -44,14 +44,35 @@ export default function TakeExamPage({ params }: { params: Promise<{ id: string 
     if (!token || !studentId) return;
     api
       .startExam(token, studentId, Number(id))
-      .then(({ exam, submission }) => {
+      .then(({ exam, submission, answers: savedAnswers }) => {
         setExam(exam);
         setSubmission(submission);
+        setAnswers((a) => {
+          const restored = { ...a };
+          for (const saved of savedAnswers) {
+            if (saved.answer_text !== null) restored[saved.question_id] = saved.answer_text;
+          }
+          return restored;
+        });
         const elapsed = (Date.now() - new Date(submission.started_at).getTime()) / 1000;
         setRemaining(Math.max(0, exam.duration_minutes * 60 - elapsed));
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load this exam"));
   }, [token, studentId, id]);
+
+  const autosaveTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  function saveAnswer(questionId: number, text: string, debounceMs = 0) {
+    setAnswers((a) => ({ ...a, [questionId]: text }));
+    if (!token || !studentId) return;
+    clearTimeout(autosaveTimers.current[questionId]);
+    autosaveTimers.current[questionId] = setTimeout(() => {
+      api.autosaveExamAnswer(token, studentId, Number(id), questionId, text).catch(() => {
+        // best-effort — the student can still submit explicitly, and the
+        // background sweep only grades whatever did make it through
+      });
+    }, debounceMs);
+  }
 
   async function handleSubmit() {
     if (!token || !studentId || submittedRef.current) return;
@@ -137,7 +158,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ id: string 
                       type="radio"
                       name={`q-${q.id}`}
                       checked={answers[q.id] === String(oi)}
-                      onChange={() => setAnswers((a) => ({ ...a, [q.id]: String(oi) }))}
+                      onChange={() => saveAnswer(q.id, String(oi))}
                     />
                     {opt}
                   </label>
@@ -147,7 +168,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ id: string 
               <Textarea
                 rows={4}
                 value={answers[q.id] ?? ""}
-                onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+                onChange={(e) => saveAnswer(q.id, e.target.value, 800)}
               />
             )}
           </CardContent>
