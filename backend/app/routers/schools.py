@@ -108,7 +108,7 @@ def list_modules(school_id: int, db: Session = Depends(get_db), current_user: Us
 @router.patch(
     "/{school_id}/modules/{module_key}",
     response_model=ModuleToggleOut,
-    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
 )
 def toggle_module(
     school_id: int,
