@@ -8,6 +8,7 @@ import {
   ApiError,
   AttendanceRecord,
   FeeInvoice,
+  MealMenuEntry,
   PaymentMethods,
   PaymentTransaction,
   Result,
@@ -164,6 +165,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
   const [results, setResults] = useState<Result[]>([]);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [transport, setTransport] = useState<StudentTransport | null>(null);
+  const [mealMenu, setMealMenu] = useState<MealMenuEntry[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -179,6 +181,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       api.getChildResults(token, studentId).then(setResults).catch(() => setResults([])),
       api.getChildFees(token, studentId).then(setInvoices).catch(() => setInvoices([])),
       api.getChildTransport(token, studentId).then(setTransport).catch(() => setTransport(null)),
+      api.getChildMealMenu(token, studentId).then(setMealMenu).catch(() => setMealMenu([])),
       api.getChildPaymentMethods(token, studentId).then(setPaymentMethods).catch(() => setPaymentMethods(null)),
     ]).finally(() => setLoading(false));
   }, [token, studentId]);
@@ -192,6 +195,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
         <TabsTrigger value="results">Results</TabsTrigger>
         <TabsTrigger value="fees">Fees</TabsTrigger>
         <TabsTrigger value="transport">Transport</TabsTrigger>
+        <TabsTrigger value="meals">Meals</TabsTrigger>
       </TabsList>
 
       <TabsContent value="attendance" className="mt-4">
@@ -299,6 +303,32 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
               <p className="text-sm text-muted-foreground">Not assigned to a transport route yet.</p>
             )}
           </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="meals" className="mt-4">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Meal</TableHead>
+                <TableHead>Menu</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mealMenu.map((m) => (
+                <TableRow key={m.id}>
+                  <TableCell>{new Date(m.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</TableCell>
+                  <TableCell><Badge variant="outline" className="capitalize">{m.meal_type}</Badge></TableCell>
+                  <TableCell>{m.description}</TableCell>
+                </TableRow>
+              ))}
+              {mealMenu.length === 0 && (
+                <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted-foreground">No menu published yet.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
         </Card>
       </TabsContent>
     </Tabs>

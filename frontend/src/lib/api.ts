@@ -220,6 +220,14 @@ export interface StudentTransport {
   driver_phone: string | null;
 }
 
+export interface MealMenuEntry {
+  id: number;
+  school_id: number;
+  date: string;
+  meal_type: "breakfast" | "lunch" | "snack";
+  description: string;
+}
+
 export interface PaymentConfigStatus {
   mpesa_configured: boolean;
   mpesa_shortcode: string | null;
@@ -683,6 +691,45 @@ export const api = {
 
   getChildTransport: (token: string, studentId: number) =>
     request<StudentTransport>(`/portal/students/${studentId}/transport`, {}, token),
+
+  // --- Meals ---
+
+  listMealMenu: (token: string, schoolId: number, dateFrom?: string, dateTo?: string) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set("date_from", dateFrom);
+    if (dateTo) params.set("date_to", dateTo);
+    const qs = params.toString();
+    return request<MealMenuEntry[]>(`/schools/${schoolId}/meal-menu${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  createMealMenuEntry: (
+    token: string,
+    schoolId: number,
+    payload: { date: string; meal_type: "breakfast" | "lunch" | "snack"; description: string }
+  ) =>
+    request<MealMenuEntry>(
+      `/schools/${schoolId}/meal-menu`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  updateMealMenuEntry: (token: string, schoolId: number, menuId: number, payload: { description: string }) =>
+    request<MealMenuEntry>(
+      `/schools/${schoolId}/meal-menu/${menuId}`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteMealMenuEntry: (token: string, schoolId: number, menuId: number) =>
+    request<void>(`/schools/${schoolId}/meal-menu/${menuId}`, { method: "DELETE" }, token),
+
+  getChildMealMenu: (token: string, studentId: number, dateFrom?: string, dateTo?: string) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set("date_from", dateFrom);
+    if (dateTo) params.set("date_to", dateTo);
+    const qs = params.toString();
+    return request<MealMenuEntry[]>(`/portal/students/${studentId}/meal-menu${qs ? `?${qs}` : ""}`, {}, token);
+  },
 
   // --- Payments ---
 

@@ -14,6 +14,7 @@ from app.core.payments import apply_payment
 from app.models.academics import Student
 from app.models.attendance import AttendanceRecord
 from app.models.fees import FeeInvoice
+from app.models.meals import MealMenu
 from app.models.payment_config import SchoolPaymentConfig
 from app.models.payment_transaction import PaymentTransaction, PaymentTransactionStatus
 from app.models.results import Result
@@ -28,6 +29,7 @@ from app.schemas.payments import (
     PaymentTransactionOut,
     VerifyCardPaymentRequest,
 )
+from app.schemas.meals import MealMenuOut
 from app.schemas.results import ResultOut
 from app.schemas.transport import StudentTransportOut
 from app.routers.fees import _invoice_out
@@ -155,6 +157,27 @@ def get_child_transport(
         driver_name=vehicle.driver_name if vehicle else None,
         driver_phone=vehicle.driver_phone if vehicle else None,
     )
+
+
+@router.get(
+    "/students/{student_id}/meal-menu",
+    response_model=list[MealMenuOut],
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("meals"))],
+)
+def get_child_meal_menu(
+    student_id: int,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    student = _owned_student(db, current_user, student_id)
+    query = db.query(MealMenu).filter_by(school_id=student.school_id)
+    if date_from is not None:
+        query = query.filter(MealMenu.date >= date_from)
+    if date_to is not None:
+        query = query.filter(MealMenu.date <= date_to)
+    return query.order_by(MealMenu.date, MealMenu.meal_type).all()
 
 
 def _owned_invoice(db: Session, student: Student, invoice_id: int) -> FeeInvoice:
