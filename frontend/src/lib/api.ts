@@ -325,6 +325,26 @@ export interface ExamSubmissionDetail extends ExamSubmission {
   student_name: string;
 }
 
+export interface ReportCardRow {
+  subject_name: string;
+  score: number;
+  grade: string | null;
+  remarks: string | null;
+}
+
+export interface ReportCard {
+  school_name: string;
+  school_logo_url: string | null;
+  school_primary_color: string;
+  student_name: string;
+  admission_number: string;
+  class_name: string | null;
+  term: string;
+  rows: ReportCardRow[];
+  average: number | null;
+  overall_grade: string | null;
+}
+
 export interface PickupDropoffLog {
   id: number;
   school_id: number;
@@ -639,6 +659,12 @@ export const api = {
     ).toString();
     return request<Result[]>(`/schools/${schoolId}/results${qs ? `?${qs}` : ""}`, {}, token);
   },
+
+  getReportCard: (token: string, schoolId: number, studentId: number, term: string) =>
+    request<ReportCard>(`/schools/${schoolId}/students/${studentId}/report-card?term=${encodeURIComponent(term)}`, {}, token),
+
+  getChildReportCard: (token: string, studentId: number, term: string) =>
+    request<ReportCard>(`/portal/students/${studentId}/report-card?term=${encodeURIComponent(term)}`, {}, token),
 
   getResultsAnalytics: (token: string, schoolId: number, term?: string) =>
     request<ResultsAnalytics>(`/schools/${schoolId}/analytics/results${term ? `?term=${encodeURIComponent(term)}` : ""}`, {}, token),

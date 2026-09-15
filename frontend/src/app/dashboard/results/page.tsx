@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Save } from "lucide-react";
+import { FileText, Plus, Save } from "lucide-react";
+import Link from "next/link";
 
 export default function ResultsPage() {
   const { user, token } = useAuth();
@@ -159,6 +160,7 @@ export default function ResultsPage() {
               <TableHead>Admission #</TableHead>
               <TableHead>Name</TableHead>
               <TableHead className="w-40">Score (out of 100)</TableHead>
+              <TableHead className="text-right">Report Card</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -176,11 +178,14 @@ export default function ResultsPage() {
                     className="w-24"
                   />
                 </TableCell>
+                <TableCell className="text-right">
+                  <Button variant="outline" size="sm" render={<Link href={`/dashboard/report-card/${s.id}`}><FileText /> View</Link>} />
+                </TableCell>
               </TableRow>
             ))}
             {students.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                   No students in this class.
                 </TableCell>
               </TableRow>

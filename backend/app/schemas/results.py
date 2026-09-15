@@ -33,3 +33,23 @@ class ResultOut(BaseModel):
     score: float
     grade: str | None
     remarks: str | None
+
+
+class ReportCardRow(BaseModel):
+    subject_name: str
+    score: float
+    grade: str | None
+    remarks: str | None
+
+
+class ReportCardOut(BaseModel):
+    school_name: str
+    school_logo_url: str | None
+    school_primary_color: str
+    student_name: str
+    admission_number: str
+    class_name: str | None
+    term: str
+    rows: list[ReportCardRow]
+    average: float | None
+    overall_grade: str | None

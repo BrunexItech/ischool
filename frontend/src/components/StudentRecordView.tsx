@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CheckCircle2, CreditCard, PlayCircle, Smartphone, XCircle } from "lucide-react";
+import { CheckCircle2, CreditCard, FileText, PlayCircle, Smartphone, XCircle } from "lucide-react";
 import {
   api,
   ApiError,
@@ -263,6 +263,11 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
             </TableBody>
           </Table>
         </Card>
+        {results.length > 0 && (
+          <div className="mt-3 flex justify-end">
+            <Button variant="outline" size="sm" render={<Link href={`/dashboard/report-card/${studentId}`}><FileText /> View report card</Link>} />
+          </div>
+        )}
       </TabsContent>
 
       <TabsContent value="fees" className="mt-4">

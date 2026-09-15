@@ -5,11 +5,12 @@ from app.core.audit import record_audit
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.notify import notify
+from app.core.report_card import build_report_card
 from app.core.teaching import ensure_can_grade
 from app.models.academics import Student
 from app.models.results import Result, Subject
 from app.models.user import User, UserRole
-from app.schemas.results import ResultOut, ResultUpsert, SubjectCreate, SubjectOut
+from app.schemas.results import ReportCardOut, ResultOut, ResultUpsert, SubjectCreate, SubjectOut
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["results"])
 
@@ -91,6 +92,25 @@ def list_results(
     if term is not None:
         query = query.filter_by(term=term)
     return query.all()
+
+
+@router.get(
+    "/students/{student_id}/report-card",
+    response_model=ReportCardOut,
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("results"))],
+)
+def get_report_card(
+    school_id: int,
+    student_id: int,
+    term: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(current_user, school_id)
+    student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
+    if student is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
+    return build_report_card(db, student, term)
 
 
 @router.post(

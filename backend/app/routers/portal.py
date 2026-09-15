@@ -11,6 +11,7 @@ from app.core.deps import get_current_user, require_feature, require_roles
 from app.core.flutterwave import FlutterwaveError, create_payment_link, verify_transaction
 from app.core.mpesa import MpesaError, initiate_stk_push, query_stk_status
 from app.core.payments import apply_payment
+from app.core.report_card import build_report_card
 from app.models.academics import Student
 from app.models.activity import Activity, ActivityParticipant
 from app.models.attendance import AttendanceRecord
@@ -46,7 +47,7 @@ from app.schemas.exam import (
 )
 from app.schemas.meals import MealMenuOut
 from app.schemas.pickup_dropoff import PickupDropoffOut
-from app.schemas.results import ResultOut
+from app.schemas.results import ReportCardOut, ResultOut
 from app.schemas.transport import StudentTransportOut
 from app.routers.fees import _invoice_out
 
@@ -132,6 +133,18 @@ def get_child_results(
     if term is not None:
         query = query.filter_by(term=term)
     return query.all()
+
+
+@router.get(
+    "/students/{student_id}/report-card",
+    response_model=ReportCardOut,
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("results"))],
+)
+def get_child_report_card(
+    student_id: int, term: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    student = _owned_student(db, current_user, student_id)
+    return build_report_card(db, student, term)
 
 
 @router.get(
