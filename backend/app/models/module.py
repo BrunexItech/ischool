@@ -14,6 +14,7 @@ MODULE_KEYS = [
     "transport",
     "meals",
     "awards",
+    "activities",
 ]
 
 

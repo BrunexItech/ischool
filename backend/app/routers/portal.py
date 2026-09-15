@@ -12,6 +12,7 @@ from app.core.flutterwave import FlutterwaveError, create_payment_link, verify_t
 from app.core.mpesa import MpesaError, initiate_stk_push, query_stk_status
 from app.core.payments import apply_payment
 from app.models.academics import Student
+from app.models.activity import Activity, ActivityParticipant
 from app.models.attendance import AttendanceRecord
 from app.models.award import Award
 from app.models.fees import FeeInvoice
@@ -30,6 +31,7 @@ from app.schemas.payments import (
     PaymentTransactionOut,
     VerifyCardPaymentRequest,
 )
+from app.schemas.activity import StudentActivityOut
 from app.schemas.award import AwardOut
 from app.schemas.meals import MealMenuOut
 from app.schemas.results import ResultOut
@@ -190,6 +192,26 @@ def get_child_meal_menu(
 def get_child_awards(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     student = _owned_student(db, current_user, student_id)
     return db.query(Award).filter_by(student_id=student.id).order_by(Award.date_awarded.desc()).all()
+
+
+@router.get(
+    "/students/{student_id}/activities",
+    response_model=list[StudentActivityOut],
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("activities"))],
+)
+def get_child_activities(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    student = _owned_student(db, current_user, student_id)
+    rows = (
+        db.query(ActivityParticipant, Activity)
+        .join(Activity, ActivityParticipant.activity_id == Activity.id)
+        .filter(ActivityParticipant.student_id == student.id)
+        .order_by(Activity.date.desc())
+        .all()
+    )
+    return [
+        StudentActivityOut(activity_id=activity.id, activity_name=activity.name, category=activity.category, date=activity.date, role=participant.role)
+        for participant, activity in rows
+    ]
 
 
 def _owned_invoice(db: Session, student: Student, invoice_id: int) -> FeeInvoice:

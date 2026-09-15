@@ -6,6 +6,7 @@ from app.core.database import Base, engine
 from app.routers import (
     academic_terms,
     academics,
+    activities,
     attendance,
     audit,
     auth,
@@ -51,6 +52,7 @@ app.include_router(transport.router)
 app.include_router(payments.router)
 app.include_router(meals.router)
 app.include_router(awards.router)
+app.include_router(activities.router)
 
 
 @app.on_event("startup")

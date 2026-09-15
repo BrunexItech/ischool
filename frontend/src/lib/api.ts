@@ -220,6 +220,35 @@ export interface StudentTransport {
   driver_phone: string | null;
 }
 
+export interface Activity {
+  id: number;
+  school_id: number;
+  name: string;
+  category: string | null;
+  date: string;
+  description: string | null;
+  participant_count: number;
+}
+
+export interface ActivityParticipant {
+  id: number;
+  student_id: number;
+  student_name: string;
+  role: string | null;
+}
+
+export interface ActivityDetail extends Activity {
+  participants: ActivityParticipant[];
+}
+
+export interface StudentActivity {
+  activity_id: number;
+  activity_name: string;
+  category: string | null;
+  date: string;
+  role: string | null;
+}
+
 export interface Award {
   id: number;
   school_id: number;
@@ -769,6 +798,40 @@ export const api = {
     request<void>(`/schools/${schoolId}/awards/${awardId}`, { method: "DELETE" }, token),
 
   getChildAwards: (token: string, studentId: number) => request<Award[]>(`/portal/students/${studentId}/awards`, {}, token),
+
+  // --- Activities & Competitions ---
+
+  listActivities: (token: string, schoolId: number) => request<Activity[]>(`/schools/${schoolId}/activities`, {}, token),
+
+  createActivity: (
+    token: string,
+    schoolId: number,
+    payload: { name: string; category?: string; date: string; description?: string }
+  ) =>
+    request<Activity>(
+      `/schools/${schoolId}/activities`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  getActivity: (token: string, schoolId: number, activityId: number) =>
+    request<ActivityDetail>(`/schools/${schoolId}/activities/${activityId}`, {}, token),
+
+  addActivityParticipant: (token: string, schoolId: number, activityId: number, payload: { student_id: number; role?: string }) =>
+    request<ActivityParticipant>(
+      `/schools/${schoolId}/activities/${activityId}/participants`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  removeActivityParticipant: (token: string, schoolId: number, activityId: number, studentId: number) =>
+    request<void>(`/schools/${schoolId}/activities/${activityId}/participants/${studentId}`, { method: "DELETE" }, token),
+
+  deleteActivity: (token: string, schoolId: number, activityId: number) =>
+    request<void>(`/schools/${schoolId}/activities/${activityId}`, { method: "DELETE" }, token),
+
+  getChildActivities: (token: string, studentId: number) =>
+    request<StudentActivity[]>(`/portal/students/${studentId}/activities`, {}, token),
 
   // --- Payments ---
 
