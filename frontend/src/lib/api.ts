@@ -252,6 +252,24 @@ export interface StudentActivity {
   role: string | null;
 }
 
+export interface Expense {
+  id: number;
+  school_id: number;
+  category: string;
+  description: string;
+  amount: number;
+  date: string;
+  created_at: string;
+}
+
+export interface FinanceSummary {
+  total_income: number;
+  total_expenses: number;
+  net: number;
+  expenses_by_category: { category: string; total: number }[];
+  monthly: { month: string; income: number; expenses: number }[];
+}
+
 export interface ResultsAnalytics {
   overall_average: number | null;
   result_count: number;
@@ -538,6 +556,22 @@ export const api = {
 
   getResultsAnalytics: (token: string, schoolId: number, term?: string) =>
     request<ResultsAnalytics>(`/schools/${schoolId}/analytics/results${term ? `?term=${encodeURIComponent(term)}` : ""}`, {}, token),
+
+  // --- Finance ---
+
+  listExpenses: (token: string, schoolId: number) => request<Expense[]>(`/schools/${schoolId}/finance/expenses`, {}, token),
+
+  createExpense: (token: string, schoolId: number, payload: { category: string; description: string; amount: number; date: string }) =>
+    request<Expense>(
+      `/schools/${schoolId}/finance/expenses`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteExpense: (token: string, schoolId: number, expenseId: number) =>
+    request<void>(`/schools/${schoolId}/finance/expenses/${expenseId}`, { method: "DELETE" }, token),
+
+  getFinanceSummary: (token: string, schoolId: number) => request<FinanceSummary>(`/schools/${schoolId}/finance/summary`, {}, token),
 
   upsertResult: (
     token: string,

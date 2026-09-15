@@ -15,6 +15,7 @@ MODULE_KEYS = [
     "meals",
     "awards",
     "activities",
+    "finance",
 ]
 
 

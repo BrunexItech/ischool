@@ -18,6 +18,7 @@ from app.models.payment_config import SchoolPaymentConfig
 from app.models.meals import MealMenu
 from app.models.award import Award
 from app.models.activity import Activity, ActivityParticipant
+from app.models.expense import Expense
 
 __all__ = [
     "School",
@@ -54,4 +55,5 @@ __all__ = [
     "Award",
     "Activity",
     "ActivityParticipant",
+    "Expense",
 ]

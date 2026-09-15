@@ -14,6 +14,7 @@ from app.routers import (
     awards,
     communication,
     fees,
+    finance,
     live_classes,
     meals,
     notifications,
@@ -55,6 +56,7 @@ app.include_router(meals.router)
 app.include_router(awards.router)
 app.include_router(activities.router)
 app.include_router(analytics.router)
+app.include_router(finance.router)
 
 
 @app.on_event("startup")
