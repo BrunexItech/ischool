@@ -134,6 +134,9 @@ export interface Announcement {
   body: string;
   audience: AnnouncementAudience;
   class_id: number | null;
+  event_date: string | null;
+  event_end_date: string | null;
+  location: string | null;
   created_by: number | null;
   created_at: string;
 }
@@ -577,7 +580,15 @@ export const api = {
   createAnnouncement: (
     token: string,
     schoolId: number,
-    payload: { title: string; body: string; audience: AnnouncementAudience; class_id?: number }
+    payload: {
+      title: string;
+      body: string;
+      audience: AnnouncementAudience;
+      class_id?: number;
+      event_date?: string;
+      event_end_date?: string;
+      location?: string;
+    }
   ) =>
     request<Announcement>(
       `/schools/${schoolId}/announcements`,
