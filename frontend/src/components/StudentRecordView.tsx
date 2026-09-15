@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-import { CheckCircle2, CreditCard, Smartphone, XCircle } from "lucide-react";
+import { CheckCircle2, CreditCard, PlayCircle, Smartphone, XCircle } from "lucide-react";
 import {
   api,
   ApiError,
   Award,
   AttendanceRecord,
+  ExamForStudentListItem,
   FeeInvoice,
   MealMenuEntry,
   PaymentMethods,
@@ -163,13 +165,14 @@ function PayWithCardButton({ studentId, invoice }: { studentId: number; invoice:
 }
 
 export function StudentRecordView({ studentId }: { studentId: number }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [transport, setTransport] = useState<StudentTransport | null>(null);
   const [mealMenu, setMealMenu] = useState<MealMenuEntry[]>([]);
   const [awards, setAwards] = useState<Award[]>([]);
+  const [exams, setExams] = useState<ExamForStudentListItem[]>([]);
   const [studentActivities, setStudentActivities] = useState<StudentActivity[]>([]);
   const [pickupDropoff, setPickupDropoff] = useState<PickupDropoffLog[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
@@ -189,6 +192,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       api.getChildTransport(token, studentId).then(setTransport).catch(() => setTransport(null)),
       api.getChildMealMenu(token, studentId).then(setMealMenu).catch(() => setMealMenu([])),
       api.getChildAwards(token, studentId).then(setAwards).catch(() => setAwards([])),
+      api.getChildExams(token, studentId).then(setExams).catch(() => setExams([])),
       api.getChildActivities(token, studentId).then(setStudentActivities).catch(() => setStudentActivities([])),
       api.getChildPickupDropoff(token, studentId).then(setPickupDropoff).catch(() => setPickupDropoff([])),
       api.getChildPaymentMethods(token, studentId).then(setPaymentMethods).catch(() => setPaymentMethods(null)),
@@ -207,6 +211,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
         <TabsTrigger value="meals">Meals</TabsTrigger>
         <TabsTrigger value="awards">Awards</TabsTrigger>
         <TabsTrigger value="activities">Activities</TabsTrigger>
+        <TabsTrigger value="exams">Exams</TabsTrigger>
         <TabsTrigger value="pickup">Pickup/Drop-off</TabsTrigger>
       </TabsList>
 
@@ -392,6 +397,46 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
               ))}
               {studentActivities.length === 0 && (
                 <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No activities recorded yet.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="exams" className="mt-4">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Term</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Score</TableHead>
+                {user?.role === "student" && <TableHead className="text-right">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {exams.map((e) => (
+                <TableRow key={e.id}>
+                  <TableCell className="font-medium">{e.title} <span className="text-xs text-muted-foreground">({e.subject_name})</span></TableCell>
+                  <TableCell>{e.term}</TableCell>
+                  <TableCell>
+                    <Badge variant={e.submission_status === "graded" ? "default" : "secondary"} className="capitalize">
+                      {e.submission_status?.replace("_", " ") ?? "Not started"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{e.score !== null ? `${e.score}/${e.total_marks}` : "—"}</TableCell>
+                  {user?.role === "student" && (
+                    <TableCell className="text-right">
+                      {(e.submission_status === null || e.submission_status === "in_progress") && (
+                        <Button size="sm" render={<Link href={`/dashboard/take-exam/${e.id}`}><PlayCircle /> {e.submission_status === "in_progress" ? "Continue" : "Start"}</Link>} />
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+              {exams.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No exams available yet.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

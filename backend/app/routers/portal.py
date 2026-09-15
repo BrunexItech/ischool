@@ -15,6 +15,7 @@ from app.models.academics import Student
 from app.models.activity import Activity, ActivityParticipant
 from app.models.attendance import AttendanceRecord
 from app.models.award import Award
+from app.models.exam import Exam, ExamAnswer, ExamQuestionType, ExamSubmission, ExamSubmissionStatus
 from app.models.fees import FeeInvoice
 from app.models.meals import MealMenu
 from app.models.pickup_dropoff import PickupDropoffLog
@@ -34,6 +35,15 @@ from app.schemas.payments import (
 )
 from app.schemas.activity import StudentActivityOut
 from app.schemas.award import AwardOut
+from app.schemas.exam import (
+    ExamForStudentListOut,
+    ExamForStudentOut,
+    ExamOut,
+    ExamQuestionForStudent,
+    ExamStartOut,
+    ExamSubmissionCreate,
+    ExamSubmissionOut,
+)
 from app.schemas.meals import MealMenuOut
 from app.schemas.pickup_dropoff import PickupDropoffOut
 from app.schemas.results import ResultOut
@@ -229,6 +239,126 @@ def get_child_pickup_dropoff(student_id: int, db: Session = Depends(get_db), cur
         .order_by(PickupDropoffLog.occurred_at.desc())
         .all()
     )
+
+
+@router.get(
+    "/students/{student_id}/exams",
+    response_model=list[ExamForStudentListOut],
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("exams"))],
+)
+def list_child_exams(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    student = _owned_student(db, current_user, student_id)
+    exams = (
+        db.query(Exam)
+        .filter(Exam.school_id == student.school_id, Exam.is_published.is_(True))
+        .filter((Exam.class_id.is_(None)) | (Exam.class_id == student.class_id))
+        .order_by(Exam.created_at.desc())
+        .all()
+    )
+    out = []
+    for exam in exams:
+        submission = db.query(ExamSubmission).filter_by(exam_id=exam.id, student_id=student.id).first()
+        out.append(
+            ExamForStudentListOut(
+                **ExamOut.model_validate(exam).model_dump(),
+                subject_name=exam.subject.name,
+                submission_status=submission.status.value if submission else None,
+                score=submission.score if submission else None,
+            )
+        )
+    return out
+
+
+def _get_exam_for_student(db: Session, student: Student, exam_id: int) -> Exam:
+    exam = (
+        db.query(Exam)
+        .filter(Exam.school_id == student.school_id, Exam.id == exam_id, Exam.is_published.is_(True))
+        .filter((Exam.class_id.is_(None)) | (Exam.class_id == student.class_id))
+        .first()
+    )
+    if exam is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Exam not found")
+    return exam
+
+
+def _exam_for_student_out(exam: Exam) -> ExamForStudentOut:
+    return ExamForStudentOut(
+        **ExamOut.model_validate(exam).model_dump(),
+        questions=[ExamQuestionForStudent.model_validate(q) for q in exam.questions],
+    )
+
+
+@router.post(
+    "/students/{student_id}/exams/{exam_id}/start",
+    response_model=ExamStartOut,
+    dependencies=[Depends(require_roles(UserRole.STUDENT)), Depends(require_feature("exams"))],
+)
+def start_exam(student_id: int, exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    student = _owned_student(db, current_user, student_id)
+    exam = _get_exam_for_student(db, student, exam_id)
+
+    submission = db.query(ExamSubmission).filter_by(exam_id=exam.id, student_id=student.id).first()
+    if submission is not None and submission.status != ExamSubmissionStatus.IN_PROGRESS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You have already submitted this exam")
+    if submission is None:
+        submission = ExamSubmission(exam_id=exam.id, student_id=student.id)
+        db.add(submission)
+        db.commit()
+        db.refresh(submission)
+
+    return ExamStartOut(exam=_exam_for_student_out(exam), submission=ExamSubmissionOut.model_validate(submission))
+
+
+@router.post(
+    "/students/{student_id}/exams/{exam_id}/submit",
+    response_model=ExamSubmissionOut,
+    dependencies=[Depends(require_roles(UserRole.STUDENT)), Depends(require_feature("exams"))],
+)
+def submit_exam(
+    student_id: int,
+    exam_id: int,
+    payload: ExamSubmissionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    student = _owned_student(db, current_user, student_id)
+    exam = _get_exam_for_student(db, student, exam_id)
+
+    submission = db.query(ExamSubmission).filter_by(exam_id=exam.id, student_id=student.id).first()
+    if submission is None or submission.status != ExamSubmissionStatus.IN_PROGRESS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No exam session in progress — start the exam first")
+
+    questions_by_id = {q.id: q for q in exam.questions}
+    has_short_answer = False
+    for answer_payload in payload.answers:
+        question = questions_by_id.get(answer_payload.question_id)
+        if question is None:
+            continue
+
+        awarded_marks = None
+        if question.question_type == ExamQuestionType.MCQ:
+            try:
+                selected = int(answer_payload.answer_text)
+            except ValueError:
+                selected = None
+            awarded_marks = float(question.marks) if selected == question.correct_option_index else 0.0
+        else:
+            has_short_answer = True
+
+        db.add(
+            ExamAnswer(
+                submission_id=submission.id,
+                question_id=question.id,
+                answer_text=answer_payload.answer_text,
+                awarded_marks=awarded_marks,
+            )
+        )
+
+    submission.status = ExamSubmissionStatus.SUBMITTED if has_short_answer else ExamSubmissionStatus.GRADED
+    submission.submitted_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(submission)
+    return submission
 
 
 def _owned_invoice(db: Session, student: Student, invoice_id: int) -> FeeInvoice:

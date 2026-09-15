@@ -254,6 +254,77 @@ export interface StudentActivity {
   role: string | null;
 }
 
+export type ExamQuestionType = "mcq" | "short_answer";
+export type ExamSubmissionStatus = "in_progress" | "submitted" | "graded";
+
+export interface ExamQuestion {
+  id: number;
+  question_text: string;
+  question_type: ExamQuestionType;
+  marks: number;
+  order: number;
+  options: string[] | null;
+  correct_option_index: number | null;
+}
+
+export interface ExamQuestionForStudent {
+  id: number;
+  question_text: string;
+  question_type: ExamQuestionType;
+  marks: number;
+  order: number;
+  options: string[] | null;
+}
+
+export interface Exam {
+  id: number;
+  school_id: number;
+  subject_id: number;
+  class_id: number | null;
+  title: string;
+  term: string;
+  duration_minutes: number;
+  is_published: boolean;
+  total_marks: number;
+  question_count: number;
+}
+
+export interface ExamDetail extends Exam {
+  questions: ExamQuestion[];
+}
+
+export interface ExamForStudent extends Exam {
+  questions: ExamQuestionForStudent[];
+}
+
+export interface ExamForStudentListItem extends Exam {
+  subject_name: string;
+  submission_status: ExamSubmissionStatus | null;
+  score: number | null;
+}
+
+export interface ExamSubmission {
+  id: number;
+  exam_id: number;
+  student_id: number;
+  status: ExamSubmissionStatus;
+  started_at: string;
+  submitted_at: string | null;
+  score: number | null;
+}
+
+export interface ExamSubmissionAnswer {
+  id: number;
+  question_id: number;
+  answer_text: string | null;
+  awarded_marks: number | null;
+}
+
+export interface ExamSubmissionDetail extends ExamSubmission {
+  answers: ExamSubmissionAnswer[];
+  student_name: string;
+}
+
 export interface PickupDropoffLog {
   id: number;
   school_id: number;
@@ -571,6 +642,69 @@ export const api = {
 
   getResultsAnalytics: (token: string, schoolId: number, term?: string) =>
     request<ResultsAnalytics>(`/schools/${schoolId}/analytics/results${term ? `?term=${encodeURIComponent(term)}` : ""}`, {}, token),
+
+  // --- Exams ---
+
+  listExams: (token: string, schoolId: number) => request<Exam[]>(`/schools/${schoolId}/exams`, {}, token),
+
+  createExam: (
+    token: string,
+    schoolId: number,
+    payload: {
+      subject_id: number;
+      class_id?: number;
+      title: string;
+      term: string;
+      duration_minutes: number;
+      questions: {
+        question_text: string;
+        question_type: ExamQuestionType;
+        marks: number;
+        order: number;
+        options?: string[];
+        correct_option_index?: number;
+      }[];
+    }
+  ) =>
+    request<ExamDetail>(
+      `/schools/${schoolId}/exams`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  getExam: (token: string, schoolId: number, examId: number) => request<ExamDetail>(`/schools/${schoolId}/exams/${examId}`, {}, token),
+
+  setExamPublished: (token: string, schoolId: number, examId: number, published: boolean) =>
+    request<Exam>(`/schools/${schoolId}/exams/${examId}/publish?published=${published}`, { method: "PATCH" }, token),
+
+  deleteExam: (token: string, schoolId: number, examId: number) =>
+    request<void>(`/schools/${schoolId}/exams/${examId}`, { method: "DELETE" }, token),
+
+  listExamSubmissions: (token: string, schoolId: number, examId: number) =>
+    request<ExamSubmissionDetail[]>(`/schools/${schoolId}/exams/${examId}/submissions`, {}, token),
+
+  gradeExamAnswer: (token: string, schoolId: number, examId: number, submissionId: number, answerId: number, awardedMarks: number) =>
+    request<ExamSubmissionDetail>(
+      `/schools/${schoolId}/exams/${examId}/submissions/${submissionId}/answers/${answerId}/grade`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ awarded_marks: awardedMarks }) },
+      token
+    ),
+
+  getChildExams: (token: string, studentId: number) => request<ExamForStudentListItem[]>(`/portal/students/${studentId}/exams`, {}, token),
+
+  startExam: (token: string, studentId: number, examId: number) =>
+    request<{ exam: ExamForStudent; submission: ExamSubmission }>(
+      `/portal/students/${studentId}/exams/${examId}/start`,
+      { method: "POST" },
+      token
+    ),
+
+  submitExam: (token: string, studentId: number, examId: number, answers: { question_id: number; answer_text: string }[]) =>
+    request<ExamSubmission>(
+      `/portal/students/${studentId}/exams/${examId}/submit`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers }) },
+      token
+    ),
 
   // --- Pickup / Drop-off ---
 

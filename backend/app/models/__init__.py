@@ -20,6 +20,7 @@ from app.models.award import Award
 from app.models.activity import Activity, ActivityParticipant
 from app.models.expense import Expense
 from app.models.pickup_dropoff import PickupDropoffLog, PickupDropoffType
+from app.models.exam import Exam, ExamAnswer, ExamQuestion, ExamQuestionType, ExamSubmission, ExamSubmissionStatus
 
 __all__ = [
     "School",
@@ -59,4 +60,10 @@ __all__ = [
     "Expense",
     "PickupDropoffLog",
     "PickupDropoffType",
+    "Exam",
+    "ExamQuestion",
+    "ExamQuestionType",
+    "ExamSubmission",
+    "ExamSubmissionStatus",
+    "ExamAnswer",
 ]

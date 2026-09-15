@@ -13,6 +13,7 @@ from app.routers import (
     auth,
     awards,
     communication,
+    exams,
     fees,
     finance,
     live_classes,
@@ -59,6 +60,7 @@ app.include_router(activities.router)
 app.include_router(analytics.router)
 app.include_router(finance.router)
 app.include_router(pickup_dropoff.router)
+app.include_router(exams.router)
 
 
 @app.on_event("startup")

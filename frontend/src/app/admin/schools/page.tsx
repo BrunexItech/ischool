@@ -31,6 +31,7 @@ const MODULE_LABELS: Record<string, string> = {
   activities: "Activities & Competitions",
   finance: "Finance",
   pickup_dropoff: "Pickup / Drop-off Log",
+  exams: "Online Exams",
 };
 
 function OnboardDialog({ schools, onCreated }: { schools: School[]; onCreated: (school: School) => void }) {
