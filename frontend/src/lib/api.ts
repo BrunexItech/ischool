@@ -252,6 +252,16 @@ export interface StudentActivity {
   role: string | null;
 }
 
+export interface PickupDropoffLog {
+  id: number;
+  school_id: number;
+  student_id: number;
+  event_type: "pickup" | "dropoff";
+  person_name: string;
+  notes: string | null;
+  occurred_at: string;
+}
+
 export interface Expense {
   id: number;
   school_id: number;
@@ -556,6 +566,29 @@ export const api = {
 
   getResultsAnalytics: (token: string, schoolId: number, term?: string) =>
     request<ResultsAnalytics>(`/schools/${schoolId}/analytics/results${term ? `?term=${encodeURIComponent(term)}` : ""}`, {}, token),
+
+  // --- Pickup / Drop-off ---
+
+  listPickupDropoff: (token: string, schoolId: number, studentId: number) =>
+    request<PickupDropoffLog[]>(`/schools/${schoolId}/students/${studentId}/pickup-dropoff`, {}, token),
+
+  logPickupDropoff: (
+    token: string,
+    schoolId: number,
+    studentId: number,
+    payload: { event_type: "pickup" | "dropoff"; person_name: string; notes?: string }
+  ) =>
+    request<PickupDropoffLog>(
+      `/schools/${schoolId}/students/${studentId}/pickup-dropoff`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deletePickupDropoff: (token: string, schoolId: number, studentId: number, logId: number) =>
+    request<void>(`/schools/${schoolId}/students/${studentId}/pickup-dropoff/${logId}`, { method: "DELETE" }, token),
+
+  getChildPickupDropoff: (token: string, studentId: number) =>
+    request<PickupDropoffLog[]>(`/portal/students/${studentId}/pickup-dropoff`, {}, token),
 
   // --- Finance ---
 

@@ -17,6 +17,7 @@ from app.models.attendance import AttendanceRecord
 from app.models.award import Award
 from app.models.fees import FeeInvoice
 from app.models.meals import MealMenu
+from app.models.pickup_dropoff import PickupDropoffLog
 from app.models.payment_config import SchoolPaymentConfig
 from app.models.payment_transaction import PaymentTransaction, PaymentTransactionStatus
 from app.models.results import Result
@@ -34,6 +35,7 @@ from app.schemas.payments import (
 from app.schemas.activity import StudentActivityOut
 from app.schemas.award import AwardOut
 from app.schemas.meals import MealMenuOut
+from app.schemas.pickup_dropoff import PickupDropoffOut
 from app.schemas.results import ResultOut
 from app.schemas.transport import StudentTransportOut
 from app.routers.fees import _invoice_out
@@ -212,6 +214,21 @@ def get_child_activities(student_id: int, db: Session = Depends(get_db), current
         StudentActivityOut(activity_id=activity.id, activity_name=activity.name, category=activity.category, date=activity.date, role=participant.role)
         for participant, activity in rows
     ]
+
+
+@router.get(
+    "/students/{student_id}/pickup-dropoff",
+    response_model=list[PickupDropoffOut],
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("pickup_dropoff"))],
+)
+def get_child_pickup_dropoff(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    student = _owned_student(db, current_user, student_id)
+    return (
+        db.query(PickupDropoffLog)
+        .filter_by(student_id=student.id)
+        .order_by(PickupDropoffLog.occurred_at.desc())
+        .all()
+    )
 
 
 def _owned_invoice(db: Session, student: Student, invoice_id: int) -> FeeInvoice:

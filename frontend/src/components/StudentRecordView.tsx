@@ -11,6 +11,7 @@ import {
   FeeInvoice,
   MealMenuEntry,
   PaymentMethods,
+  PickupDropoffLog,
   PaymentTransaction,
   Result,
   StudentActivity,
@@ -170,6 +171,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
   const [mealMenu, setMealMenu] = useState<MealMenuEntry[]>([]);
   const [awards, setAwards] = useState<Award[]>([]);
   const [studentActivities, setStudentActivities] = useState<StudentActivity[]>([]);
+  const [pickupDropoff, setPickupDropoff] = useState<PickupDropoffLog[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -188,6 +190,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       api.getChildMealMenu(token, studentId).then(setMealMenu).catch(() => setMealMenu([])),
       api.getChildAwards(token, studentId).then(setAwards).catch(() => setAwards([])),
       api.getChildActivities(token, studentId).then(setStudentActivities).catch(() => setStudentActivities([])),
+      api.getChildPickupDropoff(token, studentId).then(setPickupDropoff).catch(() => setPickupDropoff([])),
       api.getChildPaymentMethods(token, studentId).then(setPaymentMethods).catch(() => setPaymentMethods(null)),
     ]).finally(() => setLoading(false));
   }, [token, studentId]);
@@ -204,6 +207,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
         <TabsTrigger value="meals">Meals</TabsTrigger>
         <TabsTrigger value="awards">Awards</TabsTrigger>
         <TabsTrigger value="activities">Activities</TabsTrigger>
+        <TabsTrigger value="pickup">Pickup/Drop-off</TabsTrigger>
       </TabsList>
 
       <TabsContent value="attendance" className="mt-4">
@@ -388,6 +392,34 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
               ))}
               {studentActivities.length === 0 && (
                 <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No activities recorded yet.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="pickup" className="mt-4">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>When</TableHead>
+                <TableHead>Event</TableHead>
+                <TableHead>By</TableHead>
+                <TableHead>Notes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pickupDropoff.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell>{new Date(p.occurred_at).toLocaleString()}</TableCell>
+                  <TableCell><Badge variant={p.event_type === "pickup" ? "default" : "secondary"} className="capitalize">{p.event_type}</Badge></TableCell>
+                  <TableCell>{p.person_name}</TableCell>
+                  <TableCell>{p.notes ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+              {pickupDropoff.length === 0 && (
+                <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No pickup/drop-off records yet.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

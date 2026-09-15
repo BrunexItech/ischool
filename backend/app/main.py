@@ -19,6 +19,7 @@ from app.routers import (
     meals,
     notifications,
     payments,
+    pickup_dropoff,
     portal,
     results,
     schools,
@@ -57,6 +58,7 @@ app.include_router(awards.router)
 app.include_router(activities.router)
 app.include_router(analytics.router)
 app.include_router(finance.router)
+app.include_router(pickup_dropoff.router)
 
 
 @app.on_event("startup")

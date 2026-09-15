@@ -16,6 +16,7 @@ MODULE_KEYS = [
     "awards",
     "activities",
     "finance",
+    "pickup_dropoff",
 ]
 
 

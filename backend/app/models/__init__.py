@@ -19,6 +19,7 @@ from app.models.meals import MealMenu
 from app.models.award import Award
 from app.models.activity import Activity, ActivityParticipant
 from app.models.expense import Expense
+from app.models.pickup_dropoff import PickupDropoffLog, PickupDropoffType
 
 __all__ = [
     "School",
@@ -56,4 +57,6 @@ __all__ = [
     "Activity",
     "ActivityParticipant",
     "Expense",
+    "PickupDropoffLog",
+    "PickupDropoffType",
 ]
