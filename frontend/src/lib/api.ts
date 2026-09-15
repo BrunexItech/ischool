@@ -252,6 +252,16 @@ export interface StudentActivity {
   role: string | null;
 }
 
+export interface ResultsAnalytics {
+  overall_average: number | null;
+  result_count: number;
+  subject_averages: { subject: string; average: number; count: number }[];
+  class_averages: { class_name: string; average: number; count: number }[];
+  grade_distribution: { grade: string; count: number }[];
+  top_students: { student_name: string; average: number }[];
+  term_trend: { term: string; average: number }[];
+}
+
 export interface Award {
   id: number;
   school_id: number;
@@ -525,6 +535,9 @@ export const api = {
     ).toString();
     return request<Result[]>(`/schools/${schoolId}/results${qs ? `?${qs}` : ""}`, {}, token);
   },
+
+  getResultsAnalytics: (token: string, schoolId: number, term?: string) =>
+    request<ResultsAnalytics>(`/schools/${schoolId}/analytics/results${term ? `?term=${encodeURIComponent(term)}` : ""}`, {}, token),
 
   upsertResult: (
     token: string,
