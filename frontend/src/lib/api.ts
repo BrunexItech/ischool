@@ -408,7 +408,7 @@ export interface PaymentConfigStatus {
   mpesa_shortcode: string | null;
   mpesa_env: string | null;
   card_configured: boolean;
-  flutterwave_public_key: string | null;
+  pesapal_env: string | null;
 }
 
 export interface PaymentMethods {
@@ -1103,8 +1103,9 @@ export const api = {
       mpesa_consumer_secret: string;
       mpesa_passkey: string;
       mpesa_env: "sandbox" | "production";
-      flutterwave_public_key: string;
-      flutterwave_secret_key: string;
+      pesapal_consumer_key: string;
+      pesapal_consumer_secret: string;
+      pesapal_env: "sandbox" | "production";
     }>
   ) =>
     request<PaymentConfigStatus>(
@@ -1142,16 +1143,10 @@ export const api = {
       token
     ),
 
-  verifyCardPayment: (
-    token: string,
-    studentId: number,
-    invoiceId: number,
-    transactionId: number,
-    payload: { flutterwave_transaction_id: string }
-  ) =>
+  checkCardPaymentStatus: (token: string, studentId: number, invoiceId: number, transactionId: number) =>
     request<PaymentTransaction>(
-      `/portal/students/${studentId}/fees/${invoiceId}/pay/card/${transactionId}/verify`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      `/portal/students/${studentId}/fees/${invoiceId}/pay/card/${transactionId}/status`,
+      {},
       token
     ),
 };

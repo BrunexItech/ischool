@@ -25,8 +25,10 @@ class SchoolPaymentConfig(Base):
     mpesa_passkey_encrypted: Mapped[str | None] = mapped_column(String(500), nullable=True)
     mpesa_env: Mapped[str] = mapped_column(String(20), default="sandbox")  # "sandbox" | "production"
 
-    flutterwave_public_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    flutterwave_secret_key_encrypted: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    pesapal_consumer_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    pesapal_consumer_secret_encrypted: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    pesapal_ipn_id: Mapped[str | None] = mapped_column(String(100), nullable=True)  # registered once, from our own callback URL
+    pesapal_env: Mapped[str] = mapped_column(String(20), default="sandbox")  # "sandbox" | "production"
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -39,4 +41,4 @@ class SchoolPaymentConfig(Base):
 
     @property
     def card_configured(self) -> bool:
-        return bool(self.flutterwave_secret_key_encrypted)
+        return bool(self.pesapal_consumer_key and self.pesapal_consumer_secret_encrypted and self.pesapal_ipn_id)

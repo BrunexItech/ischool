@@ -3,10 +3,12 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.crypto import encrypt_secret
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.payments import apply_payment
+from app.core.pesapal import PesapalError, get_transaction_status, register_ipn
 from app.models.academics import Student
 from app.models.fees import FeeInvoice
 from app.models.payment_config import SchoolPaymentConfig
@@ -27,7 +29,7 @@ def _config_out(config: SchoolPaymentConfig | None) -> SchoolPaymentConfigOut:
         mpesa_shortcode=config.mpesa_shortcode,
         mpesa_env=config.mpesa_env,
         card_configured=config.card_configured,
-        flutterwave_public_key=config.flutterwave_public_key,
+        pesapal_env=config.pesapal_env,
     )
 
 
@@ -73,10 +75,25 @@ def set_payment_config(
     if payload.mpesa_env is not None:
         config.mpesa_env = payload.mpesa_env
 
-    if payload.flutterwave_public_key is not None:
-        config.flutterwave_public_key = payload.flutterwave_public_key
-    if payload.flutterwave_secret_key is not None:
-        config.flutterwave_secret_key_encrypted = encrypt_secret(payload.flutterwave_secret_key)
+    pesapal_touched = False
+    if payload.pesapal_consumer_key is not None:
+        config.pesapal_consumer_key = payload.pesapal_consumer_key
+        pesapal_touched = True
+    if payload.pesapal_consumer_secret is not None:
+        config.pesapal_consumer_secret_encrypted = encrypt_secret(payload.pesapal_consumer_secret)
+        pesapal_touched = True
+    if payload.pesapal_env is not None:
+        config.pesapal_env = payload.pesapal_env
+        pesapal_touched = True
+
+    if pesapal_touched and config.pesapal_consumer_key and config.pesapal_consumer_secret_encrypted:
+        # Re-register on every credential/env change — Pesapal ties the IPN id
+        # to the merchant account and environment it was registered under.
+        try:
+            config.pesapal_ipn_id = register_ipn(config, f"{settings.backend_url}/payments/pesapal/ipn")
+        except PesapalError as exc:
+            db.rollback()
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Failed to register with Pesapal: {exc}")
 
     db.commit()
     return _config_out(config)
@@ -136,3 +153,44 @@ async def mpesa_callback(merchant_reference: str, request: Request, db: Session 
 
     db.commit()
     return {"ResultCode": 0, "ResultDesc": "Accepted"}
+
+
+@router.get("/payments/pesapal/ipn")
+def pesapal_ipn(OrderTrackingId: str, OrderMerchantReference: str, db: Session = Depends(get_db)):
+    """Pesapal calls this once an order resolves — only reachable when this
+    backend has a public URL. Our own status-polling endpoint
+    (portal.check_card_payment_status) is the primary mechanism since it
+    works regardless; this is a bonus path that updates state idempotently
+    when Pesapal can actually reach us."""
+    transaction = db.query(PaymentTransaction).filter_by(merchant_reference=OrderMerchantReference).first()
+    if transaction is None or transaction.status != PaymentTransactionStatus.PENDING:
+        return {"orderNotificationType": "IPNCHANGE", "orderTrackingId": OrderTrackingId, "status": 200}
+
+    config = db.query(SchoolPaymentConfig).filter_by(school_id=transaction.school_id).first()
+    if config is None:
+        return {"orderNotificationType": "IPNCHANGE", "orderTrackingId": OrderTrackingId, "status": 200}
+
+    try:
+        result = get_transaction_status(config, OrderTrackingId)
+    except PesapalError:
+        return {"orderNotificationType": "IPNCHANGE", "orderTrackingId": OrderTrackingId, "status": 200}
+
+    if result.get("payment_status_description") == "Completed":
+        invoice = db.query(FeeInvoice).filter_by(id=transaction.invoice_id).first()
+        if invoice is not None:
+            transaction.status = PaymentTransactionStatus.COMPLETED
+            transaction.method = "card"
+            transaction.completed_at = datetime.now(timezone.utc)
+            apply_payment(
+                db,
+                invoice=invoice,
+                amount=float(transaction.amount),
+                method="card",
+                reference=OrderTrackingId,
+                actor_id=transaction.initiated_by,
+            )
+    elif result.get("payment_status_description") in ("Failed", "Invalid", "Reversed"):
+        transaction.status = PaymentTransactionStatus.FAILED
+
+    db.commit()
+    return {"orderNotificationType": "IPNCHANGE", "orderTrackingId": OrderTrackingId, "status": 200}

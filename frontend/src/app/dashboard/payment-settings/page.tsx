@@ -31,8 +31,9 @@ export default function PaymentSettingsPage() {
   const [mpesaSubmitting, setMpesaSubmitting] = useState(false);
 
   const [cardForm, setCardForm] = useState({
-    flutterwave_public_key: "",
-    flutterwave_secret_key: "",
+    pesapal_consumer_key: "",
+    pesapal_consumer_secret: "",
+    pesapal_env: "sandbox" as "sandbox" | "production",
   });
   const [cardSubmitting, setCardSubmitting] = useState(false);
 
@@ -68,7 +69,7 @@ export default function PaymentSettingsPage() {
     try {
       const updated = await api.setPaymentConfig(token, user.school_id, cardForm);
       setStatus(updated);
-      setCardForm({ flutterwave_public_key: "", flutterwave_secret_key: "" });
+      setCardForm({ pesapal_consumer_key: "", pesapal_consumer_secret: "", pesapal_env: "sandbox" });
       toast.success("Card payment settings saved");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to save card settings");
@@ -155,28 +156,38 @@ export default function PaymentSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Card payments (Flutterwave)</CardTitle>
+            <CardTitle className="text-base">Card & mobile money (Pesapal)</CardTitle>
             {status?.card_configured ? (
-              <Badge className="gap-1"><CheckCircle2 className="size-3.5" /> Connected</Badge>
+              <Badge className="gap-1"><CheckCircle2 className="size-3.5" /> Connected ({status.pesapal_env})</Badge>
             ) : (
               <Badge variant="secondary" className="gap-1"><XCircle className="size-3.5" /> Not connected</Badge>
             )}
           </div>
           <CardDescription>
             {status?.card_configured
-              ? "Saving a new secret key below will replace the current connection."
-              : "Enter your Flutterwave API keys from dashboard.flutterwave.com to accept Visa/Mastercard payments."}
+              ? "Saving new credentials below will replace the current connection."
+              : "Enter your Pesapal merchant API credentials from developer.pesapal.com to accept Visa/Mastercard and mobile money."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCardSubmit} className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label>Public Key</Label>
-              <Input required value={cardForm.flutterwave_public_key} onChange={(e) => setCardForm((f) => ({ ...f, flutterwave_public_key: e.target.value }))} />
+              <Label>Consumer Key</Label>
+              <Input required value={cardForm.pesapal_consumer_key} onChange={(e) => setCardForm((f) => ({ ...f, pesapal_consumer_key: e.target.value }))} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Secret Key</Label>
-              <Input required type="password" value={cardForm.flutterwave_secret_key} onChange={(e) => setCardForm((f) => ({ ...f, flutterwave_secret_key: e.target.value }))} />
+              <Label>Consumer Secret</Label>
+              <Input required type="password" value={cardForm.pesapal_consumer_secret} onChange={(e) => setCardForm((f) => ({ ...f, pesapal_consumer_secret: e.target.value }))} />
+            </div>
+            <div className="col-span-full grid gap-1.5">
+              <Label>Environment</Label>
+              <Select value={cardForm.pesapal_env} onValueChange={(v) => v && setCardForm((f) => ({ ...f, pesapal_env: v as "sandbox" | "production" }))}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sandbox">Sandbox (testing)</SelectItem>
+                  <SelectItem value="production">Production (live)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="col-span-full">
               <Button type="submit" disabled={cardSubmitting}>

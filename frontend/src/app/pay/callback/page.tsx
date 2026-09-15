@@ -10,41 +10,46 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
 
-type Outcome = "verifying" | "success" | "failed" | "cancelled" | "invalid";
+type Outcome = "verifying" | "success" | "failed" | "invalid";
+
+const MAX_POLLS = 5;
+const POLL_INTERVAL_MS = 2500;
 
 function PayCallbackBody() {
   const { token, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const [outcome, setOutcome] = useState<Outcome>("verifying");
+  const [attempt, setAttempt] = useState(0);
 
   const studentId = searchParams.get("student_id");
   const invoiceId = searchParams.get("invoice_id");
   const localTransactionId = searchParams.get("local_transaction_id");
-  const flutterwaveStatus = searchParams.get("status");
-  const flutterwaveTransactionId = searchParams.get("transaction_id");
 
-  const immediateOutcome: Outcome | null = !studentId || !invoiceId || !localTransactionId
-    ? "invalid"
-    : flutterwaveStatus === "cancelled"
-      ? "cancelled"
-      : !flutterwaveTransactionId
-        ? "invalid"
-        : null;
+  const immediateOutcome: Outcome | null = !studentId || !invoiceId || !localTransactionId ? "invalid" : null;
 
   useEffect(() => {
-    if (authLoading || immediateOutcome || !token) return;
+    if (authLoading || immediateOutcome || !token || attempt >= MAX_POLLS) return;
 
-    api
-      .verifyCardPayment(token, Number(studentId), Number(invoiceId), Number(localTransactionId), {
-        flutterwave_transaction_id: flutterwaveTransactionId as string,
-      })
-      .then((tx) => setOutcome(tx.status === "completed" ? "success" : "failed"))
-      .catch((err) => {
-        setOutcome(err instanceof ApiError ? "failed" : "invalid");
-      });
-  }, [authLoading, immediateOutcome, token, studentId, invoiceId, localTransactionId, flutterwaveTransactionId]);
+    const timer = setTimeout(
+      () => {
+        api
+          .checkCardPaymentStatus(token, Number(studentId), Number(invoiceId), Number(localTransactionId))
+          .then((tx) => {
+            if (tx.status === "pending") {
+              setAttempt((a) => a + 1);
+            } else {
+              setOutcome(tx.status === "completed" ? "success" : "failed");
+            }
+          })
+          .catch((err) => setOutcome(err instanceof ApiError ? "failed" : "invalid"));
+      },
+      attempt === 0 ? 0 : POLL_INTERVAL_MS
+    );
 
-  const displayOutcome = immediateOutcome ?? outcome;
+    return () => clearTimeout(timer);
+  }, [authLoading, immediateOutcome, token, studentId, invoiceId, localTransactionId, attempt]);
+
+  const displayOutcome = immediateOutcome ?? (attempt >= MAX_POLLS && outcome === "verifying" ? "failed" : outcome);
 
   return (
     <Card className="w-full max-w-sm">
@@ -53,17 +58,14 @@ function PayCallbackBody() {
         <CardDescription>
           {displayOutcome === "verifying" && "Confirming your payment..."}
           {displayOutcome === "success" && "Payment received — thank you!"}
-          {displayOutcome === "failed" && "This payment could not be confirmed."}
-          {displayOutcome === "cancelled" && "You cancelled the payment."}
+          {displayOutcome === "failed" && "This payment could not be confirmed. If you completed it, check back shortly."}
           {displayOutcome === "invalid" && "This payment link is invalid or has expired."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-4 pb-6">
         {displayOutcome === "verifying" && <Spinner size={32} />}
         {displayOutcome === "success" && <CheckCircle2 className="size-10 text-emerald-600" />}
-        {(displayOutcome === "failed" || displayOutcome === "cancelled" || displayOutcome === "invalid") && (
-          <XCircle className="size-10 text-destructive" />
-        )}
+        {(displayOutcome === "failed" || displayOutcome === "invalid") && <XCircle className="size-10 text-destructive" />}
         {displayOutcome !== "verifying" && <Button render={<Link href="/dashboard">Back to dashboard</Link>} />}
       </CardContent>
     </Card>

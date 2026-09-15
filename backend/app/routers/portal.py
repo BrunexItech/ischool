@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_feature, require_roles
-from app.core.flutterwave import FlutterwaveError, create_payment_link, verify_transaction
 from app.core.mpesa import MpesaError, initiate_stk_push, query_stk_status
 from app.core.payments import apply_payment
+from app.core.pesapal import PesapalError, get_transaction_status, submit_order
 from app.core.report_card import build_report_card
 from app.models.academics import Student
 from app.models.activity import Activity, ActivityParticipant
@@ -32,7 +32,6 @@ from app.schemas.payments import (
     InitiateCardPaymentRequest,
     InitiateMpesaPaymentRequest,
     PaymentTransactionOut,
-    VerifyCardPaymentRequest,
 )
 from app.schemas.activity import StudentActivityOut
 from app.schemas.award import AwardOut
@@ -546,44 +545,45 @@ def pay_invoice_with_card(
     db.add(transaction)
     db.flush()
 
-    # Flutterwave appends its own "transaction_id" (and "status"/"tx_ref") to
-    # this URL on redirect — ours is named differently so the two never collide.
+    # Pesapal appends its own "OrderTrackingId"/"OrderMerchantReference" to
+    # this URL on redirect, but the frontend doesn't need them — it already
+    # knows which of our own transactions to poll for status.
     redirect_url = (
         f"{settings.frontend_url}/pay/callback"
         f"?local_transaction_id={transaction.id}&student_id={student_id}&invoice_id={invoice_id}"
     )
 
     try:
-        checkout_url = create_payment_link(
+        order = submit_order(
             config,
-            tx_ref=merchant_reference,
+            merchant_reference=merchant_reference,
             amount=amount,
             currency=currency,
-            redirect_url=redirect_url,
+            description=f"{invoice.term} fees",
+            callback_url=redirect_url,
             customer_email=current_user.email,
             customer_name=current_user.full_name,
-            description=f"{invoice.term} fees",
         )
-    except FlutterwaveError as exc:
+    except PesapalError as exc:
         transaction.status = PaymentTransactionStatus.FAILED
         db.commit()
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc))
 
+    transaction.order_tracking_id = order.get("order_tracking_id")
     db.commit()
     db.refresh(transaction)
-    return CardPaymentInitiated(transaction=transaction, checkout_url=checkout_url)
+    return CardPaymentInitiated(transaction=transaction, checkout_url=order["redirect_url"])
 
 
-@router.post(
-    "/students/{student_id}/fees/{invoice_id}/pay/card/{transaction_id}/verify",
+@router.get(
+    "/students/{student_id}/fees/{invoice_id}/pay/card/{transaction_id}/status",
     response_model=PaymentTransactionOut,
     dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("fees"))],
 )
-def verify_card_payment(
+def check_card_payment_status(
     student_id: int,
     invoice_id: int,
     transaction_id: int,
-    payload: VerifyCardPaymentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -597,41 +597,39 @@ def verify_card_payment(
         return transaction
 
     config = db.query(SchoolPaymentConfig).filter_by(school_id=student.school_id).first()
-    if config is None or not config.card_configured:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Card payments aren't configured for this school")
+    if config is None or not transaction.order_tracking_id:
+        return transaction
 
     try:
-        result = verify_transaction(config, payload.flutterwave_transaction_id)
-    except FlutterwaveError as exc:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc))
+        result = get_transaction_status(config, transaction.order_tracking_id)
+    except PesapalError:
+        return transaction
 
-    data = result.get("data") or {}
-
-    # Never trust "successful" alone — confirm this verify response is for
-    # *our* transaction (matching tx_ref), and that the amount/currency
+    # Never trust the status description alone — confirm this response is
+    # for *our* transaction (merchant reference) and that the amount/currency
     # actually paid match what we asked for, before crediting the invoice.
-    matches_reference = data.get("tx_ref") == transaction.merchant_reference
-    matches_amount = float(data.get("amount") or 0) >= float(transaction.amount)
-    matches_currency = data.get("currency") == transaction.currency
-    is_successful = result.get("status") == "success" and data.get("status") == "successful"
+    matches_reference = result.get("merchant_reference") == transaction.merchant_reference
+    matches_amount = float(result.get("amount") or 0) >= float(transaction.amount)
+    matches_currency = result.get("currency") == transaction.currency
+    status_description = result.get("payment_status_description")
 
-    if not (matches_reference and matches_amount and matches_currency and is_successful):
+    if status_description == "Completed" and matches_reference and matches_amount and matches_currency:
+        transaction.status = PaymentTransactionStatus.COMPLETED
+        transaction.method = "card"
+        transaction.completed_at = datetime.now(timezone.utc)
+        apply_payment(
+            db,
+            invoice=invoice,
+            amount=float(transaction.amount),
+            method="card",
+            reference=transaction.order_tracking_id,
+            actor_id=transaction.initiated_by,
+        )
+        db.commit()
+        db.refresh(transaction)
+    elif status_description in ("Failed", "Invalid", "Reversed") or (status_description == "Completed" and not (matches_reference and matches_amount and matches_currency)):
         transaction.status = PaymentTransactionStatus.FAILED
         db.commit()
         db.refresh(transaction)
-        return transaction
 
-    transaction.status = PaymentTransactionStatus.COMPLETED
-    transaction.method = "card"
-    transaction.completed_at = datetime.now(timezone.utc)
-    apply_payment(
-        db,
-        invoice=invoice,
-        amount=float(transaction.amount),
-        method="card",
-        reference=str(data.get("id") or payload.flutterwave_transaction_id),
-        actor_id=transaction.initiated_by,
-    )
-    db.commit()
-    db.refresh(transaction)
     return transaction

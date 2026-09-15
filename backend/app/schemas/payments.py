@@ -13,8 +13,9 @@ class SchoolPaymentConfigUpdate(BaseModel):
     mpesa_passkey: str | None = None
     mpesa_env: str | None = Field(default=None, pattern="^(sandbox|production)$")
 
-    flutterwave_public_key: str | None = None
-    flutterwave_secret_key: str | None = None
+    pesapal_consumer_key: str | None = None
+    pesapal_consumer_secret: str | None = None
+    pesapal_env: str | None = Field(default=None, pattern="^(sandbox|production)$")
 
 
 class SchoolPaymentConfigOut(BaseModel):
@@ -22,7 +23,7 @@ class SchoolPaymentConfigOut(BaseModel):
     mpesa_shortcode: str | None = None
     mpesa_env: str | None = None
     card_configured: bool
-    flutterwave_public_key: str | None = None
+    pesapal_env: str | None = None
 
 
 class PaymentMethodsOut(BaseModel):
@@ -37,10 +38,6 @@ class InitiateMpesaPaymentRequest(BaseModel):
 
 class InitiateCardPaymentRequest(BaseModel):
     amount: float | None = None  # defaults to the invoice's remaining balance
-
-
-class VerifyCardPaymentRequest(BaseModel):
-    flutterwave_transaction_id: str
 
 
 class PaymentTransactionOut(BaseModel):
