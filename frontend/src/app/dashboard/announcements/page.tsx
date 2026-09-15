@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CalendarDays, MapPin, Megaphone, Send } from "lucide-react";
+import { CalendarDays, MapPin, Megaphone, MessageSquare, Send } from "lucide-react";
 import { api, Announcement, AnnouncementAudience, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
@@ -28,6 +28,7 @@ export default function AnnouncementsPage() {
   const [eventDate, setEventDate] = useState("");
   const [eventEndDate, setEventEndDate] = useState("");
   const [location, setLocation] = useState("");
+  const [sendSms, setSendSms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -38,27 +39,35 @@ export default function AnnouncementsPage() {
     api.listAnnouncements(token, user.school_id).then(setAnnouncements).finally(() => setLoading(false));
   }, [token, user?.school_id]);
 
+  const smsEligible = audience === "all" || audience === "parents";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !user?.school_id) return;
     setSubmitting(true);
     try {
-      const created = await api.createAnnouncement(token, user.school_id, {
+      const result = await api.createAnnouncement(token, user.school_id, {
         title,
         body,
         audience,
         event_date: isEvent && eventDate ? eventDate : undefined,
         event_end_date: isEvent && eventEndDate ? eventEndDate : undefined,
         location: isEvent && location ? location : undefined,
+        send_sms: smsEligible && sendSms,
       });
-      setAnnouncements((a) => [created, ...a]);
+      setAnnouncements((a) => [result.announcement, ...a]);
       setTitle("");
       setBody("");
       setIsEvent(false);
       setEventDate("");
       setEventEndDate("");
       setLocation("");
+      setSendSms(false);
       toast.success(isEvent ? "Event posted" : "Announcement posted");
+      if (smsEligible && sendSms) {
+        if (result.sms_error) toast.warning(result.sms_error);
+        else if (result.sms_sent > 0) toast.success(`SMS sent to ${result.sms_sent} guardian${result.sms_sent > 1 ? "s" : ""}`);
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to post announcement");
     } finally {
@@ -122,6 +131,14 @@ export default function AnnouncementsPage() {
                   <Send /> {submitting ? "Posting..." : isEvent ? "Post event" : "Post announcement"}
                 </Button>
               </div>
+              {smsEligible && (
+                <div className="flex items-center gap-2">
+                  <Switch checked={sendSms} onCheckedChange={setSendSms} />
+                  <Label className="flex items-center gap-1.5 font-normal">
+                    <MessageSquare className="size-3.5" /> Also send via SMS to guardians on file
+                  </Label>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>

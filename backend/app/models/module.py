@@ -18,6 +18,7 @@ MODULE_KEYS = [
     "finance",
     "pickup_dropoff",
     "exams",
+    "sms",
 ]
 
 

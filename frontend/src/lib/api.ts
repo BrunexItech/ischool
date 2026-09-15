@@ -893,11 +893,32 @@ export const api = {
       event_date?: string;
       event_end_date?: string;
       location?: string;
+      send_sms?: boolean;
     }
   ) =>
-    request<Announcement>(
+    request<{ announcement: Announcement; sms_sent: number; sms_error: string | null }>(
       `/schools/${schoolId}/announcements`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  // --- Communication settings (bulk SMS) ---
+
+  getCommunicationConfig: (token: string, schoolId: number) =>
+    request<{ sms_configured: boolean; mobilesasa_sender_id: string | null; balance: number | null }>(
+      `/schools/${schoolId}/communication-config`,
+      {},
+      token
+    ),
+
+  setCommunicationConfig: (
+    token: string,
+    schoolId: number,
+    payload: Partial<{ mobilesasa_api_token: string; mobilesasa_sender_id: string }>
+  ) =>
+    request<{ sms_configured: boolean; mobilesasa_sender_id: string | null; balance: number | null }>(
+      `/schools/${schoolId}/communication-config`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       token
     ),
 

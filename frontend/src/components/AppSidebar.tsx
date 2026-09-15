@@ -12,6 +12,7 @@ import {
   Award,
   Wallet,
   Megaphone,
+  MessageSquare,
   Video,
   HeartHandshake,
   ClipboardList,
@@ -98,6 +99,7 @@ const NAV_SECTIONS = [
     label: "Communication",
     items: [
       { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
+      { href: "/dashboard/communication-settings", label: "Communication Settings", icon: MessageSquare, roles: ["school_admin"] },
     ],
   },
   {

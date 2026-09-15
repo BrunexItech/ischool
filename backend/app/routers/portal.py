@@ -1,4 +1,3 @@
-import re
 import secrets
 from datetime import date, datetime, timezone
 
@@ -12,6 +11,7 @@ from app.core.exam_grading import finalize_submission, upsert_answer
 from app.core.mpesa import MpesaError, initiate_stk_push, query_stk_status
 from app.core.payments import apply_payment
 from app.core.pesapal import PesapalError, get_transaction_status, submit_order
+from app.core.phone import normalize_kenyan_phone
 from app.core.report_card import build_report_card
 from app.models.academics import Student
 from app.models.activity import Activity, ActivityParticipant
@@ -54,17 +54,6 @@ from app.schemas.transport import StudentTransportOut
 from app.routers.fees import _invoice_out
 
 router = APIRouter(prefix="/portal", tags=["portal"])
-
-
-def _normalize_kenyan_phone(phone: str) -> str:
-    digits = re.sub(r"\D", "", phone)
-    if digits.startswith("0") and len(digits) == 10:
-        return "254" + digits[1:]
-    if digits.startswith("254"):
-        return digits
-    if digits.startswith("7") or digits.startswith("1"):
-        return "254" + digits
-    raise HTTPException(status.HTTP_400_BAD_REQUEST, "Enter a valid Kenyan phone number, e.g. 0712345678")
 
 
 def _owned_student(db: Session, current_user: User, student_id: int) -> Student:
@@ -419,7 +408,7 @@ def pay_invoice_with_mpesa(
     if amount <= 0 or amount > balance:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Amount must be between 1 and the balance of {balance}")
 
-    phone = _normalize_kenyan_phone(payload.phone_number)
+    phone = normalize_kenyan_phone(payload.phone_number)
     merchant_reference = f"INV{invoice.id}-{secrets.token_hex(4)}"
 
     transaction = PaymentTransaction(
