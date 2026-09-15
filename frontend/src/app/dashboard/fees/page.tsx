@@ -128,7 +128,7 @@ export default function FeesPage() {
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
-  const [form, setForm] = useState({ student_id: "", term: "", amount_due: "" });
+  const [form, setForm] = useState({ student_id: "", term: "", category: "tuition", amount_due: "" });
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -158,10 +158,11 @@ export default function FeesPage() {
       const invoice = await api.createInvoice(token, user.school_id, {
         student_id: Number(form.student_id),
         term: form.term,
+        category: form.category,
         amount_due: Number(form.amount_due),
       });
       setInvoices((inv) => [...inv, invoice]);
-      setForm({ student_id: "", term: form.term, amount_due: "" });
+      setForm({ student_id: "", term: form.term, category: form.category, amount_due: "" });
       toast.success("Invoice created");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to create invoice");
@@ -211,6 +212,17 @@ export default function FeesPage() {
               )}
             </div>
             <div className="grid gap-1.5">
+              <Label>Category</Label>
+              <Select value={form.category} onValueChange={(v) => v && setForm((f) => ({ ...f, category: v }))}>
+                <SelectTrigger className="w-36 capitalize"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tuition">Tuition</SelectItem>
+                  <SelectItem value="transport">Transport</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
               <Label>Amount due (KES)</Label>
               <Input required type="number" min={1} value={form.amount_due} onChange={(e) => setForm((f) => ({ ...f, amount_due: e.target.value }))} className="w-36" />
             </div>
@@ -227,6 +239,7 @@ export default function FeesPage() {
             <TableRow>
               <TableHead>Student</TableHead>
               <TableHead>Term</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Balance</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -237,6 +250,7 @@ export default function FeesPage() {
               <TableRow key={inv.id}>
                 <TableCell className="font-medium">{studentLabel(inv.student_id)}</TableCell>
                 <TableCell className="text-muted-foreground">{inv.term}</TableCell>
+                <TableCell><Badge variant="outline" className="capitalize">{inv.category}</Badge></TableCell>
                 <TableCell>KES {inv.balance.toLocaleString()}</TableCell>
                 <TableCell><Badge variant={STATUS_VARIANT[inv.status]} className="capitalize">{inv.status}</Badge></TableCell>
                 <TableCell className="text-right">
@@ -250,7 +264,7 @@ export default function FeesPage() {
             ))}
             {invoices.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                   No invoices yet.
                 </TableCell>
               </TableRow>

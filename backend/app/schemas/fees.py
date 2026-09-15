@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 class FeeInvoiceCreate(BaseModel):
     student_id: int
     term: str
+    category: str = "tuition"
     amount_due: float
     due_date: date | None = None
 
@@ -32,6 +33,7 @@ class FeeInvoiceOut(BaseModel):
     school_id: int
     student_id: int
     term: str
+    category: str
     amount_due: float
     amount_paid: float
     balance: float

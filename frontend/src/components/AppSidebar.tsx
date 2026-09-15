@@ -17,6 +17,8 @@ import {
   ClipboardList,
   History,
   CalendarRange,
+  Bus,
+  CreditCard,
   ChevronsUpDown,
   LogOut,
 } from "lucide-react";
@@ -50,6 +52,8 @@ const NAV_ITEMS = [
   { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/results", label: "Results", icon: Award, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["school_admin", "staff"] },
+  { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["school_admin", "staff"] },
+  { href: "/dashboard/payment-settings", label: "Payment Settings", icon: CreditCard, roles: ["school_admin"] },
   { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
   { href: "/dashboard/children", label: "My Children", icon: HeartHandshake, roles: ["parent"] },

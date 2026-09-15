@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     smtp_from: str = "iSchool <noreply@ischool.local>"
 
     frontend_url: str = "http://localhost:3000"
+    backend_url: str = "http://localhost:8000"
+
+    # Symmetric key for encrypting per-school payment credentials at rest.
+    # Deliberately no default — a shared hardcoded key baked into source control
+    # would defeat the point of encrypting anything with it. Generate one with:
+    # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    encryption_key: str | None = None
 
     @property
     def email_enabled(self) -> bool:

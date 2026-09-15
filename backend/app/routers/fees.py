@@ -5,8 +5,9 @@ from app.core.audit import record_audit
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.notify import notify
+from app.core.payments import apply_payment
 from app.models.academics import Student
-from app.models.fees import FeeInvoice, FeePayment
+from app.models.fees import FeeInvoice
 from app.models.user import User, UserRole
 from app.schemas.fees import FeeInvoiceCreate, FeeInvoiceDetailOut, FeeInvoiceOut, FeePaymentCreate, FeePaymentOut
 
@@ -32,6 +33,7 @@ def _invoice_out(invoice: FeeInvoice) -> FeeInvoiceOut:
         school_id=invoice.school_id,
         student_id=invoice.student_id,
         term=invoice.term,
+        category=invoice.category,
         amount_due=amount_due,
         amount_paid=amount_paid,
         balance=amount_due - amount_paid,
@@ -141,26 +143,13 @@ def record_payment(
     if invoice is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
 
-    payment = FeePayment(
-        school_id=school_id,
-        invoice_id=invoice.id,
+    apply_payment(
+        db,
+        invoice=invoice,
         amount=payload.amount,
         method=payload.method,
         reference=payload.reference,
-        recorded_by=current_user.id,
-    )
-    invoice.amount_paid = float(invoice.amount_paid) + payload.amount
-    db.add(payment)
-    db.flush()
-
-    record_audit(
-        db,
-        school_id=school_id,
         actor_id=current_user.id,
-        action="fee_payment.create",
-        entity_type="fee_payment",
-        entity_id=payment.id,
-        after={"invoice_id": invoice.id, "amount": payload.amount, "method": payload.method, "reference": payload.reference},
     )
 
     db.commit()

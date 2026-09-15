@@ -14,6 +14,7 @@ class FeeInvoice(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
 
     term: Mapped[str] = mapped_column(String(50), nullable=False)
+    category: Mapped[str] = mapped_column(String(30), default="tuition")
     amount_due: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     amount_paid: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     due_date: Mapped[date_ | None] = mapped_column(Date, nullable=True)

@@ -113,6 +113,7 @@ export interface FeeInvoice {
   school_id: number;
   student_id: number;
   term: string;
+  category: string;
   amount_due: number;
   amount_paid: number;
   balance: number;
@@ -180,6 +181,61 @@ export interface AcademicTerm {
   start_date: string | null;
   end_date: string | null;
   is_current: boolean;
+}
+
+export interface Vehicle {
+  id: number;
+  school_id: number;
+  registration_number: string;
+  capacity: number;
+  driver_name: string;
+  driver_phone: string;
+  is_active: boolean;
+}
+
+export interface RouteStop {
+  id: number;
+  route_id: number;
+  name: string;
+  stop_order: number;
+  pickup_time: string | null;
+}
+
+export interface TransportRoute {
+  id: number;
+  school_id: number;
+  vehicle_id: number | null;
+  name: string;
+  description: string | null;
+  stops: RouteStop[];
+}
+
+export interface StudentTransport {
+  assigned: boolean;
+  route_name: string | null;
+  stop_name: string | null;
+  pickup_time: string | null;
+  vehicle_registration: string | null;
+  driver_name: string | null;
+  driver_phone: string | null;
+}
+
+export interface PaymentConfigStatus {
+  is_configured: boolean;
+  mpesa_shortcode: string | null;
+  mpesa_env: string | null;
+}
+
+export interface PaymentTransaction {
+  id: number;
+  invoice_id: number;
+  merchant_reference: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "completed" | "failed";
+  method: string | null;
+  created_at: string;
+  completed_at: string | null;
 }
 
 export interface AuditLogEntry {
@@ -429,7 +485,7 @@ export const api = {
   createInvoice: (
     token: string,
     schoolId: number,
-    payload: { student_id: number; term: string; amount_due: number; due_date?: string }
+    payload: { student_id: number; term: string; category?: string; amount_due: number; due_date?: string }
   ) =>
     request<FeeInvoice>(
       `/schools/${schoolId}/fees/invoices`,
@@ -559,6 +615,103 @@ export const api = {
 
   setCurrentAcademicTerm: (token: string, schoolId: number, termId: number) =>
     request<AcademicTerm>(`/schools/${schoolId}/academic-terms/${termId}/set-current`, { method: "PATCH" }, token),
+
+  // --- Transport ---
+
+  listVehicles: (token: string, schoolId: number) => request<Vehicle[]>(`/schools/${schoolId}/transport/vehicles`, {}, token),
+
+  createVehicle: (
+    token: string,
+    schoolId: number,
+    payload: { registration_number: string; capacity: number; driver_name: string; driver_phone: string }
+  ) =>
+    request<Vehicle>(
+      `/schools/${schoolId}/transport/vehicles`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listTransportRoutes: (token: string, schoolId: number) =>
+    request<TransportRoute[]>(`/schools/${schoolId}/transport/routes`, {}, token),
+
+  createTransportRoute: (
+    token: string,
+    schoolId: number,
+    payload: { name: string; description?: string; vehicle_id?: number }
+  ) =>
+    request<TransportRoute>(
+      `/schools/${schoolId}/transport/routes`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  addRouteStop: (
+    token: string,
+    schoolId: number,
+    routeId: number,
+    payload: { name: string; stop_order: number; pickup_time?: string }
+  ) =>
+    request<TransportRoute>(
+      `/schools/${schoolId}/transport/routes/${routeId}/stops`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  assignStudentTransport: (
+    token: string,
+    schoolId: number,
+    studentId: number,
+    payload: { transport_route_id: number | null; transport_stop_id: number | null }
+  ) =>
+    request<{ message: string }>(
+      `/schools/${schoolId}/transport/students/${studentId}/assignment`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  getChildTransport: (token: string, studentId: number) =>
+    request<StudentTransport>(`/portal/students/${studentId}/transport`, {}, token),
+
+  // --- Payments ---
+
+  getPaymentConfig: (token: string, schoolId: number) =>
+    request<PaymentConfigStatus>(`/schools/${schoolId}/payment-config`, {}, token),
+
+  setPaymentConfig: (
+    token: string,
+    schoolId: number,
+    payload: {
+      mpesa_shortcode: string;
+      mpesa_consumer_key: string;
+      mpesa_consumer_secret: string;
+      mpesa_passkey: string;
+      mpesa_env: "sandbox" | "production";
+    }
+  ) =>
+    request<PaymentConfigStatus>(
+      `/schools/${schoolId}/payment-config`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  payInvoiceWithMpesa: (
+    token: string,
+    studentId: number,
+    invoiceId: number,
+    payload: { phone_number: string; amount?: number }
+  ) =>
+    request<PaymentTransaction>(
+      `/portal/students/${studentId}/fees/${invoiceId}/pay/mpesa`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  checkMpesaPaymentStatus: (token: string, studentId: number, invoiceId: number, transactionId: number) =>
+    request<PaymentTransaction>(
+      `/portal/students/${studentId}/fees/${invoiceId}/pay/mpesa/${transactionId}/status`,
+      {},
+      token
+    ),
 };
 
 export { ApiError };

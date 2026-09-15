@@ -13,10 +13,12 @@ from app.routers import (
     fees,
     live_classes,
     notifications,
+    payments,
     portal,
     results,
     schools,
     teaching,
+    transport,
 )
 
 app = FastAPI(title="iSchool API")
@@ -43,6 +45,8 @@ app.include_router(audit.router)
 app.include_router(teaching.router)
 app.include_router(notifications.router)
 app.include_router(academic_terms.router)
+app.include_router(transport.router)
+app.include_router(payments.router)
 
 
 @app.on_event("startup")

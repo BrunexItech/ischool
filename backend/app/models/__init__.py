@@ -12,6 +12,9 @@ from app.models.audit_log import AuditLog
 from app.models.teacher_assignment import TeacherAssignment
 from app.models.notification import Notification
 from app.models.academic_term import AcademicTerm
+from app.models.transport import Vehicle, TransportRoute, RouteStop
+from app.models.payment_transaction import PaymentTransaction, PaymentTransactionStatus
+from app.models.payment_config import SchoolPaymentConfig
 
 __all__ = [
     "School",
@@ -38,4 +41,10 @@ __all__ = [
     "TeacherAssignment",
     "Notification",
     "AcademicTerm",
+    "Vehicle",
+    "TransportRoute",
+    "RouteStop",
+    "PaymentTransaction",
+    "PaymentTransactionStatus",
+    "SchoolPaymentConfig",
 ]

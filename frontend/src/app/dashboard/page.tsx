@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Users, ClipboardCheck, Award, Wallet, Video, Megaphone, ArrowRight, Settings2, HeartHandshake } from "lucide-react";
+import { Users, ClipboardCheck, Award, Wallet, Video, Megaphone, ArrowRight, Settings2, HeartHandshake, Bus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ const QUICK_LINKS = [
   { href: "/dashboard/attendance", label: "Attendance", description: "Mark today's attendance by class", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/results", label: "Results", description: "Record scores and view grades", icon: Award, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/fees", label: "Fees", description: "Invoices, payments, and balances", icon: Wallet, roles: ["school_admin", "staff"] },
+  { href: "/dashboard/transport", label: "Transport", description: "Vehicles, routes, and student assignments", icon: Bus, roles: ["school_admin", "staff"] },
   { href: "/dashboard/live-classes", label: "Live Classes", description: "Schedule and host video lessons", icon: Video, roles: ["school_admin", "teacher", "staff"] },
   { href: "/dashboard/announcements", label: "Announcements", description: "Share updates with your school", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
   { href: "/dashboard/children", label: "My Children", description: "View attendance, results, and fees", icon: HeartHandshake, roles: ["parent"] },

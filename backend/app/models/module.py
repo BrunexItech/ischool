@@ -11,6 +11,7 @@ MODULE_KEYS = [
     "fees",
     "live_classes",
     "communication",
+    "transport",
 ]
 
 

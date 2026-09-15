@@ -52,6 +52,14 @@ class Student(Base):
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
+    # Optional — only set once the transport module is used for this student.
+    transport_route_id: Mapped[int | None] = mapped_column(
+        ForeignKey("transport_routes.id", ondelete="SET NULL"), nullable=True
+    )
+    transport_stop_id: Mapped[int | None] = mapped_column(
+        ForeignKey("route_stops.id", ondelete="SET NULL"), nullable=True
+    )
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -59,6 +67,8 @@ class Student(Base):
     school_class: Mapped["SchoolClass | None"] = relationship("SchoolClass", back_populates="students")
     user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
     guardian_user: Mapped["User | None"] = relationship("User", foreign_keys=[guardian_user_id])
+    transport_route: Mapped["TransportRoute | None"] = relationship("TransportRoute", foreign_keys=[transport_route_id])
+    transport_stop: Mapped["RouteStop | None"] = relationship("RouteStop", foreign_keys=[transport_stop_id])
 
     @property
     def has_student_account(self) -> bool:
