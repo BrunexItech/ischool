@@ -35,6 +35,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -48,30 +49,70 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
-  { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/students", label: "Students", icon: Users, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/staff", label: "Staff", icon: UserSquare2, roles: ["school_admin"] },
-  { href: "/dashboard/teacher-assignments", label: "Teaching Assignments", icon: ClipboardList, roles: ["school_admin"] },
-  { href: "/dashboard/academic-terms", label: "Academic Terms", icon: CalendarRange, roles: ["school_admin"] },
-  { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/results", label: "Results", icon: Award, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/exams", label: "Exams", icon: FileText, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["school_admin", "staff"] },
-  { href: "/dashboard/finance", label: "Finance", icon: Wallet2, roles: ["school_admin"] },
-  { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["school_admin", "staff"] },
-  { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["school_admin", "staff"] },
-  { href: "/dashboard/awards", label: "Awards", icon: Award, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/activities", label: "Activities", icon: Trophy, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/payment-settings", label: "Payment Settings", icon: CreditCard, roles: ["school_admin"] },
-  { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["school_admin", "teacher", "staff"] },
-  { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
-  { href: "/dashboard/children", label: "My Children", icon: HeartHandshake, roles: ["parent"] },
-  { href: "/dashboard/my-records", label: "My Records", icon: Award, roles: ["student"] },
-  { href: "/dashboard/activity-log", label: "Activity Log", icon: History, roles: ["school_admin"] },
+const NAV_SECTIONS = [
+  {
+    label: null,
+    items: [
+      { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
+    ],
+  },
+  {
+    label: "Academics",
+    items: [
+      { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/students", label: "Students", icon: Users, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/results", label: "Results", icon: Award, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/exams", label: "Exams", icon: FileText, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/academic-terms", label: "Academic Terms", icon: CalendarRange, roles: ["school_admin"] },
+      { href: "/dashboard/teacher-assignments", label: "Teaching Assignments", icon: ClipboardList, roles: ["school_admin"] },
+    ],
+  },
+  {
+    label: "Recognition",
+    items: [
+      { href: "/dashboard/awards", label: "Awards", icon: Award, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/activities", label: "Activities", icon: Trophy, roles: ["school_admin", "teacher", "staff"] },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["school_admin", "staff"] },
+      { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["school_admin", "staff"] },
+      { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["school_admin", "teacher", "staff"] },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["school_admin", "staff"] },
+      { href: "/dashboard/finance", label: "Finance", icon: Wallet2, roles: ["school_admin"] },
+      { href: "/dashboard/payment-settings", label: "Payment Settings", icon: CreditCard, roles: ["school_admin"] },
+    ],
+  },
+  {
+    label: "Communication",
+    items: [
+      { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { href: "/dashboard/staff", label: "Staff", icon: UserSquare2, roles: ["school_admin"] },
+      { href: "/dashboard/activity-log", label: "Activity Log", icon: History, roles: ["school_admin"] },
+    ],
+  },
+  {
+    label: "My Family",
+    items: [
+      { href: "/dashboard/children", label: "My Children", icon: HeartHandshake, roles: ["parent"] },
+      { href: "/dashboard/my-records", label: "My Records", icon: Award, roles: ["student"] },
+    ],
+  },
 ];
 
 function initials(name: string) {
@@ -89,7 +130,10 @@ export function AppSidebar() {
 
   if (!user) return null;
 
-  const items = NAV_ITEMS.filter((item) => item.roles.includes(user.role));
+  const sections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => item.roles.includes(user.role)),
+  })).filter((section) => section.items.length > 0);
 
   return (
     <Sidebar collapsible="icon">
@@ -104,29 +148,32 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => {
-                const active = pathname === item.href;
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      isActive={active}
-                      tooltip={item.label}
-                      render={
-                        <Link href={item.href}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {sections.map((section, i) => (
+          <SidebarGroup key={section.label ?? `section-${i}`}>
+            {section.label && <SidebarGroupLabel>{section.label}</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.items.map((item) => {
+                  const active = pathname === item.href;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        isActive={active}
+                        tooltip={item.label}
+                        render={
+                          <Link href={item.href}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
