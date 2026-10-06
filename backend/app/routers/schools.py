@@ -24,8 +24,17 @@ router = APIRouter(prefix="/schools", tags=["schools"])
 
 @router.get("/by-slug/{slug}", response_model=SchoolPublicOut)
 def get_school_branding(slug: str, db: Session = Depends(get_db)):
-    """Public — the frontend calls this to resolve a tenant's branding by subdomain/slug."""
-    school = db.query(School).filter_by(slug=slug, is_active=True).first()
+    """Public — the frontend calls this to resolve a tenant's branding by
+    subdomain/slug, or by a school's own custom domain (e.g. a school that
+    points portal.theirschool.ac.ke at us) — the two never collide in
+    practice since a slug is a short label and a custom domain is a full
+    hostname."""
+    school = (
+        db.query(School)
+        .filter(School.is_active.is_(True))
+        .filter((School.slug == slug) | (School.custom_domain == slug))
+        .first()
+    )
     if school is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
     return school
@@ -126,6 +135,18 @@ def update_subscription(school_id: int, payload: SubscriptionUpdate, db: Session
 def list_branches(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(current_user, school_id)
     return db.query(School).filter_by(parent_school_id=school_id).all()
+
+
+@router.get("/{school_id}/branding", response_model=SchoolPublicOut)
+def get_branding(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Any logged-in member of this school can read its branding — the
+    dashboard chrome itself (sidebar accents, buttons) needs this for every
+    role, not just admins, to actually look like the school's own site."""
+    ensure_school_access(current_user, school_id)
+    school = db.get(School, school_id)
+    if school is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
+    return school
 
 
 @router.patch(

@@ -32,6 +32,7 @@ from app.routers import (
     exams,
     fees,
     finance,
+    lesson_plans,
     live_classes,
     meals,
     notifications,
@@ -79,6 +80,7 @@ app.include_router(finance.router)
 app.include_router(pickup_dropoff.router)
 app.include_router(exams.router)
 app.include_router(plans.router)
+app.include_router(lesson_plans.router)
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)

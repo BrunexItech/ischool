@@ -457,6 +457,35 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
+export type LessonPlanEntryStatus = "planned" | "completed";
+
+export interface LessonPlanEntry {
+  id: number;
+  order: number;
+  label: string;
+  topic: string;
+  objectives: string | null;
+  resources: string | null;
+  notes: string | null;
+  status: LessonPlanEntryStatus;
+}
+
+export interface LessonPlan {
+  id: number;
+  school_id: number;
+  class_id: number;
+  subject_id: number;
+  term: string;
+  created_at: string;
+  updated_at: string;
+  entry_count: number;
+  completed_count: number;
+}
+
+export interface LessonPlanDetail extends LessonPlan {
+  entries: LessonPlanEntry[];
+}
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -521,6 +550,13 @@ export const api = {
   getSchoolBySlug: (slug: string) =>
     request<{ name: string; slug: string; logo_url: string | null; primary_color: string; secondary_color: string }>(
       `/schools/by-slug/${slug}`
+    ),
+
+  getSchoolBranding: (token: string, schoolId: number) =>
+    request<{ name: string; slug: string; logo_url: string | null; primary_color: string; secondary_color: string }>(
+      `/schools/${schoolId}/branding`,
+      {},
+      token
     ),
 
   listSchools: (token: string) => request<School[]>("/schools", {}, token),
@@ -1230,6 +1266,68 @@ export const api = {
       {},
       token
     ),
+
+  // --- Lesson Plans ---
+
+  listLessonPlans: (token: string, schoolId: number, params?: { class_id?: number; subject_id?: number; term?: string }) => {
+    const qs = new URLSearchParams(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+    ).toString();
+    return request<LessonPlan[]>(`/schools/${schoolId}/lesson-plans${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  createLessonPlan: (token: string, schoolId: number, payload: { class_id: number; subject_id: number; term: string }) =>
+    request<LessonPlanDetail>(
+      `/schools/${schoolId}/lesson-plans`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  getLessonPlan: (token: string, schoolId: number, planId: number) =>
+    request<LessonPlanDetail>(`/schools/${schoolId}/lesson-plans/${planId}`, {}, token),
+
+  deleteLessonPlan: (token: string, schoolId: number, planId: number) =>
+    request<void>(`/schools/${schoolId}/lesson-plans/${planId}`, { method: "DELETE" }, token),
+
+  addLessonPlanEntry: (
+    token: string,
+    schoolId: number,
+    planId: number,
+    payload: { order: number; label: string; topic: string; objectives?: string; resources?: string; notes?: string }
+  ) =>
+    request<LessonPlanEntry>(
+      `/schools/${schoolId}/lesson-plans/${planId}/entries`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  replaceLessonPlanEntries: (
+    token: string,
+    schoolId: number,
+    planId: number,
+    entries: { order: number; label: string; topic: string; objectives?: string; resources?: string; notes?: string }[]
+  ) =>
+    request<LessonPlanDetail>(
+      `/schools/${schoolId}/lesson-plans/${planId}/entries`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entries) },
+      token
+    ),
+
+  updateLessonPlanEntry: (
+    token: string,
+    schoolId: number,
+    planId: number,
+    entryId: number,
+    payload: Partial<{ order: number; label: string; topic: string; objectives: string; resources: string; notes: string; status: LessonPlanEntryStatus }>
+  ) =>
+    request<LessonPlanEntry>(
+      `/schools/${schoolId}/lesson-plans/${planId}/entries/${entryId}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteLessonPlanEntry: (token: string, schoolId: number, planId: number, entryId: number) =>
+    request<void>(`/schools/${schoolId}/lesson-plans/${planId}/entries/${entryId}`, { method: "DELETE" }, token),
 };
 
 export { ApiError };

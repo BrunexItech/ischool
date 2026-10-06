@@ -8,6 +8,7 @@ import {
   Users,
   UserSquare2,
   BookOpen,
+  NotebookPen,
   ClipboardCheck,
   Award,
   Wallet,
@@ -62,6 +63,7 @@ const NAV_SECTIONS = [
     label: "Academics",
     items: [
       { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/lesson-plans", label: "Lesson Plans", icon: NotebookPen, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/students", label: "Students", icon: Users, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/results", label: "Results", icon: Award, roles: ["school_admin", "teacher", "staff"] },

@@ -19,6 +19,7 @@ MODULE_KEYS = [
     "pickup_dropoff",
     "exams",
     "sms",
+    "lesson_plans",
 ]
 
 

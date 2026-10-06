@@ -17,6 +17,7 @@ interface Branding {
   name: string;
   logo_url: string | null;
   primary_color: string;
+  secondary_color: string;
 }
 
 export default function LoginPage() {
@@ -37,7 +38,9 @@ export default function LoginPage() {
     if (!slug) return;
     api
       .getSchoolBySlug(slug)
-      .then((school) => setBranding({ name: school.name, logo_url: school.logo_url, primary_color: school.primary_color }))
+      .then((school) =>
+        setBranding({ name: school.name, logo_url: school.logo_url, primary_color: school.primary_color, secondary_color: school.secondary_color })
+      )
       .catch(() => setBranding(null));
   }, []);
 
@@ -59,13 +62,24 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-primary via-primary to-sidebar p-10 text-primary-foreground lg:flex">
+      <div
+        className={
+          branding
+            ? "relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex"
+            : "relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-primary via-primary to-sidebar p-10 text-primary-foreground lg:flex"
+        }
+        style={
+          branding
+            ? { background: `linear-gradient(to bottom right, ${branding.primary_color}, ${branding.primary_color}, ${branding.secondary_color})` }
+            : undefined
+        }
+      >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.12),_transparent_50%)]" />
         <div className="relative flex items-center gap-2">
           <div className="flex size-9 items-center justify-center rounded-lg bg-white/15">
             <GraduationCap className="size-5" />
           </div>
-          <span className="text-lg font-semibold">iSchool</span>
+          <span className="text-lg font-semibold">{schoolName}</span>
         </div>
         <div className="relative space-y-3">
           <h2 className="text-3xl font-semibold leading-tight">
