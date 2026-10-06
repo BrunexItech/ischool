@@ -1,0 +1,12 @@
+# Production LiveKit config — replace the key/secret below (generate with:
+# docker run --rm livekit/livekit-server generate-keys) and put the SAME
+# values into backend/.env.production as LIVEKIT_API_KEY / LIVEKIT_API_SECRET.
+port: 7880
+rtc:
+  tcp_port: 7881
+  port_range_start: 50100
+  port_range_end: 50200
+  use_external_ip: true   # LiveKit auto-detects the VPS's public IP for ICE
+
+keys:
+  REPLACE_WITH_GENERATED_KEY: REPLACE_WITH_GENERATED_SECRET

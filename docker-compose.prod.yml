@@ -1,0 +1,56 @@
+name: ischool
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ischool
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ischool
+    volumes:
+      - ischool_db_data:/var/lib/postgresql/data
+    # Internal only — never bound to a public port. Nothing outside this
+    # compose project can reach Postgres directly.
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.production
+    environment:
+      DATABASE_URL: postgresql://ischool:${POSTGRES_PASSWORD}@db:5432/ischool
+    depends_on:
+      - db
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/backups:/app/backups
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://${APP_DOMAIN}/api
+        NEXT_PUBLIC_ROOT_DOMAIN: ${APP_DOMAIN}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:3001:3000"
+
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.prod.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "127.0.0.1:7880:7880"   # HTTP/WebSocket signaling — proxied by Nginx
+      - "7881:7881/tcp"          # TCP fallback for restrictive networks — needs to be public
+      - "50100-50200:50100-50200/udp"  # WebRTC media — must be public, bypasses Nginx/Cloudflare entirely
+
+volumes:
+  ischool_db_data:
