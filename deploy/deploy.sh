@@ -5,7 +5,7 @@
 set -euo pipefail
 
 git pull
-docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+docker-compose -f docker-compose.prod.yml --env-file .env up -d --build
 
 echo "Deployed. Tailing backend logs (Ctrl+C to stop watching — containers keep running):"
-docker compose -f docker-compose.prod.yml logs -f backend
+docker-compose -f docker-compose.prod.yml logs -f backend

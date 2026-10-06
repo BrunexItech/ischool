@@ -2,5 +2,5 @@
 # Replace /home/YOURUSER/ischool and <POSTGRES_PASSWORD> (from .env) below.
 
 0 2 * * * cd /home/YOURUSER/ischool/backend && DATABASE_URL="postgresql://ischool:<POSTGRES_PASSWORD>@db:5432/ischool" ./scripts/backup_db.sh >> backups/backup.log 2>&1
-0 3 * * * cd /home/YOURUSER/ischool && docker compose -f docker-compose.prod.yml exec -T backend python3 scripts/purge_old_pickup_logs.py >> backend/backups/purge_pickup_logs.log 2>&1
-*/5 * * * * cd /home/YOURUSER/ischool && docker compose -f docker-compose.prod.yml exec -T backend python3 scripts/finalize_expired_exams.py >> backend/backups/finalize_expired_exams.log 2>&1
+0 3 * * * cd /home/YOURUSER/ischool && docker-compose -f docker-compose.prod.yml exec -T backend python3 scripts/purge_old_pickup_logs.py >> backend/backups/purge_pickup_logs.log 2>&1
+*/5 * * * * cd /home/YOURUSER/ischool && docker-compose -f docker-compose.prod.yml exec -T backend python3 scripts/finalize_expired_exams.py >> backend/backups/finalize_expired_exams.log 2>&1
