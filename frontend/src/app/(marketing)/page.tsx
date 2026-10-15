@@ -34,46 +34,36 @@ const CHECKLIST = [
 export default function Home() {
   return (
     <>
-      <section className="relative overflow-hidden" style={{ background: HERO_GRADIENT }}>
-        <div className="relative mx-auto grid max-w-7xl gap-14 px-6 py-20 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:py-28 lg:px-12">
-          <div>
-            <h1 className="font-display text-4xl leading-[1.1] font-medium tracking-tight text-balance text-white sm:text-5xl">
-              Everything your school needs, in one place.
-            </h1>
-            <p className="mt-5 max-w-md text-lg text-balance text-white/75">
-              Attendance, grading, fees, live classes, and parent communication —
-              while your M-Pesa till, your SMS sender ID, and your logo stay
-              exactly yours.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Button size="lg" className="rounded-full" render={<Link href="/login">Sign in</Link>} />
-              <Button size="lg" variant="outline" className="rounded-full border-2 border-white/30 bg-transparent text-white hover:bg-white/10" render={<Link href="/features">See what&apos;s inside</Link>} />
-            </div>
-          </div>
+      <section className="relative z-0 -mt-8 flex min-h-[92vh] items-center overflow-hidden pt-16">
+        <div className="absolute inset-0">
+          <Image
+            src={heroPhoto}
+            alt="A teacher and students at a classroom whiteboard"
+            fill
+            sizes="100vw"
+            className="object-cover grayscale contrast-110"
+            style={{ objectPosition: "68% 38%" }}
+            priority
+          />
+          <div className="absolute inset-0 mix-blend-multiply" style={{ background: HERO_GRADIENT }} />
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to top, rgba(15,26,21,0.88) 0%, rgba(15,26,21,0.35) 55%, rgba(15,26,21,0.15) 100%)" }}
+          />
+        </div>
 
-          <div className="relative mx-auto w-full max-w-sm lg:max-w-none">
-            <div
-              className="absolute inset-0 rounded-[2rem]"
-              style={{ backgroundColor: "#efc789", transform: "rotate(-3deg) translate(12px, 10px)" }}
-            />
-            <div
-              className="relative aspect-[4/5] overflow-hidden rounded-[2rem]"
-              style={{ transform: "rotate(1.5deg)", boxShadow: SHADOW }}
-            >
-              <Image
-                src={heroPhoto}
-                alt="A teacher and students at a classroom whiteboard"
-                fill
-                sizes="(min-width: 1024px) 36vw, 80vw"
-                className="object-cover grayscale contrast-110"
-                style={{ objectPosition: "70% 35%" }}
-                priority
-              />
-              <div
-                className="absolute inset-0 mix-blend-multiply"
-                style={{ background: "linear-gradient(160deg, transparent 35%, #0f2a2199 100%)" }}
-              />
-            </div>
+        <div className="relative mx-auto max-w-3xl px-6 pt-10 text-center lg:px-12">
+          <h1 className="font-display text-4xl leading-[1.1] font-medium tracking-tight text-balance text-white sm:text-6xl">
+            Everything your school needs, in one place.
+          </h1>
+          <p className="mx-auto mt-5 max-w-xl text-lg text-balance text-white/80">
+            Attendance, grading, fees, live classes, and parent communication —
+            while your M-Pesa till, your SMS sender ID, and your logo stay
+            exactly yours.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Button size="lg" className="rounded-full" render={<Link href="/login">Sign in</Link>} />
+            <Button size="lg" variant="outline" className="rounded-full border-2 border-white/30 bg-transparent text-white hover:bg-white/10" render={<Link href="/features">See what&apos;s inside</Link>} />
           </div>
         </div>
       </section>

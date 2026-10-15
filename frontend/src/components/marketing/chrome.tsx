@@ -57,40 +57,46 @@ export function IconBadge({ icon: Icon, index }: { icon: React.ComponentType<{ c
   );
 }
 
-function UtilityBar() {
+export function UtilityBar() {
   return (
-    <div className="hidden items-center justify-center gap-7 px-6 py-2.5 text-xs font-medium tracking-wide text-white/80 sm:flex" style={{ backgroundColor: DARK }}>
-      {TRUST_BADGES.map((item) => (
-        <span key={item} className="flex items-center gap-1.5">
-          <CheckCircle2 className="size-3.5 text-primary" />
-          {item}
-        </span>
-      ))}
+    <div className="flex items-center justify-between px-6 py-2.5 text-xs font-medium tracking-wide text-white/80 lg:px-12" style={{ backgroundColor: DARK }}>
+      <span className="font-display text-sm text-white">iSchool</span>
+      <div className="hidden items-center gap-6 sm:flex">
+        {TRUST_BADGES.map((item) => (
+          <span key={item} className="flex items-center gap-1.5">
+            <CheckCircle2 className="size-3.5 text-primary" />
+            {item}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
 export function MarketingHeader() {
   return (
-    <div className="sticky top-0 z-40">
-      <UtilityBar />
-      <header
-        className="flex items-center justify-between px-6 py-4 backdrop-blur-md lg:px-12"
-        style={{ backgroundColor: `${CREAM}f2`, borderBottom: `1px solid ${INK}14` }}
-      >
-        <Link href="/" className="font-display text-xl font-medium tracking-tight">
-          i<span className="text-primary">School</span>
-        </Link>
-        <nav className="hidden items-center gap-8 text-sm font-medium md:flex" style={{ color: `${INK}99` }}>
-          {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-100" style={{ color: "inherit" }}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <Button className="rounded-full" render={<Link href="/login">Sign in</Link>} />
-      </header>
-    </div>
+    <header
+      className="sticky top-0 z-20 flex items-center justify-between rounded-b-[2rem] px-6 py-5 shadow-xl lg:px-12"
+      style={{ backgroundColor: CREAM }}
+    >
+      <Link href="/" className="flex items-center gap-2.5">
+        <span
+          className="flex size-9 items-center justify-center rounded-full font-display text-sm font-medium text-white"
+          style={{ backgroundColor: DARK }}
+        >
+          i
+        </span>
+        <span className="font-display text-xl font-medium tracking-tight">iSchool</span>
+      </Link>
+      <nav className="hidden items-center gap-8 text-sm font-medium md:flex" style={{ color: `${INK}99` }}>
+        {NAV.map((item) => (
+          <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-100" style={{ color: "inherit" }}>
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+      <Button className="rounded-full" render={<Link href="/login">Sign in</Link>} />
+    </header>
   );
 }
 
