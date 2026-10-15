@@ -1,289 +1,210 @@
 import Link from "next/link";
 import Image from "next/image";
-import {
-  GraduationCap,
-  ClipboardCheck,
-  Wallet,
-  Video,
-  MessageSquareText,
-  FileCheck2,
-  Building2,
-  Users,
-  BookOpen,
-  Heart,
-  ShieldCheck,
-  Palette,
-  ArrowRight,
-  CheckCircle2,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import heroPhoto from "../../public/hero/classroom.jpg";
 
-const TRUST_CHIPS = [
-  "M-Pesa & card payments",
-  "Bulk SMS",
-  "Live online classes",
-  "Multi-branch",
-];
-
-const ROLES = [
-  {
-    icon: Building2,
-    title: "Administrators",
-    description: "Run every branch, staff, and fee structure from one console.",
-  },
-  {
-    icon: BookOpen,
-    title: "Teachers",
-    description: "Mark attendance, grade exams, and plan a whole term's lessons.",
-  },
-  {
-    icon: Heart,
-    title: "Parents & guardians",
-    description: "See results, pay fees, and get updates the moment they happen.",
-  },
-  {
-    icon: GraduationCap,
-    title: "Students",
-    description: "Check results, join live classes, and sit exams online.",
-  },
-];
-
 const FEATURES = [
   {
-    icon: ClipboardCheck,
+    n: "01",
     title: "Attendance & results",
     description: "Daily attendance and graded results, tracked by class, subject, and term.",
   },
   {
-    icon: Wallet,
+    n: "02",
     title: "Fees & payments",
     description: "Invoices and balances that settle by M-Pesa or card — straight into your own account.",
   },
   {
-    icon: Video,
+    n: "03",
     title: "Live online classes",
     description: "Schedule a lesson, share a link, and teach from inside the same dashboard.",
   },
   {
-    icon: MessageSquareText,
+    n: "04",
     title: "Announcements & bulk SMS",
     description: "Reach every parent by app and SMS at once, from your own sender ID.",
   },
   {
-    icon: FileCheck2,
+    n: "05",
     title: "Online exams",
     description: "Timed, auto-graded exams with resume-on-reload — no lost answers.",
   },
   {
-    icon: Building2,
+    n: "06",
     title: "Multi-branch",
     description: "One login for every campus, each with its own staff, classes, and books.",
   },
 ];
 
+const ROLES = [
+  { title: "Administrators", description: "Run every branch, staff list, and fee structure from one console." },
+  { title: "Teachers", description: "Mark attendance, grade exams, and plan a whole term's lessons." },
+  { title: "Parents & guardians", description: "See results, pay fees, and get updates the moment they happen." },
+  { title: "Students", description: "Check results, join live classes, and sit exams online." },
+];
+
 const DIFFERENTIATORS = [
   {
-    icon: ShieldCheck,
-    title: "Your money stays yours",
+    index: "01 — Money",
+    statement: "Your M-Pesa till. Your Pesapal account. Your SMS sender ID.",
     description:
-      "Connect your own M-Pesa till, Pesapal account, and SMS sender ID. We never touch your school's funds or hold your comms credentials — payments and messages go out under your name.",
+      "Connect your own accounts and keep them. We never touch your school's funds or hold your comms credentials — payments and messages go out under your name, not ours.",
   },
   {
-    icon: Palette,
-    title: "Actually white-labeled",
+    index: "02 — Brand",
+    statement: "Your logo, your colors, your domain.",
     description:
-      "Your logo, your colors, and — if you bring one — your own domain. Parents and staff see your school's brand, not ours.",
+      "Parents and staff see your school's identity end to end — not a platform wearing your logo as an afterthought.",
   },
   {
-    icon: Building2,
-    title: "Built for how Kenyan schools run",
+    index: "03 — Fit",
+    statement: "Built for how Kenyan schools actually run.",
     description:
-      "M-Pesa and card payments, SMS that reaches feature phones, and multi-branch support from day one — not bolted on as an afterthought.",
+      "M-Pesa and card payments, SMS that reaches feature phones, multi-branch support from day one — not bolted on after the fact.",
   },
 ];
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-12">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="size-4.5" />
-            </div>
-            <span className="text-lg font-semibold tracking-tight">iSchool</span>
-          </div>
-          <nav className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
-            <a href="#features" className="hover:text-foreground">Features</a>
-            <a href="#roles" className="hover:text-foreground">For your school</a>
-            <a href="#why" className="hover:text-foreground">Why iSchool</a>
-          </nav>
-          <Button variant="ghost" render={<Link href="/login">Sign in</Link>} />
-        </div>
+    <div className="dark flex min-h-screen flex-col bg-background text-foreground">
+      <header className="fixed inset-x-0 top-0 z-40 flex items-center justify-between border-b border-border/60 bg-background/70 px-6 py-5 backdrop-blur-md lg:px-12">
+        <span className="font-display text-xl font-medium tracking-tight">
+          i<span className="text-primary">School</span>
+        </span>
+        <nav className="hidden items-center gap-8 text-xs font-medium tracking-wide text-foreground/70 uppercase md:flex">
+          <a href="#what" className="transition-colors hover:text-foreground">What it does</a>
+          <a href="#who" className="transition-colors hover:text-foreground">Who it&apos;s for</a>
+          <a href="#why" className="transition-colors hover:text-foreground">Why iSchool</a>
+        </nav>
+        <Button
+          variant="outline"
+          className="border-foreground/30 bg-transparent text-foreground hover:bg-foreground/10"
+          render={<Link href="/login">Sign in</Link>}
+        />
       </header>
 
       <main className="flex-1">
-        {/* Hero */}
-        <section className="relative overflow-hidden">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-40 -top-40 size-[32rem] rounded-full bg-primary/15 blur-3xl"
-          />
-          <div className="relative mx-auto grid max-w-7xl gap-14 px-6 py-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:py-24 lg:px-12">
-            <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-accent px-3 py-1 text-xs font-medium tracking-wide text-accent-foreground uppercase">
-                Built for Kenyan schools &amp; colleges
-              </span>
-              <h1 className="font-display mt-5 text-5xl leading-[1.05] font-medium tracking-tight text-balance sm:text-6xl">
-                Run your school.
-                <br />
-                Keep your money, your brand.
-              </h1>
-              <p className="mt-6 max-w-lg text-lg text-muted-foreground text-balance">
-                iSchool handles attendance, grading, fees, live classes, and parent
-                communication — while your M-Pesa till, your SMS sender ID, and your
-                logo stay exactly yours.
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button size="lg" render={<Link href="/login">Sign in <ArrowRight /></Link>} />
-                <Button size="lg" variant="outline" render={<a href="#features">See what&apos;s included</a>} />
-              </div>
-              <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                {TRUST_CHIPS.map((chip) => (
-                  <li key={chip} className="flex items-center gap-1.5">
-                    <CheckCircle2 className="size-4 text-primary" />
-                    {chip}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="relative">
-              <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-black/5">
-                <Image
-                  src={heroPhoto}
-                  alt="A teacher and students working together at a classroom whiteboard"
-                  fill
-                  sizes="(min-width: 1024px) 40vw, 90vw"
-                  className="object-cover"
-                  style={{ objectPosition: "70% 35%" }}
-                  priority
-                />
-              </div>
-
-              <div className="absolute -left-4 top-8 flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:-left-8">
-                <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <CheckCircle2 className="size-4.5" />
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium">Attendance marked</p>
-                  <p className="text-xs text-muted-foreground">Grade 6B · 9:02 AM</p>
-                </div>
-              </div>
-
-              <div className="absolute -right-4 bottom-10 flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:-right-8">
-                <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Wallet className="size-4.5" />
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium">Fee payment received</p>
-                  <p className="text-xs text-muted-foreground">KES 15,000 via M-Pesa</p>
-                </div>
-              </div>
-            </div>
+        {/* Hero — full-bleed duotone photo */}
+        <section className="relative flex min-h-[100svh] items-end overflow-hidden">
+          <div className="absolute inset-0">
+            <Image
+              src={heroPhoto}
+              alt="A teacher and students at a classroom whiteboard"
+              fill
+              sizes="100vw"
+              className="object-cover grayscale contrast-125"
+              style={{ objectPosition: "68% 38%" }}
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-background/90 via-primary/40 to-background/90 mix-blend-multiply" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-background/10" />
           </div>
-        </section>
 
-        {/* Roles */}
-        <section id="roles" className="border-y border-border/60 bg-accent/30">
-          <div className="mx-auto max-w-7xl px-6 py-16 lg:px-12">
-            <h2 className="font-display max-w-xl text-3xl font-medium tracking-tight text-balance sm:text-4xl">
-              Built for everyone in your school
-            </h2>
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {ROLES.map((role) => (
-                <div key={role.title} className="rounded-2xl border border-border bg-card p-6">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <role.icon className="size-5" />
-                  </div>
-                  <h3 className="mt-4 font-medium">{role.title}</h3>
-                  <p className="mt-1.5 text-sm text-muted-foreground">{role.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Features */}
-        <section id="features" className="mx-auto max-w-7xl px-6 py-20 lg:px-12">
-          <div className="max-w-xl">
-            <h2 className="font-display text-3xl font-medium tracking-tight text-balance sm:text-4xl">
-              Everything, actually connected
-            </h2>
-            <p className="mt-3 text-lg text-muted-foreground text-balance">
-              Not six different tools bolted together — one system, one login,
-              one source of truth for your whole school.
+          <div className="relative mx-auto w-full max-w-7xl px-6 pb-16 pt-32 lg:px-12 lg:pb-24">
+            <p className="text-xs font-medium tracking-[0.2em] text-primary uppercase">
+              iSchool — school management
             </p>
+            <h1 className="font-display mt-5 max-w-3xl text-5xl leading-[1.05] font-medium tracking-tight text-balance sm:text-7xl">
+              Run your school.
+              <br />
+              Keep your money, your brand.
+            </h1>
+            <p className="mt-6 max-w-lg text-lg text-foreground/70 text-balance">
+              Attendance, grading, fees, live classes, and parent communication —
+              while your M-Pesa till, your SMS sender ID, and your logo stay
+              exactly yours.
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-6">
+              <Button size="lg" render={<Link href="/login">Sign in</Link>} />
+              <a href="#what" className="text-sm font-medium underline-offset-4 hover:underline">
+                See what&apos;s inside ↓
+              </a>
+            </div>
           </div>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        </section>
+
+        {/* What it does — numbered editorial list, no icons */}
+        <section id="what" className="mx-auto max-w-7xl px-6 py-24 lg:px-12">
+          <p className="text-xs font-medium tracking-[0.2em] text-primary uppercase">What it does</p>
+          <h2 className="font-display mt-4 max-w-2xl text-3xl font-medium tracking-tight text-balance sm:text-4xl">
+            Everything your school already pays six different apps for.
+          </h2>
+
+          <div className="mt-12 border-t border-border">
             {FEATURES.map((f) => (
               <div
-                key={f.title}
-                className="rounded-2xl border border-border bg-card p-6 transition-shadow hover:shadow-md"
+                key={f.n}
+                className="flex flex-col gap-2 border-b border-border py-7 sm:flex-row sm:items-baseline sm:gap-10"
               >
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <f.icon className="size-5" />
-                </div>
-                <h3 className="mt-4 font-medium">{f.title}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{f.description}</p>
+                <span className="font-display text-xl text-primary sm:w-12 sm:shrink-0">{f.n}</span>
+                <h3 className="text-lg font-medium sm:w-72 sm:shrink-0">{f.title}</h3>
+                <p className="max-w-md text-foreground/60">{f.description}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Why iSchool */}
-        <section id="why" className="border-t border-border/60 bg-accent/30">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-12">
-            <div className="max-w-xl">
-              <h2 className="font-display text-3xl font-medium tracking-tight text-balance sm:text-4xl">
-                Not a copy-paste school app
-              </h2>
-              <p className="mt-3 text-lg text-muted-foreground text-balance">
-                A few things most school platforms don&apos;t do — that we built in from the start.
-              </p>
-            </div>
-            <div className="mt-10 grid gap-8 lg:grid-cols-3">
-              {DIFFERENTIATORS.map((d) => (
-                <div key={d.title}>
-                  <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <d.icon className="size-5.5" />
-                  </div>
-                  <h3 className="mt-4 font-medium">{d.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{d.description}</p>
+        {/* Who it's for — divided row, no icon cards */}
+        <section id="who" className="border-t border-border">
+          <div className="mx-auto max-w-7xl px-6 py-24 lg:px-12">
+            <p className="text-xs font-medium tracking-[0.2em] text-primary uppercase">Who it&apos;s for</p>
+            <h2 className="font-display mt-4 max-w-xl text-3xl font-medium tracking-tight text-balance sm:text-4xl">
+              Everyone in your school, one login each.
+            </h2>
+            <div className="mt-12 grid border-t border-l border-border sm:grid-cols-2 lg:grid-cols-4">
+              {ROLES.map((role) => (
+                <div key={role.title} className="border-r border-b border-border p-7">
+                  <h3 className="font-display text-2xl">{role.title}</h3>
+                  <p className="mt-3 text-sm text-foreground/60">{role.description}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* CTA band */}
-        <section className="bg-sidebar text-sidebar-foreground">
-          <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-6 py-20 text-center lg:px-12">
-            <Users className="size-9 text-sidebar-primary" />
-            <h2 className="font-display max-w-lg text-3xl font-medium tracking-tight text-balance sm:text-4xl">
+        {/* Why iSchool — asymmetric pull-quote rows */}
+        <section id="why" className="border-t border-border">
+          <div className="mx-auto max-w-7xl px-6 py-24 lg:px-12">
+            <p className="text-xs font-medium tracking-[0.2em] text-primary uppercase">Why iSchool</p>
+            <h2 className="font-display mt-4 max-w-xl text-3xl font-medium tracking-tight text-balance sm:text-4xl">
+              Not a copy-paste school app.
+            </h2>
+
+            <div className="mt-12 border-t border-border">
+              {DIFFERENTIATORS.map((d) => (
+                <div
+                  key={d.index}
+                  className="grid gap-4 border-b border-border py-10 sm:grid-cols-[140px_1fr]"
+                >
+                  <span className="text-sm text-foreground/50">{d.index}</span>
+                  <div>
+                    <p className="font-display max-w-2xl text-2xl text-balance sm:text-3xl">{d.statement}</p>
+                    <p className="mt-4 max-w-xl text-foreground/60">{d.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Closing CTA */}
+        <section className="border-t border-border">
+          <div className="mx-auto max-w-7xl px-6 py-24 text-center lg:px-12">
+            <h2 className="font-display mx-auto max-w-lg text-3xl font-medium tracking-tight text-balance sm:text-4xl">
               Ready to bring your school online?
             </h2>
-            <p className="max-w-md text-sidebar-foreground/70">
+            <p className="mx-auto mt-4 max-w-md text-foreground/60">
               If your school is already set up on iSchool, sign in below. New
               school? Ask your administrator to get your account provisioned.
             </p>
-            <Button size="lg" render={<Link href="/login">Sign in <ArrowRight /></Link>} />
+            <div className="mt-8">
+              <Button size="lg" render={<Link href="/login">Sign in</Link>} />
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t px-6 py-6 text-sm text-muted-foreground">
+      <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border px-6 py-6 text-sm text-foreground/50">
         <span>© {new Date().getFullYear()} iSchool</span>
         <Link href="/privacy" className="hover:text-foreground hover:underline">Privacy Policy</Link>
         <Link href="/terms" className="hover:text-foreground hover:underline">Terms of Service</Link>
