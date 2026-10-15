@@ -64,21 +64,28 @@ const DIFFERENTIATORS = [
   },
 ];
 
+const INK = "#1f2a20";
+const PAPER = "#cdd7c4";
+
 export default function Home() {
   return (
-    <div className="dark flex min-h-screen flex-col bg-background text-foreground">
-      <header className="fixed inset-x-0 top-0 z-40 flex items-center justify-between border-b border-border/60 bg-background/70 px-6 py-5 backdrop-blur-md lg:px-12">
+    <div className="flex min-h-screen flex-col" style={{ backgroundColor: PAPER, color: INK }}>
+      <header
+        className="fixed inset-x-0 top-0 z-40 flex items-center justify-between px-6 py-5 backdrop-blur-md lg:px-12"
+        style={{ backgroundColor: `${PAPER}cc`, borderBottom: `1px solid ${INK}1f` }}
+      >
         <span className="font-display text-xl font-medium tracking-tight">
           i<span className="text-primary">School</span>
         </span>
-        <nav className="hidden items-center gap-8 text-xs font-medium tracking-wide text-foreground/70 uppercase md:flex">
-          <a href="#what" className="transition-colors hover:text-foreground">What it does</a>
-          <a href="#who" className="transition-colors hover:text-foreground">Who it&apos;s for</a>
-          <a href="#why" className="transition-colors hover:text-foreground">Why iSchool</a>
+        <nav className="hidden items-center gap-8 text-xs font-medium tracking-wide uppercase md:flex" style={{ color: `${INK}99` }}>
+          <a href="#what" className="transition-colors hover:opacity-100" style={{ color: "inherit" }}>What it does</a>
+          <a href="#who" className="transition-colors hover:opacity-100" style={{ color: "inherit" }}>Who it&apos;s for</a>
+          <a href="#why" className="transition-colors hover:opacity-100" style={{ color: "inherit" }}>Why iSchool</a>
         </nav>
         <Button
           variant="outline"
-          className="border-foreground/30 bg-transparent text-foreground hover:bg-foreground/10"
+          className="bg-transparent hover:bg-black/5"
+          style={{ borderColor: `${INK}40`, color: INK }}
           render={<Link href="/login">Sign in</Link>}
         />
       </header>
@@ -92,12 +99,18 @@ export default function Home() {
               alt="A teacher and students at a classroom whiteboard"
               fill
               sizes="100vw"
-              className="object-cover grayscale contrast-125"
+              className="object-cover grayscale contrast-110"
               style={{ objectPosition: "68% 38%" }}
               priority
             />
-            <div className="absolute inset-0 bg-gradient-to-br from-background/90 via-primary/40 to-background/90 mix-blend-multiply" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-background/10" />
+            <div
+              className="absolute inset-0 mix-blend-multiply"
+              style={{ background: `linear-gradient(135deg, ${PAPER}99, ${INK}66)` }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{ background: `linear-gradient(to top, ${PAPER} 10%, ${PAPER}88 45%, transparent 85%)` }}
+            />
           </div>
 
           <div className="relative mx-auto w-full max-w-7xl px-6 pb-16 pt-32 lg:px-12 lg:pb-24">
@@ -109,7 +122,7 @@ export default function Home() {
               <br />
               Keep your money, your brand.
             </h1>
-            <p className="mt-6 max-w-lg text-lg text-foreground/70 text-balance">
+            <p className="mt-6 max-w-lg text-lg text-balance" style={{ color: `${INK}b3` }}>
               Attendance, grading, fees, live classes, and parent communication —
               while your M-Pesa till, your SMS sender ID, and your logo stay
               exactly yours.
@@ -130,32 +143,40 @@ export default function Home() {
             Everything your school already pays six different apps for.
           </h2>
 
-          <div className="mt-12 border-t border-border">
+          <div className="mt-12" style={{ borderTop: `1px solid ${INK}26` }}>
             {FEATURES.map((f) => (
               <div
                 key={f.n}
-                className="flex flex-col gap-2 border-b border-border py-7 sm:flex-row sm:items-baseline sm:gap-10"
+                className="flex flex-col gap-2 py-7 sm:flex-row sm:items-baseline sm:gap-10"
+                style={{ borderBottom: `1px solid ${INK}26` }}
               >
                 <span className="font-display text-xl text-primary sm:w-12 sm:shrink-0">{f.n}</span>
                 <h3 className="text-lg font-medium sm:w-72 sm:shrink-0">{f.title}</h3>
-                <p className="max-w-md text-foreground/60">{f.description}</p>
+                <p className="max-w-md" style={{ color: `${INK}99` }}>{f.description}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* Who it's for — divided row, no icon cards */}
-        <section id="who" className="border-t border-border">
+        <section id="who" style={{ borderTop: `1px solid ${INK}26` }}>
           <div className="mx-auto max-w-7xl px-6 py-24 lg:px-12">
             <p className="text-xs font-medium tracking-[0.2em] text-primary uppercase">Who it&apos;s for</p>
             <h2 className="font-display mt-4 max-w-xl text-3xl font-medium tracking-tight text-balance sm:text-4xl">
               Everyone in your school, one login each.
             </h2>
-            <div className="mt-12 grid border-t border-l border-border sm:grid-cols-2 lg:grid-cols-4">
+            <div
+              className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4"
+              style={{ borderTop: `1px solid ${INK}26`, borderLeft: `1px solid ${INK}26` }}
+            >
               {ROLES.map((role) => (
-                <div key={role.title} className="border-r border-b border-border p-7">
+                <div
+                  key={role.title}
+                  className="p-7"
+                  style={{ borderRight: `1px solid ${INK}26`, borderBottom: `1px solid ${INK}26` }}
+                >
                   <h3 className="font-display text-2xl">{role.title}</h3>
-                  <p className="mt-3 text-sm text-foreground/60">{role.description}</p>
+                  <p className="mt-3 text-sm" style={{ color: `${INK}99` }}>{role.description}</p>
                 </div>
               ))}
             </div>
@@ -163,23 +184,24 @@ export default function Home() {
         </section>
 
         {/* Why iSchool — asymmetric pull-quote rows */}
-        <section id="why" className="border-t border-border">
+        <section id="why" style={{ borderTop: `1px solid ${INK}26` }}>
           <div className="mx-auto max-w-7xl px-6 py-24 lg:px-12">
             <p className="text-xs font-medium tracking-[0.2em] text-primary uppercase">Why iSchool</p>
             <h2 className="font-display mt-4 max-w-xl text-3xl font-medium tracking-tight text-balance sm:text-4xl">
               Not a copy-paste school app.
             </h2>
 
-            <div className="mt-12 border-t border-border">
+            <div className="mt-12" style={{ borderTop: `1px solid ${INK}26` }}>
               {DIFFERENTIATORS.map((d) => (
                 <div
                   key={d.index}
-                  className="grid gap-4 border-b border-border py-10 sm:grid-cols-[140px_1fr]"
+                  className="grid gap-4 py-10 sm:grid-cols-[140px_1fr]"
+                  style={{ borderBottom: `1px solid ${INK}26` }}
                 >
-                  <span className="text-sm text-foreground/50">{d.index}</span>
+                  <span className="text-sm" style={{ color: `${INK}80` }}>{d.index}</span>
                   <div>
                     <p className="font-display max-w-2xl text-2xl text-balance sm:text-3xl">{d.statement}</p>
-                    <p className="mt-4 max-w-xl text-foreground/60">{d.description}</p>
+                    <p className="mt-4 max-w-xl" style={{ color: `${INK}99` }}>{d.description}</p>
                   </div>
                 </div>
               ))}
@@ -188,12 +210,12 @@ export default function Home() {
         </section>
 
         {/* Closing CTA */}
-        <section className="border-t border-border">
+        <section style={{ borderTop: `1px solid ${INK}26` }}>
           <div className="mx-auto max-w-7xl px-6 py-24 text-center lg:px-12">
             <h2 className="font-display mx-auto max-w-lg text-3xl font-medium tracking-tight text-balance sm:text-4xl">
               Ready to bring your school online?
             </h2>
-            <p className="mx-auto mt-4 max-w-md text-foreground/60">
+            <p className="mx-auto mt-4 max-w-md" style={{ color: `${INK}99` }}>
               If your school is already set up on iSchool, sign in below. New
               school? Ask your administrator to get your account provisioned.
             </p>
@@ -204,10 +226,13 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border px-6 py-6 text-sm text-foreground/50">
+      <footer
+        className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 px-6 py-6 text-sm"
+        style={{ borderTop: `1px solid ${INK}26`, color: `${INK}80` }}
+      >
         <span>© {new Date().getFullYear()} iSchool</span>
-        <Link href="/privacy" className="hover:text-foreground hover:underline">Privacy Policy</Link>
-        <Link href="/terms" className="hover:text-foreground hover:underline">Terms of Service</Link>
+        <Link href="/privacy" className="hover:underline" style={{ color: "inherit" }}>Privacy Policy</Link>
+        <Link href="/terms" className="hover:underline" style={{ color: "inherit" }}>Terms of Service</Link>
       </footer>
     </div>
   );
