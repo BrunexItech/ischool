@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const INK = "#2b1f2a";
@@ -6,7 +7,13 @@ export const CREAM = "#fdfaf5";
 export const DARK = "#101915";
 export const SURFACE = "#ffffff";
 export const SHADOW = "0 30px 60px -25px rgba(43,31,42,0.25)";
-export const HERO_GRADIENT = "linear-gradient(135deg, #fbd9a5 0%, #f3a98c 45%, #e78ea3 100%)";
+
+// Deep forest teal fading into warm gold — distinct from any reference site,
+// but still rooted in the product's own brand green.
+export const HERO_GRADIENT =
+  "linear-gradient(115deg, #0f2a21 0%, #1f6e52 38%, #d9a455 78%, #efc789 100%)";
+export const CTA_GRADIENT =
+  "linear-gradient(135deg, #efc789 0%, #e8a06e 55%, #e78a8a 100%)";
 
 export const BADGES = [
   { bg: "#e3edfd", fg: "#2f6fd1" },
@@ -22,6 +29,8 @@ const NAV = [
   { href: "/for-schools", label: "Who it's for" },
   { href: "/why", label: "Why iSchool" },
 ];
+
+const TRUST_BADGES = ["M-Pesa & card payments", "Bulk SMS", "Multi-branch", "Fully white-labeled"];
 
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
@@ -48,24 +57,40 @@ export function IconBadge({ icon: Icon, index }: { icon: React.ComponentType<{ c
   );
 }
 
+function UtilityBar() {
+  return (
+    <div className="hidden items-center justify-center gap-7 px-6 py-2.5 text-xs font-medium tracking-wide text-white/80 sm:flex" style={{ backgroundColor: DARK }}>
+      {TRUST_BADGES.map((item) => (
+        <span key={item} className="flex items-center gap-1.5">
+          <CheckCircle2 className="size-3.5 text-primary" />
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function MarketingHeader() {
   return (
-    <header
-      className="fixed inset-x-0 top-0 z-40 flex items-center justify-between px-6 py-4 backdrop-blur-md lg:px-12"
-      style={{ backgroundColor: `${CREAM}e6`, borderBottom: `1px solid ${INK}14` }}
-    >
-      <Link href="/" className="font-display text-xl font-medium tracking-tight">
-        i<span className="text-primary">School</span>
-      </Link>
-      <nav className="hidden items-center gap-8 text-sm font-medium md:flex" style={{ color: `${INK}99` }}>
-        {NAV.map((item) => (
-          <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-100" style={{ color: "inherit" }}>
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      <Button className="rounded-full" render={<Link href="/login">Sign in</Link>} />
-    </header>
+    <div className="sticky top-0 z-40">
+      <UtilityBar />
+      <header
+        className="flex items-center justify-between px-6 py-4 backdrop-blur-md lg:px-12"
+        style={{ backgroundColor: `${CREAM}f2`, borderBottom: `1px solid ${INK}14` }}
+      >
+        <Link href="/" className="font-display text-xl font-medium tracking-tight">
+          i<span className="text-primary">School</span>
+        </Link>
+        <nav className="hidden items-center gap-8 text-sm font-medium md:flex" style={{ color: `${INK}99` }}>
+          {NAV.map((item) => (
+            <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-100" style={{ color: "inherit" }}>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <Button className="rounded-full" render={<Link href="/login">Sign in</Link>} />
+      </header>
+    </div>
   );
 }
 
@@ -84,7 +109,7 @@ export function MarketingFooter() {
 
 export function PageIntro({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
   return (
-    <div className="relative mx-auto max-w-7xl px-6 pt-36 pb-4 lg:px-12 lg:pt-44">
+    <div className="relative mx-auto max-w-7xl px-6 pt-20 pb-4 lg:px-12 lg:pt-24">
       <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">{eyebrow}</p>
       <h1 className="font-display mt-4 max-w-2xl text-4xl font-medium tracking-tight text-balance sm:text-5xl" style={{ color: INK }}>
         {title}
@@ -101,7 +126,7 @@ export function ClosingCTA() {
     <section className="relative px-6 py-24 lg:px-12" style={{ backgroundColor: CREAM }}>
       <div
         className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] px-8 py-16 text-center"
-        style={{ background: HERO_GRADIENT }}
+        style={{ background: CTA_GRADIENT }}
       >
         <h2 className="font-display relative mx-auto max-w-lg text-3xl font-medium tracking-tight text-balance sm:text-4xl" style={{ color: INK }}>
           Ready to bring your school online?

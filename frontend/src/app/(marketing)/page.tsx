@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ClosingCTA, DARK, HERO_GRADIENT, IconBadge, INK, SURFACE, SHADOW } from "@/components/marketing/chrome";
 import overviewShot from "../../../public/screenshots/overview.png";
 import studentsShot from "../../../public/screenshots/students.png";
+import heroPhoto from "../../../public/hero/classroom.jpg";
 
 const FEATURES = [
   { icon: ClipboardCheck, title: "Attendance & results", description: "Daily attendance and graded results, tracked by class, subject, and term." },
@@ -33,29 +34,60 @@ const CHECKLIST = [
 export default function Home() {
   return (
     <>
-      <section className="relative overflow-hidden pt-28 pb-40 lg:pt-36" style={{ background: HERO_GRADIENT }}>
-        <div className="relative mx-auto max-w-3xl px-6 text-center lg:px-12">
-          <h1 className="font-display text-4xl leading-[1.1] font-medium tracking-tight text-balance sm:text-6xl" style={{ color: INK }}>
-            Everything your school needs, in one place.
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-balance" style={{ color: `${INK}b3` }}>
-            Attendance, grading, fees, live classes, and parent communication —
-            while your M-Pesa till, your SMS sender ID, and your logo stay
-            exactly yours.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="rounded-full" render={<Link href="/login">Sign in</Link>} />
-            <Button size="lg" variant="outline" className="rounded-full border-2 bg-transparent" style={{ borderColor: `${INK}40`, color: INK }} render={<Link href="/features">See what&apos;s inside</Link>} />
+      <section className="relative overflow-hidden" style={{ background: HERO_GRADIENT }}>
+        <div className="relative mx-auto grid max-w-7xl gap-14 px-6 py-20 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:py-28 lg:px-12">
+          <div>
+            <h1 className="font-display text-4xl leading-[1.1] font-medium tracking-tight text-balance text-white sm:text-5xl">
+              Everything your school needs, in one place.
+            </h1>
+            <p className="mt-5 max-w-md text-lg text-balance text-white/75">
+              Attendance, grading, fees, live classes, and parent communication —
+              while your M-Pesa till, your SMS sender ID, and your logo stay
+              exactly yours.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Button size="lg" className="rounded-full" render={<Link href="/login">Sign in</Link>} />
+              <Button size="lg" variant="outline" className="rounded-full border-2 border-white/30 bg-transparent text-white hover:bg-white/10" render={<Link href="/features">See what&apos;s inside</Link>} />
+            </div>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-sm lg:max-w-none">
+            <div
+              className="absolute inset-0 rounded-[2rem]"
+              style={{ backgroundColor: "#efc789", transform: "rotate(-3deg) translate(12px, 10px)" }}
+            />
+            <div
+              className="relative aspect-[4/5] overflow-hidden rounded-[2rem]"
+              style={{ transform: "rotate(1.5deg)", boxShadow: SHADOW }}
+            >
+              <Image
+                src={heroPhoto}
+                alt="A teacher and students at a classroom whiteboard"
+                fill
+                sizes="(min-width: 1024px) 36vw, 80vw"
+                className="object-cover grayscale contrast-110"
+                style={{ objectPosition: "70% 35%" }}
+                priority
+              />
+              <div
+                className="absolute inset-0 mix-blend-multiply"
+                style={{ background: "linear-gradient(160deg, transparent 35%, #0f2a2199 100%)" }}
+              />
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="relative px-6 lg:px-12" style={{ marginTop: "-9rem" }}>
+      <section className="relative px-6 py-20 lg:px-12" style={{ backgroundColor: "#fdfaf5" }}>
+        <p className="text-center text-xs font-semibold tracking-[0.2em] text-primary uppercase">See it in action</p>
+        <h2 className="font-display mt-3 text-center text-2xl font-medium tracking-tight text-balance sm:text-3xl" style={{ color: INK }}>
+          The actual dashboard — not a mockup.
+        </h2>
         <div
-          className="relative mx-auto max-w-5xl overflow-hidden rounded-2xl"
+          className="relative mx-auto mt-10 max-w-5xl overflow-hidden rounded-2xl"
           style={{ boxShadow: SHADOW, border: `1px solid ${INK}14` }}
         >
-          <Image src={overviewShot} alt="The iSchool dashboard overview screen" className="w-full" priority />
+          <Image src={overviewShot} alt="The iSchool dashboard overview screen" className="w-full" />
         </div>
       </section>
 
