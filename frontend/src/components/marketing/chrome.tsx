@@ -1,10 +1,21 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export const INK = "#17283a";
-export const PAPER = "#cfe1ee";
-export const SURFACE = "rgba(255,255,255,0.55)";
-export const SHADOW = "0 30px 60px -25px rgba(23,40,58,0.35)";
+export const INK = "#2b1f2a";
+export const CREAM = "#fdfaf5";
+export const DARK = "#101915";
+export const SURFACE = "#ffffff";
+export const SHADOW = "0 30px 60px -25px rgba(43,31,42,0.25)";
+export const HERO_GRADIENT = "linear-gradient(135deg, #fbd9a5 0%, #f3a98c 45%, #e78ea3 100%)";
+
+export const BADGES = [
+  { bg: "#e3edfd", fg: "#2f6fd1" },
+  { bg: "#fdeedd", fg: "#c2790f" },
+  { bg: "#fde3ea", fg: "#c23e68" },
+  { bg: "#eee3fd", fg: "#6b3fc2" },
+  { bg: "#dff3ec", fg: "#1a7a56" },
+  { bg: "#fde7e0", fg: "#c2501f" },
+];
 
 const NAV = [
   { href: "/features", label: "What it does" },
@@ -19,50 +30,41 @@ export function GrainOverlay() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-50 opacity-[0.05] mix-blend-overlay"
+      className="pointer-events-none fixed inset-0 z-50 opacity-[0.035] mix-blend-overlay"
       style={{ backgroundImage: GRAIN }}
     />
   );
 }
 
-export function AtmosphereBlob({
-  className,
-  color = "var(--color-primary)",
-}: {
-  className: string;
-  color?: string;
-}) {
+export function IconBadge({ icon: Icon, index }: { icon: React.ComponentType<{ className?: string }>; index: number }) {
+  const c = BADGES[index % BADGES.length];
   return (
     <div
-      aria-hidden
-      className={`pointer-events-none absolute rounded-full blur-[110px] ${className}`}
-      style={{ background: color }}
-    />
+      className="flex size-11 items-center justify-center rounded-xl"
+      style={{ backgroundColor: c.bg, color: c.fg }}
+    >
+      <Icon className="size-5" />
+    </div>
   );
 }
 
 export function MarketingHeader() {
   return (
     <header
-      className="fixed inset-x-0 top-0 z-40 flex items-center justify-between px-6 py-5 backdrop-blur-md lg:px-12"
-      style={{ backgroundColor: `${PAPER}cc`, borderBottom: `1px solid ${INK}1f` }}
+      className="fixed inset-x-0 top-0 z-40 flex items-center justify-between px-6 py-4 backdrop-blur-md lg:px-12"
+      style={{ backgroundColor: `${CREAM}e6`, borderBottom: `1px solid ${INK}14` }}
     >
       <Link href="/" className="font-display text-xl font-medium tracking-tight">
         i<span className="text-primary">School</span>
       </Link>
-      <nav className="hidden items-center gap-8 text-xs font-medium tracking-wide uppercase md:flex" style={{ color: `${INK}99` }}>
+      <nav className="hidden items-center gap-8 text-sm font-medium md:flex" style={{ color: `${INK}99` }}>
         {NAV.map((item) => (
           <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-100" style={{ color: "inherit" }}>
             {item.label}
           </Link>
         ))}
       </nav>
-      <Button
-        variant="outline"
-        className="bg-transparent hover:bg-black/5"
-        style={{ borderColor: `${INK}40`, color: INK }}
-        render={<Link href="/login">Sign in</Link>}
-      />
+      <Button className="rounded-full" render={<Link href="/login">Sign in</Link>} />
     </header>
   );
 }
@@ -71,7 +73,7 @@ export function MarketingFooter() {
   return (
     <footer
       className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 px-6 py-6 text-sm"
-      style={{ borderTop: `1px solid ${INK}26`, color: `${INK}80` }}
+      style={{ borderTop: `1px solid ${INK}1a`, color: `${INK}80`, backgroundColor: CREAM }}
     >
       <span>© {new Date().getFullYear()} iSchool</span>
       <Link href="/privacy" className="hover:underline" style={{ color: "inherit" }}>Privacy Policy</Link>
@@ -80,34 +82,36 @@ export function MarketingFooter() {
   );
 }
 
-export function PageIntro({ eyebrow, title }: { eyebrow: string; title: string }) {
+export function PageIntro({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
   return (
-    <div className="relative mx-auto max-w-7xl px-6 pt-40 pb-4 lg:px-12 lg:pt-48">
-      <p className="text-xs font-medium tracking-[0.2em] text-primary uppercase">{eyebrow}</p>
-      <h1 className="font-display mt-4 max-w-2xl text-4xl font-medium tracking-tight text-balance sm:text-5xl">
+    <div className="relative mx-auto max-w-7xl px-6 pt-36 pb-4 lg:px-12 lg:pt-44">
+      <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">{eyebrow}</p>
+      <h1 className="font-display mt-4 max-w-2xl text-4xl font-medium tracking-tight text-balance sm:text-5xl" style={{ color: INK }}>
         {title}
       </h1>
+      {description ? (
+        <p className="mt-4 max-w-lg text-lg text-balance" style={{ color: `${INK}99` }}>{description}</p>
+      ) : null}
     </div>
   );
 }
 
 export function ClosingCTA() {
   return (
-    <section className="relative px-6 py-28 lg:px-12">
+    <section className="relative px-6 py-24 lg:px-12" style={{ backgroundColor: CREAM }}>
       <div
-        className="relative mx-auto max-w-3xl overflow-hidden rounded-[2rem] px-8 py-16 text-center"
-        style={{ backgroundColor: SURFACE, boxShadow: SHADOW, border: `1px solid ${INK}14` }}
+        className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] px-8 py-16 text-center"
+        style={{ background: HERO_GRADIENT }}
       >
-        <AtmosphereBlob className="-right-16 -top-16 size-64 opacity-40" />
-        <h2 className="font-display relative mx-auto max-w-lg text-3xl font-medium tracking-tight text-balance sm:text-4xl">
+        <h2 className="font-display relative mx-auto max-w-lg text-3xl font-medium tracking-tight text-balance sm:text-4xl" style={{ color: INK }}>
           Ready to bring your school online?
         </h2>
-        <p className="relative mx-auto mt-4 max-w-md" style={{ color: `${INK}99` }}>
+        <p className="relative mx-auto mt-4 max-w-md" style={{ color: `${INK}b3` }}>
           If your school is already set up on iSchool, sign in below. New
           school? Ask your administrator to get your account provisioned.
         </p>
         <div className="relative mt-8">
-          <Button size="lg" render={<Link href="/login">Sign in</Link>} />
+          <Button size="lg" className="rounded-full" render={<Link href="/login">Sign in</Link>} />
         </div>
       </div>
     </section>
