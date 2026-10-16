@@ -3,7 +3,6 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ClosingCTA, DARK, Eyebrow, INK, MUTED, BORDER, SURFACE, SHADOW, SHADOW_LG } from "@/components/marketing/chrome";
 import { FadeIn } from "@/components/marketing/fade-in";
-import overviewShot from "../../../public/screenshots/overview.png";
 import studentsShot from "../../../public/screenshots/students.png";
 
 const STATS = [
@@ -78,50 +77,77 @@ const FAQS = [
 export default function Home() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden pt-20 pb-40 lg:pt-28" style={{ backgroundColor: DARK }}>
-        <div className="relative mx-auto max-w-4xl px-6 text-center lg:px-12">
-          <FadeIn>
-            <Eyebrow dark>The complete school management platform</Eyebrow>
-          </FadeIn>
-          <FadeIn delay={0.08}>
-            <h1 className="mt-5 text-5xl font-semibold tracking-tight text-balance text-white sm:text-6xl lg:text-7xl">
-              Every part of your school.
-              <br />
-              One connected system.
-            </h1>
-          </FadeIn>
-          <FadeIn delay={0.16}>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-balance text-white/60">
-              Attendance, academics, fees, and communication — brought
-              together in one platform, so your team stops switching between
-              six different tools.
-            </p>
-          </FadeIn>
-          <FadeIn delay={0.24}>
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" className="rounded-lg" render={<Link href="/login">Sign in</Link>} />
-              <Button size="lg" variant="outline" className="rounded-lg border-white/20 bg-transparent text-white hover:bg-white/10" render={<Link href="#platform">Explore the platform</Link>} />
+      {/* Hero — light background, real video of students in class */}
+      <section className="relative overflow-hidden px-6 py-20 lg:px-12 lg:py-28" style={{ backgroundColor: "#f7f8fc" }}>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-40 -right-32 size-[34rem] rounded-full opacity-50 blur-[110px]"
+          style={{ background: "radial-gradient(circle, #0d948855 0%, transparent 70%)" }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-32 -left-32 size-[26rem] rounded-full opacity-40 blur-[110px]"
+          style={{ background: "radial-gradient(circle, #4263eb44 0%, transparent 70%)" }}
+        />
+
+        <div className="relative mx-auto grid max-w-7xl gap-14 lg:grid-cols-[1fr_1.05fr] lg:items-center">
+          <div>
+            <FadeIn>
+              <span
+                className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold"
+                style={{ borderColor: BORDER, backgroundColor: SURFACE, color: INK, boxShadow: SHADOW }}
+              >
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full opacity-60" style={{ backgroundColor: "#0d9488" }} />
+                  <span className="relative inline-flex size-2 rounded-full" style={{ backgroundColor: "#0d9488" }} />
+                </span>
+                The complete school management platform
+              </span>
+            </FadeIn>
+            <FadeIn delay={0.08}>
+              <h1 className="mt-5 text-5xl font-semibold tracking-tight text-balance sm:text-6xl" style={{ color: INK }}>
+                Every part of your school.
+                <br />
+                One connected system.
+              </h1>
+            </FadeIn>
+            <FadeIn delay={0.16}>
+              <p className="mt-6 max-w-lg text-lg text-balance" style={{ color: MUTED }}>
+                Attendance, academics, fees, and communication — brought
+                together in one platform, so your team stops switching
+                between six different tools.
+              </p>
+            </FadeIn>
+            <FadeIn delay={0.24}>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <Button size="lg" className="rounded-lg shadow-[0_14px_28px_-12px_rgba(13,148,136,0.5)]" render={<Link href="/login">Sign in</Link>} />
+                <Button size="lg" variant="outline" render={<Link href="#platform">Explore the platform</Link>} />
+              </div>
+            </FadeIn>
+          </div>
+
+          <FadeIn delay={0.12}>
+            <div className="relative">
+              <div
+                aria-hidden
+                className="absolute -inset-5 rounded-[2rem] opacity-70 blur-2xl"
+                style={{ background: "linear-gradient(135deg, #0d948840, #4263eb30)" }}
+              />
+              <div className="relative overflow-hidden rounded-[1.5rem]" style={{ boxShadow: SHADOW_LG, border: `1px solid ${BORDER}` }}>
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  poster="/hero/hero-video-poster.jpg"
+                  className="aspect-[4/3] w-full object-cover"
+                >
+                  <source src="/hero/hero-video.mp4" type="video/mp4" />
+                </video>
+              </div>
             </div>
           </FadeIn>
         </div>
-      </section>
-
-      {/* Layered product showcase, bleeding up into the dark hero */}
-      <section className="relative px-6 lg:px-12" style={{ marginTop: "-9rem" }}>
-        <FadeIn>
-          <div className="relative mx-auto max-w-5xl">
-            <div
-              className="absolute -top-5 -right-5 hidden w-[58%] overflow-hidden rounded-xl sm:block lg:-top-8 lg:-right-10"
-              style={{ boxShadow: SHADOW, border: `1px solid ${BORDER}`, transform: "rotate(3deg)" }}
-            >
-              <Image src={studentsShot} alt="" aria-hidden className="w-full opacity-95" />
-            </div>
-            <div className="relative overflow-hidden rounded-xl" style={{ boxShadow: SHADOW_LG, border: `1px solid ${BORDER}` }}>
-              <Image src={overviewShot} alt="The iSchool dashboard overview screen" className="w-full" priority />
-            </div>
-          </div>
-        </FadeIn>
       </section>
 
       {/* Stat strip */}
