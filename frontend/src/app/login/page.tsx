@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
+import { LoginCanvasBackground } from "@/components/LoginCanvasBackground";
 
 interface Branding {
   name: string;
@@ -61,12 +62,14 @@ export default function LoginPage() {
   const schoolName = branding?.name ?? "iSchool";
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
+    <div className="relative grid min-h-screen lg:grid-cols-2">
+      {!branding && <LoginCanvasBackground />}
+
       <div
         className={
           branding
             ? "relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex"
-            : "relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-primary via-primary to-sidebar p-10 text-primary-foreground lg:flex"
+            : "relative z-10 hidden flex-col justify-between overflow-hidden p-10 lg:flex"
         }
         style={
           branding
@@ -74,27 +77,40 @@ export default function LoginPage() {
             : undefined
         }
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.12),_transparent_50%)]" />
+        {branding && (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.12),_transparent_50%)]" />
+        )}
+
         <div className="relative flex items-center gap-2">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-white/15">
+          <div className={branding ? "flex size-9 items-center justify-center rounded-lg bg-white/15" : "flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"}>
             <GraduationCap className="size-5" />
           </div>
-          <span className="text-lg font-semibold">{schoolName}</span>
+          <span className={branding ? "text-lg font-semibold" : "text-lg font-semibold text-foreground"}>{schoolName}</span>
         </div>
-        <div className="relative space-y-3">
-          <h2 className="text-3xl font-semibold leading-tight">
+
+        <div className="relative space-y-4">
+          {!branding && (
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur-sm">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
+                <span className="relative inline-flex size-2 rounded-full bg-primary" />
+              </span>
+              The complete school management platform
+            </span>
+          )}
+          <h2 className={branding ? "text-3xl font-semibold leading-tight" : "text-4xl font-semibold leading-tight tracking-tight text-foreground"}>
             Everything your school needs, in one place.
           </h2>
-          <p className="max-w-md text-sm text-primary-foreground/80">
+          <p className={branding ? "max-w-md text-sm text-primary-foreground/80" : "max-w-md text-sm text-muted-foreground"}>
             Attendance, results, fees, communication, and live classes — built for schools
             and colleges, white-labeled for every institution on board.
           </p>
         </div>
-        <p className="relative text-xs text-primary-foreground/60">© {new Date().getFullYear()} iSchool</p>
+        <p className={branding ? "relative text-xs text-primary-foreground/60" : "relative text-xs text-muted-foreground"}>© {new Date().getFullYear()} iSchool</p>
       </div>
 
-      <div className="flex items-center justify-center bg-background p-6">
-        <Card className="w-full max-w-sm border-none shadow-none lg:border lg:shadow-sm">
+      <div className={branding ? "flex items-center justify-center bg-background p-6" : "relative z-10 flex items-center justify-center p-6"}>
+        <Card className="w-full max-w-sm rounded-2xl border-none shadow-none lg:border lg:shadow-xl lg:backdrop-blur-sm" style={!branding ? { backgroundColor: "rgba(255,255,255,0.85)" } : undefined}>
           <CardHeader className="text-center">
             {branding?.logo_url && (
               // eslint-disable-next-line @next/next/no-img-element
