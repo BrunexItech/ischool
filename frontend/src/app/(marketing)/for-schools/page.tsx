@@ -1,11 +1,10 @@
-import { Building2, BookOpen, Heart, GraduationCap } from "lucide-react";
-import { ClosingCTA, IconBadge, INK, PageIntro, SURFACE, SHADOW } from "@/components/marketing/chrome";
+import { ClosingCTA, INK, MUTED, PageIntro, SURFACE, SHADOW } from "@/components/marketing/chrome";
 
 const ROLES = [
-  { icon: Building2, title: "Administrators", description: "Run every branch, staff list, and fee structure from one console." },
-  { icon: BookOpen, title: "Teachers", description: "Mark attendance, grade exams, and plan a whole term's lessons." },
-  { icon: Heart, title: "Parents & guardians", description: "See results, pay fees, and get updates the moment they happen." },
-  { icon: GraduationCap, title: "Students", description: "Check results, join live classes, and sit exams online." },
+  { title: "Administrators", description: "Run every branch, staff list, and fee structure from one console." },
+  { title: "Teachers", description: "Mark attendance, grade exams, and plan a whole term's lessons." },
+  { title: "Parents & guardians", description: "See results, pay fees, and get updates the moment they happen." },
+  { title: "Students", description: "Check results, join live classes, and sit exams online." },
 ];
 
 export default function ForSchoolsPage() {
@@ -18,15 +17,16 @@ export default function ForSchoolsPage() {
       />
       <section className="relative mx-auto max-w-7xl px-6 py-12 lg:px-12">
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {ROLES.map((role, i) => (
+          {ROLES.map((role) => (
             <div
               key={role.title}
-              className="rounded-2xl p-6"
-              style={{ backgroundColor: SURFACE, boxShadow: SHADOW, border: `1px solid ${INK}0f` }}
+              className="overflow-hidden rounded-xl pl-5"
+              style={{ backgroundColor: SURFACE, boxShadow: SHADOW, borderLeft: "3px solid #0d9488" }}
             >
-              <IconBadge icon={role.icon} index={i} />
-              <h3 className="mt-4 font-medium" style={{ color: INK }}>{role.title}</h3>
-              <p className="mt-1.5 text-sm" style={{ color: `${INK}99` }}>{role.description}</p>
+              <div className="py-6 pr-5">
+                <h3 className="font-semibold" style={{ color: INK }}>{role.title}</h3>
+                <p className="mt-2 text-sm" style={{ color: MUTED }}>{role.description}</p>
+              </div>
             </div>
           ))}
         </div>

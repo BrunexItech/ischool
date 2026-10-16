@@ -1,19 +1,17 @@
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const INK = "#2b1f2a";
-export const CREAM = "#fdfaf5";
-export const DARK = "#101915";
+// Premium enterprise palette — deep ink navy, off-white surfaces, the
+// product's own accent teal/green doing the work of color (used sparingly).
+export const INK = "#172033";
+export const MUTED = "#687386";
+export const BORDER = "#e4e8f0";
+export const BG = "#f7f8fc";
+export const CREAM = BG; // kept for backward compatibility with existing pages
 export const SURFACE = "#ffffff";
-export const SHADOW = "0 30px 60px -25px rgba(43,31,42,0.25)";
-
-// Deep forest teal fading into warm gold — distinct from any reference site,
-// but still rooted in the product's own brand green.
-export const HERO_GRADIENT =
-  "linear-gradient(115deg, #0f2a21 0%, #1f6e52 38%, #d9a455 78%, #efc789 100%)";
-export const CTA_GRADIENT =
-  "linear-gradient(135deg, #efc789 0%, #e8a06e 55%, #e78a8a 100%)";
+export const DARK = "#0d1526";
+export const SHADOW = "0 24px 48px -24px rgba(16,27,51,0.18)";
+export const SHADOW_LG = "0 40px 80px -30px rgba(16,27,51,0.28)";
 
 export const BADGES = [
   { bg: "#e3edfd", fg: "#2f6fd1" },
@@ -25,50 +23,16 @@ export const BADGES = [
 ];
 
 const NAV = [
-  { href: "/features", label: "What it does" },
+  { href: "/features", label: "Platform" },
   { href: "/for-schools", label: "Who it's for" },
   { href: "/why", label: "Why iSchool" },
 ];
 
-const TRUST_BADGES = ["M-Pesa & card payments", "Bulk SMS", "Multi-branch", "Fully white-labeled"];
-
-const GRAIN =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
-
-export function GrainOverlay() {
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-0 z-50 opacity-[0.035] mix-blend-overlay"
-      style={{ backgroundImage: GRAIN }}
-    />
-  );
-}
-
 export function IconBadge({ icon: Icon, index }: { icon: React.ComponentType<{ className?: string }>; index: number }) {
   const c = BADGES[index % BADGES.length];
   return (
-    <div
-      className="flex size-11 items-center justify-center rounded-xl"
-      style={{ backgroundColor: c.bg, color: c.fg }}
-    >
+    <div className="flex size-11 items-center justify-center rounded-xl" style={{ backgroundColor: c.bg, color: c.fg }}>
       <Icon className="size-5" />
-    </div>
-  );
-}
-
-export function UtilityBar() {
-  return (
-    <div className="flex items-center justify-between px-6 py-2.5 text-xs font-medium tracking-wide text-white/80 lg:px-12" style={{ backgroundColor: DARK }}>
-      <span className="font-display text-sm text-white">iSchool</span>
-      <div className="hidden items-center gap-6 sm:flex">
-        {TRUST_BADGES.map((item) => (
-          <span key={item} className="flex items-center gap-1.5">
-            <CheckCircle2 className="size-3.5 text-primary" />
-            {item}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
@@ -76,73 +40,124 @@ export function UtilityBar() {
 export function MarketingHeader() {
   return (
     <header
-      className="sticky top-0 z-20 flex items-center justify-between rounded-b-[2rem] px-6 py-5 shadow-xl lg:px-12"
-      style={{ backgroundColor: CREAM }}
+      className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 backdrop-blur-md lg:px-12"
+      style={{ backgroundColor: `${BG}f0`, borderBottom: `1px solid ${BORDER}` }}
     >
       <Link href="/" className="flex items-center gap-2.5">
-        <span
-          className="flex size-9 items-center justify-center rounded-full font-display text-sm font-medium text-white"
-          style={{ backgroundColor: DARK }}
-        >
+        <span className="flex size-8 items-center justify-center rounded-lg text-sm font-semibold text-white" style={{ backgroundColor: DARK }}>
           i
         </span>
-        <span className="font-display text-xl font-medium tracking-tight">iSchool</span>
+        <span className="text-lg font-semibold tracking-tight" style={{ color: INK }}>iSchool</span>
       </Link>
-      <nav className="hidden items-center gap-8 text-sm font-medium md:flex" style={{ color: `${INK}99` }}>
+      <nav className="hidden items-center gap-8 text-sm font-medium md:flex" style={{ color: MUTED }}>
         {NAV.map((item) => (
-          <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-100" style={{ color: "inherit" }}>
+          <Link key={item.href} href={item.href} className="transition-colors hover:text-[#172033]" style={{ color: "inherit" }}>
             {item.label}
           </Link>
         ))}
       </nav>
-      <Button className="rounded-full" render={<Link href="/login">Sign in</Link>} />
+      <div className="flex items-center gap-3">
+        <Link href="/login" className="hidden text-sm font-medium sm:inline" style={{ color: INK }}>
+          Sign in
+        </Link>
+        <Button className="rounded-lg" render={<Link href="/login">Explore the platform</Link>} />
+      </div>
     </header>
   );
 }
 
 export function MarketingFooter() {
+  const groups = [
+    {
+      title: "Platform",
+      links: [
+        { href: "/features", label: "What it does" },
+        { href: "/for-schools", label: "Who it's for" },
+        { href: "/why", label: "Why iSchool" },
+      ],
+    },
+    {
+      title: "Account",
+      links: [{ href: "/login", label: "Sign in" }],
+    },
+    {
+      title: "Legal",
+      links: [
+        { href: "/privacy", label: "Privacy Policy" },
+        { href: "/terms", label: "Terms of Service" },
+      ],
+    },
+  ];
   return (
-    <footer
-      className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 px-6 py-6 text-sm"
-      style={{ borderTop: `1px solid ${INK}1a`, color: `${INK}80`, backgroundColor: CREAM }}
-    >
-      <span>© {new Date().getFullYear()} iSchool</span>
-      <Link href="/privacy" className="hover:underline" style={{ color: "inherit" }}>Privacy Policy</Link>
-      <Link href="/terms" className="hover:underline" style={{ color: "inherit" }}>Terms of Service</Link>
+    <footer style={{ backgroundColor: DARK, color: "rgba(255,255,255,0.6)" }}>
+      <div className="mx-auto max-w-7xl px-6 py-16 lg:px-12">
+        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+          <div>
+            <span className="text-lg font-semibold text-white">iSchool</span>
+            <p className="mt-3 max-w-xs text-sm">
+              One connected system for attendance, academics, fees, and
+              communication — built for schools and colleges in Kenya.
+            </p>
+          </div>
+          {groups.map((g) => (
+            <div key={g.title}>
+              <p className="text-xs font-semibold tracking-wide text-white/40 uppercase">{g.title}</p>
+              <ul className="mt-4 flex flex-col gap-2.5 text-sm">
+                {g.links.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="transition-colors hover:text-white">{l.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t pt-6 text-xs" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+          <span>© {new Date().getFullYear()} iSchool. All rights reserved.</span>
+        </div>
+      </div>
     </footer>
+  );
+}
+
+export function Eyebrow({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
+  return (
+    <p
+      className="text-xs font-semibold tracking-[0.18em] uppercase"
+      style={{ color: dark ? "#5eead4" : "#0d9488" }}
+    >
+      {children}
+    </p>
   );
 }
 
 export function PageIntro({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
   return (
     <div className="relative mx-auto max-w-7xl px-6 pt-20 pb-4 lg:px-12 lg:pt-24">
-      <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">{eyebrow}</p>
-      <h1 className="font-display mt-4 max-w-2xl text-4xl font-medium tracking-tight text-balance sm:text-5xl" style={{ color: INK }}>
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h1 className="mt-4 max-w-2xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl" style={{ color: INK }}>
         {title}
       </h1>
-      {description ? (
-        <p className="mt-4 max-w-lg text-lg text-balance" style={{ color: `${INK}99` }}>{description}</p>
-      ) : null}
+      {description ? <p className="mt-4 max-w-lg text-lg text-balance" style={{ color: MUTED }}>{description}</p> : null}
     </div>
   );
 }
 
 export function ClosingCTA() {
   return (
-    <section className="relative px-6 py-24 lg:px-12" style={{ backgroundColor: CREAM }}>
-      <div
-        className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] px-8 py-16 text-center"
-        style={{ background: CTA_GRADIENT }}
-      >
-        <h2 className="font-display relative mx-auto max-w-lg text-3xl font-medium tracking-tight text-balance sm:text-4xl" style={{ color: INK }}>
+    <section className="relative px-6 py-24 lg:px-12" style={{ backgroundColor: DARK }}>
+      <div className="relative mx-auto max-w-3xl text-center">
+        <Eyebrow dark>Get started</Eyebrow>
+        <h2 className="mt-4 text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
           Ready to bring your school online?
         </h2>
-        <p className="relative mx-auto mt-4 max-w-md" style={{ color: `${INK}b3` }}>
+        <p className="mx-auto mt-4 max-w-md text-white/60">
           If your school is already set up on iSchool, sign in below. New
           school? Ask your administrator to get your account provisioned.
         </p>
-        <div className="relative mt-8">
-          <Button size="lg" className="rounded-full" render={<Link href="/login">Sign in</Link>} />
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <Button size="lg" className="rounded-lg" render={<Link href="/login">Sign in</Link>} />
+          <Button size="lg" variant="outline" className="rounded-lg border-white/20 bg-transparent text-white hover:bg-white/10" render={<Link href="/features">Explore the platform</Link>} />
         </div>
       </div>
     </section>
