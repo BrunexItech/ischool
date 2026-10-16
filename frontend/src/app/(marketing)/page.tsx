@@ -4,6 +4,15 @@ import { Button } from "@/components/ui/button";
 import { ClosingCTA, DARK, Eyebrow, INK, MUTED, BORDER, SURFACE, SHADOW, SHADOW_LG } from "@/components/marketing/chrome";
 import { FadeIn } from "@/components/marketing/fade-in";
 import studentsShot from "../../../public/screenshots/students.png";
+import classroomPhoto from "../../../public/hero/classroom.jpg";
+import teacherLaptopPhoto from "../../../public/photos/teacher-laptop.jpg";
+import schoolyardPhoto from "../../../public/photos/schoolyard.jpg";
+
+const GALLERY = [
+  { src: classroomPhoto, alt: "A teacher and students at a classroom whiteboard" },
+  { src: teacherLaptopPhoto, alt: "A teacher preparing a lesson on her laptop" },
+  { src: schoolyardPhoto, alt: "Students gathered outside their school" },
+];
 
 const STATS = [
   { value: "6", label: "Connected modules" },
@@ -77,76 +86,87 @@ const FAQS = [
 export default function Home() {
   return (
     <>
-      {/* Hero — light background, real video of students in class */}
-      <section className="relative overflow-hidden px-6 py-20 lg:px-12 lg:py-28" style={{ backgroundColor: "#f7f8fc" }}>
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-40 -right-32 size-[34rem] rounded-full opacity-50 blur-[110px]"
-          style={{ background: "radial-gradient(circle, #0d948855 0%, transparent 70%)" }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-32 -left-32 size-[26rem] rounded-full opacity-40 blur-[110px]"
-          style={{ background: "radial-gradient(circle, #4263eb44 0%, transparent 70%)" }}
-        />
+      {/* Hero — full-bleed video, light color wash using the ViralBlast accent palette */}
+      <section className="relative flex min-h-[100svh] items-end overflow-hidden">
+        <div className="absolute inset-0">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster="/hero/hero-video-poster.jpg"
+            className="h-full w-full object-cover"
+          >
+            <source src="/hero/hero-video.mp4" type="video/mp4" />
+          </video>
+          {/* Vivid color wash — the exact blue/cyan/green accents from the reference file, screen-blended to stay light */}
+          <div
+            className="absolute inset-0 mix-blend-screen"
+            style={{ background: "linear-gradient(120deg, #4f7aff40 0%, #00d4ff30 45%, #00e67625 100%)" }}
+          />
+          {/* Light scrim so text at the bottom reads on a near-white surface */}
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to top, #f7f8fc 0%, #f7f8fce6 28%, #f7f8fc80 50%, transparent 78%)" }}
+          />
+        </div>
 
-        <div className="relative mx-auto grid max-w-7xl gap-14 lg:grid-cols-[1fr_1.05fr] lg:items-center">
-          <div>
-            <FadeIn>
-              <span
-                className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold"
-                style={{ borderColor: BORDER, backgroundColor: SURFACE, color: INK, boxShadow: SHADOW }}
-              >
-                <span className="relative flex size-2">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full opacity-60" style={{ backgroundColor: "#0d9488" }} />
-                  <span className="relative inline-flex size-2 rounded-full" style={{ backgroundColor: "#0d9488" }} />
-                </span>
-                The complete school management platform
+        <div className="relative mx-auto w-full max-w-7xl px-6 pt-32 pb-16 lg:px-12 lg:pb-24">
+          <FadeIn>
+            <span
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold"
+              style={{ borderColor: BORDER, backgroundColor: SURFACE, color: INK, boxShadow: SHADOW }}
+            >
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full opacity-60" style={{ backgroundColor: "#00e676" }} />
+                <span className="relative inline-flex size-2 rounded-full" style={{ backgroundColor: "#00e676" }} />
               </span>
-            </FadeIn>
-            <FadeIn delay={0.08}>
-              <h1 className="mt-5 text-5xl font-semibold tracking-tight text-balance sm:text-6xl" style={{ color: INK }}>
-                Every part of your school.
-                <br />
-                One connected system.
-              </h1>
-            </FadeIn>
-            <FadeIn delay={0.16}>
-              <p className="mt-6 max-w-lg text-lg text-balance" style={{ color: MUTED }}>
-                Attendance, academics, fees, and communication — brought
-                together in one platform, so your team stops switching
-                between six different tools.
-              </p>
-            </FadeIn>
-            <FadeIn delay={0.24}>
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <Button size="lg" className="rounded-lg shadow-[0_14px_28px_-12px_rgba(13,148,136,0.5)]" render={<Link href="/login">Sign in</Link>} />
-                <Button size="lg" variant="outline" render={<Link href="#platform">Explore the platform</Link>} />
-              </div>
-            </FadeIn>
-          </div>
-
-          <FadeIn delay={0.12}>
-            <div className="relative">
-              <div
-                aria-hidden
-                className="absolute -inset-5 rounded-[2rem] opacity-70 blur-2xl"
-                style={{ background: "linear-gradient(135deg, #0d948840, #4263eb30)" }}
+              The complete school management platform
+            </span>
+          </FadeIn>
+          <FadeIn delay={0.08}>
+            <h1 className="mt-5 max-w-3xl text-5xl font-semibold tracking-tight text-balance sm:text-6xl lg:text-7xl" style={{ color: INK }}>
+              Every part of your school.
+              <br />
+              One connected system.
+            </h1>
+          </FadeIn>
+          <FadeIn delay={0.16}>
+            <p className="mt-6 max-w-xl text-lg text-balance" style={{ color: MUTED }}>
+              Attendance, academics, fees, and communication — brought
+              together in one platform, so your team stops switching
+              between six different tools.
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.24}>
+            <div className="mt-9 flex flex-wrap items-center gap-4">
+              <Button
+                size="lg"
+                className="rounded-lg bg-[image:linear-gradient(135deg,#4f7aff,#2a58d5)] text-white shadow-[0_16px_32px_-14px_rgba(79,122,255,0.55)] hover:brightness-110"
+                render={<Link href="/login">Sign in</Link>}
               />
-              <div className="relative overflow-hidden rounded-[1.5rem]" style={{ boxShadow: SHADOW_LG, border: `1px solid ${BORDER}` }}>
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  poster="/hero/hero-video-poster.jpg"
-                  className="aspect-[4/3] w-full object-cover"
-                >
-                  <source src="/hero/hero-video.mp4" type="video/mp4" />
-                </video>
-              </div>
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-lg border-2 bg-white/70 backdrop-blur-sm"
+                style={{ borderColor: "#00d4ff", color: INK }}
+                render={<Link href="#platform">Explore the platform</Link>}
+              />
             </div>
           </FadeIn>
+        </div>
+      </section>
+
+      {/* Photo gallery — real school moments, for liveliness */}
+      <section className="px-6 py-16 lg:px-12" style={{ backgroundColor: SURFACE }}>
+        <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-3">
+          {GALLERY.map((g, i) => (
+            <FadeIn key={g.alt} delay={i * 0.08}>
+              <div className="aspect-[4/5] overflow-hidden rounded-xl" style={{ boxShadow: SHADOW, border: `1px solid ${BORDER}` }}>
+                <Image src={g.src} alt={g.alt} className="h-full w-full object-cover" />
+              </div>
+            </FadeIn>
+          ))}
         </div>
       </section>
 
