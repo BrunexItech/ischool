@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { GitBranch, GraduationCap, LogOut, Plus } from "lucide-react";
+import { GitBranch, GraduationCap, LogOut, Mail, Pencil, Plus } from "lucide-react";
 import { api, ApiError, ModuleToggle, Plan, School } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,10 @@ const SUBSCRIPTION_STATUS_VARIANT: Record<string, "default" | "secondary" | "des
 };
 
 const MODULE_LABELS: Record<string, string> = {
+  pre_primary: "Pre-Primary (ECDE)",
+  primary_section: "Primary School",
+  secondary_section: "Secondary School",
+  college_section: "College / TVET",
   students_staff: "Students & Staff",
   attendance: "Attendance",
   results: "Results",
@@ -42,6 +46,12 @@ const MODULE_LABELS: Record<string, string> = {
   exams: "Online Exams",
   sms: "Bulk SMS",
   lesson_plans: "Lesson Plans",
+  admissions_crm: "Admissions CRM",
+  school_calendar: "School Calendar",
+  boarding: "Boarding",
+  security: "Security",
+  trips: "Trips",
+  erp_finance: "Ledger (ERP finance)",
 };
 
 function OnboardDialog({ schools, onCreated }: { schools: School[]; onCreated: (school: School) => void }) {
@@ -131,6 +141,102 @@ function OnboardDialog({ schools, onCreated }: { schools: School[]; onCreated: (
           </div>
           <Button disabled={submitting} type="submit" className="col-span-2">
             {submitting ? "Creating..." : "Create school"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditSchoolDialog({ school, onUpdated }: { school: School; onUpdated: (school: School) => void }) {
+  const { token } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(school.name);
+  const [customDomain, setCustomDomain] = useState(school.custom_domain ?? "");
+  const [primaryColor, setPrimaryColor] = useState(school.primary_color);
+  const [secondaryColor, setSecondaryColor] = useState(school.secondary_color);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  function onOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) {
+      setName(school.name);
+      setCustomDomain(school.custom_domain ?? "");
+      setPrimaryColor(school.primary_color);
+      setSecondaryColor(school.secondary_color);
+      setLogoFile(null);
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    setSaving(true);
+    try {
+      let updated = await api.updateBranding(token, school.id, {
+        name,
+        custom_domain: customDomain || undefined,
+        primary_color: primaryColor,
+        secondary_color: secondaryColor,
+      });
+      if (logoFile) {
+        updated = await api.uploadSchoolLogo(token, school.id, logoFile);
+      }
+      onUpdated(updated);
+      setOpen(false);
+      toast.success(`${updated.name} updated`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update school");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger render={<Button variant="ghost" size="icon-sm"><Pencil /></Button>} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {school.name}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-3">
+          <div className="grid gap-1.5">
+            <Label>School name</Label>
+            <Input required value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Custom domain (optional)</Label>
+            <Input placeholder="school.example.com" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Primary color</Label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="size-9 rounded border" />
+                <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Secondary color</Label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="size-9 rounded border" />
+                <Input value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Logo</Label>
+            <div className="flex items-center gap-3">
+              {school.logo_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={school.logo_url} alt={school.name} className="h-9 rounded border bg-background p-1" />
+              )}
+              <Input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)} />
+            </div>
+          </div>
+          <Button disabled={saving} type="submit">
+            {saving ? "Saving..." : "Save changes"}
           </Button>
         </form>
       </DialogContent>
@@ -284,6 +390,14 @@ function ModulesPanel({ school }: { school: School }) {
     setModules((mods) => mods.map((m) => (m.module_key === moduleKey ? updated : m)));
   }
 
+  async function setAll(enabled: boolean) {
+    if (!token) return;
+    setLoading(true);
+    const updated = await Promise.all(modules.map((m) => api.toggleModule(token, school.id, m.module_key, enabled)));
+    setModules(updated);
+    setLoading(false);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-4">
@@ -292,15 +406,88 @@ function ModulesPanel({ school }: { school: School }) {
     );
   }
 
+  const allEnabled = modules.every((m) => m.enabled);
+  const allDisabled = modules.every((m) => !m.enabled);
+
   return (
-    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {modules.map((m) => (
-        <label key={m.module_key} className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm">
-          {MODULE_LABELS[m.module_key] ?? m.module_key}
-          <Switch checked={m.enabled} onCheckedChange={(v) => toggle(m.module_key, v)} />
-        </label>
-      ))}
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" disabled={allEnabled} onClick={() => setAll(true)}>
+          Enable all
+        </Button>
+        <Button type="button" variant="ghost" size="sm" disabled={allDisabled} onClick={() => setAll(false)}>
+          Disable all
+        </Button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {modules.map((m) => (
+          <label key={m.module_key} className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm">
+            {MODULE_LABELS[m.module_key] ?? m.module_key}
+            <Switch checked={m.enabled} onCheckedChange={(v) => toggle(m.module_key, v)} />
+          </label>
+        ))}
+      </div>
     </div>
+  );
+}
+
+function DemoDataPanel({ school }: { school: School }) {
+  const { token } = useAuth();
+  const [hasDemo, setHasDemo] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    api
+      .demoDataStatus(token, school.id)
+      .then((r) => setHasDemo(r.has_demo_data))
+      .catch(() => setHasDemo(false))
+      .finally(() => setLoading(false));
+  }, [token, school.id]);
+
+  async function generate() {
+    if (!token) return;
+    setBusy(true);
+    try {
+      const result = await api.generateDemoData(token, school.id);
+      setHasDemo(true);
+      toast.success(
+        `Added ${result.students} students, ${result.staff} staff, ${result.classes} class. Demo teacher login: ${result.teacher_login.email} / ${result.teacher_login.password}`,
+        { duration: 10000 }
+      );
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to generate demo data");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!token) return;
+    if (!window.confirm(`Delete all demo data for ${school.name}? This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      await api.deleteDemoData(token, school.id);
+      setHasDemo(false);
+      toast.success("Demo data deleted");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to delete demo data");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return null;
+
+  return hasDemo ? (
+    <Button variant="destructive" size="sm" disabled={busy} onClick={remove}>
+      {busy ? "Deleting..." : "Delete demo data"}
+    </Button>
+  ) : (
+    <Button variant="outline" size="sm" disabled={busy} onClick={generate}>
+      {busy ? "Generating..." : "Generate demo data"}
+    </Button>
   );
 }
 
@@ -310,6 +497,20 @@ export default function AdminSchoolsPage() {
   const [schools, setSchools] = useState<School[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [schoolsLoading, setSchoolsLoading] = useState(true);
+  const [sendingReports, setSendingReports] = useState(false);
+
+  async function handleSendWeeklyReports() {
+    if (!token) return;
+    setSendingReports(true);
+    try {
+      const result = await api.triggerWeeklyReports(token);
+      toast.success(`Weekly reports sent — ${result.branch_reports_sent + result.group_reports_sent} emails across ${result.schools_processed} schools`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to send weekly reports");
+    } finally {
+      setSendingReports(false);
+    }
+  }
 
   useEffect(() => {
     if (!loading && (!user || user.role !== "super_admin")) router.replace("/login");
@@ -347,11 +548,16 @@ export default function AdminSchoolsPage() {
             <GraduationCap className="size-4.5" />
           </div>
           <div>
-            <p className="text-sm font-semibold leading-none">iSchool</p>
+            <p className="text-sm font-semibold leading-none">Milai Group of Schools</p>
             <p className="text-xs text-muted-foreground">Super Admin</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={logout}><LogOut /> Log out</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={sendingReports} onClick={handleSendWeeklyReports}>
+            {sendingReports ? <Spinner size={14} className="text-current" /> : <Mail />} {sendingReports ? "Sending..." : "Send weekly reports now"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={logout}><LogOut /> Log out</Button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-5xl p-6">
@@ -383,14 +589,21 @@ export default function AdminSchoolsPage() {
                         {school.branch_count > 0 && ` · ${school.branch_count} branch${school.branch_count > 1 ? "es" : ""}`}
                       </p>
                     </div>
-                    <Badge variant={school.is_active ? "default" : "secondary"}>
-                      {school.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={school.is_active ? "default" : "secondary"}>
+                        {school.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                      <EditSchoolDialog school={school} onUpdated={handleSchoolUpdated} />
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <SubscriptionPanel school={school} plans={plans} onUpdated={handleSchoolUpdated} />
                   <ModulesPanel school={school} />
+                  <div className="mt-4 flex items-center justify-between border-t pt-4">
+                    <p className="text-sm text-muted-foreground">Sample data for demos</p>
+                    <DemoDataPanel school={school} />
+                  </div>
                 </CardContent>
               </Card>
             ))}

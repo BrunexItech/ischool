@@ -43,3 +43,14 @@ class FeeInvoiceOut(BaseModel):
 
 class FeeInvoiceDetailOut(FeeInvoiceOut):
     payments: list[FeePaymentOut]
+
+
+class FeePaymentHistoryOut(BaseModel):
+    id: int
+    invoice_id: int
+    student_id: int
+    student_name: str
+    amount: float
+    method: str
+    reference: str | None
+    paid_at: datetime

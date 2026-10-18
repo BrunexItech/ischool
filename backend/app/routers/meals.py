@@ -27,7 +27,7 @@ def list_meal_menu(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     query = db.query(MealMenu).filter_by(school_id=school_id)
     if date_from is not None:
         query = query.filter(MealMenu.date >= date_from)
@@ -45,7 +45,7 @@ def list_meal_menu(
 def create_meal_menu_entry(
     school_id: int, payload: MealMenuCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     if db.query(MealMenu).filter_by(school_id=school_id, date=payload.date, meal_type=payload.meal_type).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{payload.meal_type.title()} for {payload.date} is already set")
 
@@ -68,7 +68,7 @@ def update_meal_menu_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     entry = db.query(MealMenu).filter_by(school_id=school_id, id=menu_id).first()
     if entry is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Menu entry not found")
@@ -87,7 +87,7 @@ def update_meal_menu_entry(
 def delete_meal_menu_entry(
     school_id: int, menu_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     entry = db.query(MealMenu).filter_by(school_id=school_id, id=menu_id).first()
     if entry is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Menu entry not found")

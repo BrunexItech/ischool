@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.chart_of_accounts import seed_chart_of_accounts
+from app.core.demo_data import delete_demo_data, has_demo_data, seed_demo_data
 from app.core.deps import ensure_school_access, get_current_user, require_roles
 from app.core.security import ensure_password_strength, hash_password
 from app.core.uploads import save_image
@@ -18,6 +20,7 @@ from app.schemas.school import (
     SchoolOut,
     SchoolPublicOut,
 )
+from app.services.weekly_reports import send_all_weekly_reports
 
 router = APIRouter(prefix="/schools", tags=["schools"])
 
@@ -77,6 +80,7 @@ def onboard_school(payload: SchoolCreate, db: Session = Depends(get_db)):
 
     for module_key in MODULE_KEYS:
         db.add(SchoolModule(school_id=school.id, module_key=module_key, enabled=True))
+    seed_chart_of_accounts(db, school.id)
 
     admin = User(
         school_id=school.id,
@@ -99,7 +103,7 @@ def onboard_school(payload: SchoolCreate, db: Session = Depends(get_db)):
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
 )
 def get_school(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     school = db.get(School, school_id)
     if school is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
@@ -112,7 +116,7 @@ def get_school(school_id: int, db: Session = Depends(get_db), current_user: User
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
 )
 def update_subscription(school_id: int, payload: SubscriptionUpdate, db: Session = Depends(get_db)):
-    """iSchool's own billing relationship with this school — separate from
+    """Milai Group of Schools' own billing relationship with this school — separate from
     anything the school charges its own parents. No payment collection is
     wired to this; a super-admin sets these by hand for now."""
     school = db.get(School, school_id)
@@ -133,7 +137,7 @@ def update_subscription(school_id: int, payload: SubscriptionUpdate, db: Session
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
 )
 def list_branches(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return db.query(School).filter_by(parent_school_id=school_id).all()
 
 
@@ -142,7 +146,7 @@ def get_branding(school_id: int, db: Session = Depends(get_db), current_user: Us
     """Any logged-in member of this school can read its branding — the
     dashboard chrome itself (sidebar accents, buttons) needs this for every
     role, not just admins, to actually look like the school's own site."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     school = db.get(School, school_id)
     if school is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
@@ -160,7 +164,7 @@ def update_branding(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     school = db.get(School, school_id)
     if school is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
@@ -184,7 +188,7 @@ def upload_school_logo(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     school = db.get(School, school_id)
     if school is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
@@ -202,14 +206,14 @@ def upload_school_logo(
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
 )
 def list_modules(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return db.query(SchoolModule).filter_by(school_id=school_id).all()
 
 
 @router.patch(
     "/{school_id}/modules/{module_key}",
     response_model=ModuleToggleOut,
-    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
 )
 def toggle_module(
     school_id: int,
@@ -218,7 +222,7 @@ def toggle_module(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     module = db.query(SchoolModule).filter_by(school_id=school_id, module_key=module_key).first()
     if module is None:
@@ -228,3 +232,46 @@ def toggle_module(
     db.commit()
     db.refresh(module)
     return module
+
+
+@router.post(
+    "/{school_id}/demo-data",
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
+)
+def generate_demo_data(school_id: int, db: Session = Depends(get_db)):
+    """Populate an otherwise-empty school with a small set of sample
+    students/staff/classes for demoing the product. Everything it creates is
+    tagged is_demo=True so it can be wiped with one click."""
+    school = db.get(School, school_id)
+    if school is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
+    try:
+        return seed_demo_data(db, school)
+    except ValueError as err:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err))
+
+
+@router.get(
+    "/{school_id}/demo-data",
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
+)
+def demo_data_status(school_id: int, db: Session = Depends(get_db)):
+    return {"has_demo_data": has_demo_data(db, school_id)}
+
+
+@router.delete(
+    "/{school_id}/demo-data",
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
+)
+def remove_demo_data(school_id: int, db: Session = Depends(get_db)):
+    return delete_demo_data(db, school_id)
+
+
+@router.post(
+    "/weekly-reports/send",
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
+)
+def trigger_weekly_reports(db: Session = Depends(get_db)):
+    """Manually fires the same weekly report run the scheduler triggers
+    every Monday — for support/testing, or to resend after an outage."""
+    return send_all_weekly_reports(db)

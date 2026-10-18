@@ -15,18 +15,19 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResetPasswordDialog } from "@/components/ResetPasswordDialog";
-import { UserPlus } from "lucide-react";
+import { Search, UserPlus } from "lucide-react";
 
 export default function StaffPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [search, setSearch] = useState("");
   const [dataLoading, setDataLoading] = useState(true);
   const [form, setForm] = useState({
     email: "",
     full_name: "",
     password: "",
-    role: "teacher" as "teacher" | "staff",
+    role: "teacher" as "teacher" | "staff" | "security" | "boarding_staff" | "transport_staff" | "bursar",
     staff_number: "",
     department: "",
     phone: "",
@@ -47,6 +48,18 @@ export default function StaffPage() {
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  const filteredStaff = staff.filter((s) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      s.full_name.toLowerCase().includes(q) ||
+      s.staff_number.toLowerCase().includes(q) ||
+      s.email.toLowerCase().includes(q) ||
+      (s.department ?? "").toLowerCase().includes(q) ||
+      s.role.toLowerCase().includes(q)
+    );
+  });
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -111,7 +124,11 @@ export default function StaffPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="teacher">Teacher</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="staff">Staff (general)</SelectItem>
+                  <SelectItem value="security">Security</SelectItem>
+                  <SelectItem value="boarding_staff">Boarding / Matron</SelectItem>
+                  <SelectItem value="transport_staff">Transport</SelectItem>
+                  <SelectItem value="bursar">Bursar</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -133,6 +150,17 @@ export default function StaffPage() {
       </Card>
 
       <Card>
+        <CardContent className="pt-6 pb-0">
+          <div className="relative max-w-sm">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, staff #, role, department, or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </CardContent>
         <Table>
           <TableHeader>
             <TableRow>
@@ -145,11 +173,11 @@ export default function StaffPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {staff.map((s) => (
+            {filteredStaff.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{s.staff_number}</TableCell>
                 <TableCell className="font-medium">{s.full_name}</TableCell>
-                <TableCell><Badge variant="secondary" className="capitalize">{s.role}</Badge></TableCell>
+                <TableCell><Badge variant="secondary" className="capitalize">{s.role.replace(/_/g, " ")}</Badge></TableCell>
                 <TableCell className="text-muted-foreground">{s.department ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{s.email}</TableCell>
                 <TableCell className="text-right">
@@ -157,10 +185,10 @@ export default function StaffPage() {
                 </TableCell>
               </TableRow>
             ))}
-            {staff.length === 0 && (
+            {filteredStaff.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No staff added yet.
+                  {staff.length === 0 ? "No staff added yet." : "No staff match your search."}
                 </TableCell>
               </TableRow>
             )}

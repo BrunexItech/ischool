@@ -1,0 +1,321 @@
+from datetime import date, datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.models.academics import Student
+from app.models.security import (
+    EarlyPickup,
+    PatrolLog,
+    SecurityAlert,
+    SecurityIncident,
+    SecurityIncidentStatus,
+    VehicleLog,
+    VisitorLog,
+)
+from app.models.user import User, UserRole
+from app.schemas.security import (
+    EarlyPickupCreate,
+    EarlyPickupOut,
+    PatrolLogCreate,
+    PatrolLogOut,
+    SecurityAlertCreate,
+    SecurityAlertOut,
+    SecurityIncidentCreate,
+    SecurityIncidentOut,
+    VehicleLogCreate,
+    VehicleLogOut,
+    VisitorOut,
+    VisitorSignIn,
+)
+
+router = APIRouter(prefix="/schools/{school_id}/security", tags=["security"])
+
+STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF, UserRole.SECURITY)
+
+
+def _student_or_404(db: Session, school_id: int, student_id: int) -> Student:
+    student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
+    if student is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
+    return student
+
+
+# --- Visitors ---
+
+
+@router.get(
+    "/visitors",
+    response_model=list[VisitorOut],
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def list_visitors(
+    school_id: int,
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(db, current_user, school_id)
+    query = db.query(VisitorLog).filter_by(school_id=school_id)
+    if date_from is not None:
+        query = query.filter(VisitorLog.signed_in_at >= date_from)
+    if date_to is not None:
+        query = query.filter(VisitorLog.signed_in_at < date_to + timedelta(days=1))
+    return query.order_by(VisitorLog.signed_in_at.desc()).all()
+
+
+@router.post(
+    "/visitors",
+    response_model=VisitorOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def sign_in_visitor(
+    school_id: int, payload: VisitorSignIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    ensure_school_access(db, current_user, school_id)
+
+    already_in = (
+        db.query(VisitorLog)
+        .filter(
+            VisitorLog.school_id == school_id,
+            VisitorLog.signed_out_at.is_(None),
+            VisitorLog.name.ilike(payload.name),
+        )
+        .first()
+    )
+    if already_in:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This visitor is already signed in")
+
+    count = db.query(VisitorLog).filter_by(school_id=school_id).count()
+    visitor = VisitorLog(
+        school_id=school_id,
+        badge=f"V-{count + 31:03d}",
+        name=payload.name,
+        id_number_masked="•••••" + payload.id_number[-3:],
+        phone=payload.phone,
+        purpose=payload.purpose,
+        host_name=payload.host_name,
+        vehicle_registration=payload.vehicle_registration,
+    )
+    db.add(visitor)
+    db.commit()
+    db.refresh(visitor)
+    return visitor
+
+
+@router.post(
+    "/visitors/{visitor_id}/sign-out",
+    response_model=VisitorOut,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def sign_out_visitor(
+    school_id: int, visitor_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    ensure_school_access(db, current_user, school_id)
+    visitor = db.query(VisitorLog).filter_by(school_id=school_id, id=visitor_id).first()
+    if visitor is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Visitor not found")
+    if visitor.signed_out_at is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This visitor has already signed out")
+    visitor.signed_out_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(visitor)
+    return visitor
+
+
+# --- Vehicles ---
+
+
+@router.get(
+    "/vehicles",
+    response_model=list[VehicleLogOut],
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def list_vehicle_logs(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ensure_school_access(db, current_user, school_id)
+    return db.query(VehicleLog).filter_by(school_id=school_id).order_by(VehicleLog.logged_at.desc()).all()
+
+
+@router.post(
+    "/vehicles",
+    response_model=VehicleLogOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def log_vehicle(
+    school_id: int, payload: VehicleLogCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    ensure_school_access(db, current_user, school_id)
+    last = (
+        db.query(VehicleLog)
+        .filter_by(school_id=school_id, registration=payload.registration)
+        .order_by(VehicleLog.logged_at.desc())
+        .first()
+    )
+    if last and last.direction == payload.direction:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{payload.registration} is already logged {payload.direction.value}")
+
+    entry = VehicleLog(school_id=school_id, **payload.model_dump())
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+# --- Early pick-ups ---
+
+
+@router.get(
+    "/pickups",
+    response_model=list[EarlyPickupOut],
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def list_pickups(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ensure_school_access(db, current_user, school_id)
+    return db.query(EarlyPickup).filter_by(school_id=school_id).order_by(EarlyPickup.created_at.desc()).all()
+
+
+@router.post(
+    "/pickups",
+    response_model=EarlyPickupOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def log_pickup(
+    school_id: int, payload: EarlyPickupCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    ensure_school_access(db, current_user, school_id)
+    _student_or_404(db, school_id, payload.student_id)
+    pickup = EarlyPickup(school_id=school_id, logged_by=current_user.id, **payload.model_dump())
+    db.add(pickup)
+    db.commit()
+    db.refresh(pickup)
+    return pickup
+
+
+# --- Incidents ---
+
+
+@router.get(
+    "/incidents",
+    response_model=list[SecurityIncidentOut],
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def list_security_incidents(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ensure_school_access(db, current_user, school_id)
+    return db.query(SecurityIncident).filter_by(school_id=school_id).order_by(SecurityIncident.created_at.desc()).all()
+
+
+@router.post(
+    "/incidents",
+    response_model=SecurityIncidentOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def report_security_incident(
+    school_id: int, payload: SecurityIncidentCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    ensure_school_access(db, current_user, school_id)
+    incident = SecurityIncident(school_id=school_id, logged_by=current_user.id, **payload.model_dump())
+    db.add(incident)
+    db.commit()
+    db.refresh(incident)
+    return incident
+
+
+@router.post(
+    "/incidents/{incident_id}/close",
+    response_model=SecurityIncidentOut,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def close_security_incident(
+    school_id: int, incident_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    ensure_school_access(db, current_user, school_id)
+    incident = db.query(SecurityIncident).filter_by(school_id=school_id, id=incident_id).first()
+    if incident is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Incident not found")
+    incident.status = SecurityIncidentStatus.CLOSED
+    db.commit()
+    db.refresh(incident)
+    return incident
+
+
+# --- Emergency alerts ---
+
+
+@router.get(
+    "/alerts",
+    response_model=list[SecurityAlertOut],
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def list_alerts(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ensure_school_access(db, current_user, school_id)
+    return db.query(SecurityAlert).filter_by(school_id=school_id).order_by(SecurityAlert.created_at.desc()).all()
+
+
+@router.post(
+    "/alerts",
+    response_model=SecurityAlertOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def raise_alert(
+    school_id: int, payload: SecurityAlertCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    ensure_school_access(db, current_user, school_id)
+    alert = SecurityAlert(school_id=school_id, raised_by=current_user.id, **payload.model_dump())
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+    return alert
+
+
+@router.post(
+    "/alerts/{alert_id}/stand-down",
+    response_model=SecurityAlertOut,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def stand_down_alert(school_id: int, alert_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ensure_school_access(db, current_user, school_id)
+    alert = db.query(SecurityAlert).filter_by(school_id=school_id, id=alert_id).first()
+    if alert is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Alert not found")
+    alert.active = False
+    db.commit()
+    db.refresh(alert)
+    return alert
+
+
+# --- Patrols ---
+
+
+@router.get(
+    "/patrols",
+    response_model=list[PatrolLogOut],
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def list_patrols(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ensure_school_access(db, current_user, school_id)
+    return db.query(PatrolLog).filter_by(school_id=school_id).order_by(PatrolLog.created_at.desc()).all()
+
+
+@router.post(
+    "/patrols",
+    response_model=PatrolLogOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def log_patrol(
+    school_id: int, payload: PatrolLogCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    ensure_school_access(db, current_user, school_id)
+    patrol = PatrolLog(school_id=school_id, logged_by=current_user.id, **payload.model_dump())
+    db.add(patrol)
+    db.commit()
+    db.refresh(patrol)
+    return patrol

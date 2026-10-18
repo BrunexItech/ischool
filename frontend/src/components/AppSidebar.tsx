@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 import {
   GraduationCap,
   LayoutDashboard,
   Users,
+  Users2,
   UserSquare2,
   BookOpen,
   NotebookPen,
@@ -19,6 +22,17 @@ import {
   ClipboardList,
   History,
   CalendarRange,
+  CalendarDays,
+  BedDouble,
+  ShieldCheck,
+  Map,
+  BookOpenCheck,
+  Truck,
+  Package,
+  PiggyBank,
+  Boxes,
+  Banknote,
+  Building2,
   Bus,
   UtensilsCrossed,
   Trophy,
@@ -28,7 +42,10 @@ import {
   FileText,
   CreditCard,
   Palette,
+  LayoutGrid,
+  CalendarClock,
   ChevronsUpDown,
+  Check,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -56,21 +73,23 @@ const NAV_SECTIONS = [
   {
     label: null,
     items: [
-      { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
+      { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["school_admin", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar"] },
     ],
   },
   {
     label: "Academics",
     items: [
+      { href: "/dashboard/my-classes", label: "My Classes", icon: LayoutGrid, roles: ["teacher"] },
       { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/lesson-plans", label: "Lesson Plans", icon: NotebookPen, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/students", label: "Students", icon: Users, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/results", label: "Results", icon: Award, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/exams", label: "Exams", icon: FileText, roles: ["school_admin", "teacher", "staff"] },
-      { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["school_admin", "teacher", "staff", "bursar"] },
       { href: "/dashboard/academic-terms", label: "Academic Terms", icon: CalendarRange, roles: ["school_admin"] },
       { href: "/dashboard/teacher-assignments", label: "Teaching Assignments", icon: ClipboardList, roles: ["school_admin"] },
+      { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, roles: ["school_admin"] },
     ],
   },
   {
@@ -83,25 +102,43 @@ const NAV_SECTIONS = [
   {
     label: "Operations",
     items: [
-      { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["school_admin", "staff"] },
+      { href: "/dashboard/calendar", label: "Calendar", icon: CalendarDays, roles: ["school_admin", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar"] },
+      { href: "/dashboard/staff-attendance", label: "Staff Attendance", icon: UserCheck, roles: ["school_admin", "teacher", "staff", "security", "boarding_staff", "transport_staff", "bursar"] },
+      { href: "/dashboard/boarding", label: "Boarding", icon: BedDouble, roles: ["school_admin", "staff", "boarding_staff"] },
+      { href: "/dashboard/security", label: "Security", icon: ShieldCheck, roles: ["school_admin", "staff", "security"] },
+      { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["school_admin", "staff", "transport_staff"] },
+      { href: "/dashboard/trips", label: "Trips", icon: Map, roles: ["school_admin", "teacher", "staff", "transport_staff"] },
       { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["school_admin", "staff"] },
-      { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["school_admin", "teacher", "staff", "security"] },
       { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["school_admin", "teacher", "staff"] },
     ],
   },
   {
     label: "Finance",
     items: [
-      { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["school_admin", "staff"] },
-      { href: "/dashboard/finance", label: "Finance", icon: Wallet2, roles: ["school_admin"] },
+      { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["school_admin", "staff", "bursar"] },
+      { href: "/dashboard/finance", label: "Finance", icon: Wallet2, roles: ["school_admin", "bursar"] },
+      { href: "/dashboard/ledger", label: "Ledger", icon: BookOpenCheck, roles: ["school_admin", "bursar"] },
+      { href: "/dashboard/suppliers", label: "Suppliers", icon: Truck, roles: ["school_admin"] },
+      { href: "/dashboard/procurement", label: "Procurement", icon: Package, roles: ["school_admin", "staff"] },
+      { href: "/dashboard/budgets", label: "Budgets", icon: PiggyBank, roles: ["school_admin"] },
+      { href: "/dashboard/stores", label: "Stores", icon: Boxes, roles: ["school_admin", "staff"] },
+      { href: "/dashboard/payroll", label: "Payroll", icon: Banknote, roles: ["school_admin"] },
+      { href: "/dashboard/assets", label: "Fixed Assets", icon: Building2, roles: ["school_admin"] },
       { href: "/dashboard/payment-settings", label: "Payment Settings", icon: CreditCard, roles: ["school_admin"] },
     ],
   },
   {
     label: "Communication",
     items: [
-      { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent"] },
+      { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar"] },
       { href: "/dashboard/communication-settings", label: "Communication Settings", icon: MessageSquare, roles: ["school_admin"] },
+    ],
+  },
+  {
+    label: "Engagement",
+    items: [
+      { href: "/dashboard/crm", label: "Admissions CRM", icon: Users2, roles: ["school_admin"] },
     ],
   },
   {
@@ -131,8 +168,18 @@ function initials(name: string) {
 }
 
 export function AppSidebar() {
-  const { user, logout } = useAuth();
+  const { user, token, logout, schoolOptions, viewingSchoolId, switchSchool } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
+  const [brand, setBrand] = useState<{ name: string; logo_url: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!token || !user?.school_id) return;
+    api
+      .getSchoolBranding(token, user.school_id)
+      .then((school) => setBrand({ name: school.name, logo_url: school.logo_url }))
+      .catch(() => setBrand(null));
+  }, [token, user?.school_id]);
 
   if (!user) return null;
 
@@ -144,14 +191,56 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <GraduationCap className="size-4.5" />
+        {schoolOptions.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
+                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    {brand?.logo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={brand.logo_url} alt={brand.name} className="size-full object-contain p-1" />
+                    ) : (
+                      <GraduationCap className="size-4.5" />
+                    )}
+                  </div>
+                  <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden">
+                    <span className="truncate text-sm font-semibold tracking-tight">{brand?.name ?? "Milai Group of Schools"}</span>
+                    <span className="truncate text-[0.68rem] text-sidebar-foreground/50">
+                      {schoolOptions.length} {schoolOptions.length === 1 ? "school" : "schools"} · switch
+                    </span>
+                  </div>
+                  <ChevronsUpDown className="ml-auto size-4" />
+                </SidebarMenuButton>
+              }
+            />
+            <DropdownMenuContent side="bottom" align="start" className="w-64">
+              {schoolOptions.map((option) => (
+                <DropdownMenuItem key={option.id} onClick={() => { switchSchool(option.id); router.push("/dashboard"); }}>
+                  <Building2 className="text-muted-foreground" />
+                  <span className="flex-1 truncate">{option.name}</span>
+                  {option.isHome && <span className="text-[0.65rem] text-muted-foreground">Group</span>}
+                  {viewingSchoolId === option.id && <Check className="size-4" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <div className="flex items-center gap-2 px-2 py-1.5">
+            <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+              {brand?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={brand.logo_url} alt={brand.name} className="size-full object-contain p-1" />
+              ) : (
+                <GraduationCap className="size-4.5" />
+              )}
+            </div>
+            <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+              <span className="truncate text-sm font-semibold tracking-tight">{brand?.name ?? "Milai Group of Schools"}</span>
+              <span className="text-[0.68rem] text-sidebar-foreground/50">School management</span>
+            </div>
           </div>
-          <span className="text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-            iSchool
-          </span>
-        </div>
+        )}
       </SidebarHeader>
       <SidebarContent>
         {sections.map((section, i) => (

@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Receipt } from "lucide-react";
+import { Plus, Receipt, Search } from "lucide-react";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"> = {
   paid: "default",
@@ -129,6 +129,7 @@ export default function FeesPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
   const [form, setForm] = useState({ student_id: "", term: "", category: "tuition", amount_due: "" });
+  const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -149,6 +150,17 @@ export default function FeesPage() {
     const s = students.find((st) => st.id === studentId);
     return s ? `${s.first_name} ${s.last_name} (${s.admission_number})` : `#${studentId}`;
   }
+
+  const filteredInvoices = invoices.filter((inv) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      studentLabel(inv.student_id).toLowerCase().includes(q) ||
+      inv.term.toLowerCase().includes(q) ||
+      inv.category.toLowerCase().includes(q) ||
+      inv.status.toLowerCase().includes(q)
+    );
+  });
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -234,6 +246,17 @@ export default function FeesPage() {
       </Card>
 
       <Card>
+        <CardContent className="pt-6 pb-0">
+          <div className="relative max-w-sm">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by student, term, category, or status..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </CardContent>
         <Table>
           <TableHeader>
             <TableRow>
@@ -246,7 +269,7 @@ export default function FeesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {invoices.map((inv) => (
+            {filteredInvoices.map((inv) => (
               <TableRow key={inv.id}>
                 <TableCell className="font-medium">{studentLabel(inv.student_id)}</TableCell>
                 <TableCell className="text-muted-foreground">{inv.term}</TableCell>
@@ -262,10 +285,10 @@ export default function FeesPage() {
                 </TableCell>
               </TableRow>
             ))}
-            {invoices.length === 0 && (
+            {filteredInvoices.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No invoices yet.
+                  {invoices.length === 0 ? "No invoices yet." : "No invoices match your search."}
                 </TableCell>
               </TableRow>
             )}

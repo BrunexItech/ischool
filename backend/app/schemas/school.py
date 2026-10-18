@@ -21,6 +21,7 @@ class SchoolBrandingUpdate(BaseModel):
     primary_color: str | None = None
     secondary_color: str | None = None
     custom_domain: str | None = None
+    expense_approval_threshold: float | None = None
 
 
 class SchoolOut(BaseModel):
@@ -39,6 +40,7 @@ class SchoolOut(BaseModel):
     is_active: bool
     parent_school_id: int | None
     branch_count: int
+    expense_approval_threshold: float
     plan_id: int | None
     subscription_status: str
     trial_ends_at: datetime

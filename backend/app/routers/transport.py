@@ -17,8 +17,8 @@ from app.schemas.transport import (
 
 router = APIRouter(prefix="/schools/{school_id}/transport", tags=["transport"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.TRANSPORT_STAFF)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TRANSPORT_STAFF)
 
 
 # --- Vehicles ---
@@ -30,7 +30,7 @@ ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("transport"))],
 )
 def list_vehicles(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return db.query(Vehicle).filter_by(school_id=school_id).all()
 
 
@@ -43,7 +43,7 @@ def list_vehicles(school_id: int, db: Session = Depends(get_db), current_user: U
 def create_vehicle(
     school_id: int, payload: VehicleCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     if db.query(Vehicle).filter_by(school_id=school_id, registration_number=payload.registration_number).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "A vehicle with that registration number already exists")
 
@@ -63,7 +63,7 @@ def create_vehicle(
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("transport"))],
 )
 def list_routes(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return db.query(TransportRoute).filter_by(school_id=school_id).all()
 
 
@@ -79,7 +79,7 @@ def create_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     if db.query(TransportRoute).filter_by(school_id=school_id, name=payload.name).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "A route with that name already exists")
 
@@ -103,7 +103,7 @@ def add_stop(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     route = db.query(TransportRoute).filter_by(school_id=school_id, id=route_id).first()
     if route is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Route not found")
@@ -129,7 +129,7 @@ def assign_student_transport(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")

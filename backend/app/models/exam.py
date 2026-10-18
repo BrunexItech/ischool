@@ -46,6 +46,19 @@ class Exam(Base):
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)  # open for students to sit online
 
+    # Optional scheduled window — when set, a student can only start the
+    # exam between these two moments, in addition to needing is_published.
+    # Left null, there's no window: any time after publishing is fair game.
+    opens_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closes_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # A teacher can upload a ready-made PDF paper instead of entering
+    # questions one by one — students download it from the portal within
+    # the scheduled window and sit it on paper; the teacher records the
+    # score afterwards through the normal Results page, same as any other
+    # offline assessment.
+    paper_file_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

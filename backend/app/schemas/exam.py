@@ -29,7 +29,15 @@ class ExamCreate(BaseModel):
     title: str
     term: str
     duration_minutes: int
-    questions: list[ExamQuestionCreate]
+    opens_at: datetime | None = None
+    closes_at: datetime | None = None
+    questions: list[ExamQuestionCreate] = []
+
+    @model_validator(mode="after")
+    def window_makes_sense(self) -> "ExamCreate":
+        if self.opens_at and self.closes_at and self.closes_at <= self.opens_at:
+            raise ValueError("closes_at must be after opens_at")
+        return self
 
 
 class ExamQuestionOut(BaseModel):
@@ -70,6 +78,9 @@ class ExamOut(BaseModel):
     term: str
     duration_minutes: int
     is_published: bool
+    opens_at: datetime | None
+    closes_at: datetime | None
+    paper_file_url: str | None
     total_marks: float
     question_count: int
 

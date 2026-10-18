@@ -15,7 +15,7 @@ ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
 
 @router.get("", response_model=list[AcademicTermOut], dependencies=[Depends(require_roles(*VIEW_ROLES))])
 def list_terms(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return db.query(AcademicTerm).filter_by(school_id=school_id).order_by(AcademicTerm.id.desc()).all()
 
 
@@ -31,7 +31,7 @@ def create_term(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     if db.query(AcademicTerm).filter_by(school_id=school_id, name=payload.name).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That term already exists")
 
@@ -54,7 +54,7 @@ def set_current_term(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     term = db.query(AcademicTerm).filter_by(school_id=school_id, id=term_id).first()
     if term is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Term not found")

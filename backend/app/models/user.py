@@ -14,6 +14,10 @@ class UserRole(str, enum.Enum):
     STAFF = "staff"
     STUDENT = "student"
     PARENT = "parent"
+    SECURITY = "security"
+    BOARDING_STAFF = "boarding_staff"
+    TRANSPORT_STAFF = "transport_staff"
+    BURSAR = "bursar"
 
 
 class User(Base):
@@ -31,6 +35,9 @@ class User(Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Tags a login created only for a superadmin-generated school demo, so it
+    # can be wiped along with the rest of that sample data in one click.
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     school: Mapped["School | None"] = relationship("School", back_populates="users")

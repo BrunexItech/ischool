@@ -29,7 +29,7 @@ export default function PickupDropoffPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin", "security"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {

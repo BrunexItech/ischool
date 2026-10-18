@@ -53,3 +53,12 @@ class ReportCardOut(BaseModel):
     rows: list[ReportCardRow]
     average: float | None
     overall_grade: str | None
+    class_position: str | None
+    attendance_rate: float | None
+    class_teacher_remark: str | None
+    principal_remark: str | None
+
+
+class ReportCardRemarkUpdate(BaseModel):
+    class_teacher_remark: str | None = None
+    principal_remark: str | None = None

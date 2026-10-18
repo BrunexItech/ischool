@@ -20,7 +20,7 @@ ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("activities"))],
 )
 def list_activities(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return db.query(Activity).filter_by(school_id=school_id).order_by(Activity.date.desc()).all()
 
 
@@ -33,7 +33,7 @@ def list_activities(school_id: int, db: Session = Depends(get_db), current_user:
 def create_activity(
     school_id: int, payload: ActivityCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     activity = Activity(school_id=school_id, **payload.model_dump())
     db.add(activity)
     db.commit()
@@ -47,7 +47,7 @@ def create_activity(
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("activities"))],
 )
 def get_activity(school_id: int, activity_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     activity = db.query(Activity).filter_by(school_id=school_id, id=activity_id).first()
     if activity is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Activity not found")
@@ -70,7 +70,7 @@ def add_participant(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     activity = db.query(Activity).filter_by(school_id=school_id, id=activity_id).first()
     if activity is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Activity not found")
@@ -101,7 +101,7 @@ def remove_participant(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     participant = (
         db.query(ActivityParticipant)
         .join(Activity)
@@ -121,7 +121,7 @@ def remove_participant(
     dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("activities"))],
 )
 def delete_activity(school_id: int, activity_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     activity = db.query(Activity).filter_by(school_id=school_id, id=activity_id).first()
     if activity is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Activity not found")

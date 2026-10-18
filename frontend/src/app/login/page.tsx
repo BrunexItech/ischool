@@ -3,16 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GraduationCap } from "lucide-react";
+import { ClipboardCheck, GraduationCap, Users, Video, Wallet } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { getTenantSlug } from "@/lib/tenant";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
-import { LoginCanvasBackground } from "@/components/LoginCanvasBackground";
+import { WritingAnimation } from "@/components/WritingAnimation";
 
 interface Branding {
   name: string;
@@ -21,12 +20,21 @@ interface Branding {
   secondary_color: string;
 }
 
+const FEATURES = [
+  { icon: Users, label: "Learners, attendance and CBC-style grading" },
+  { icon: Wallet, label: "Fees with M-Pesa, receipts and balances" },
+  { icon: Video, label: "Communication, live classes and announcements" },
+  { icon: ClipboardCheck, label: "Transport, pickup and day-to-day operations" },
+];
+
 export default function LoginPage() {
   const router = useRouter();
   const { login, user } = useAuth();
   const [branding, setBranding] = useState<Branding | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -50,7 +58,7 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const loggedInUser = await login(email, password);
+      const loggedInUser = await login(email, password, keepSignedIn);
       router.replace(loggedInUser.must_change_password ? "/change-password" : "/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
@@ -59,90 +67,114 @@ export default function LoginPage() {
     }
   }
 
-  const schoolName = branding?.name ?? "iSchool";
+  const schoolName = branding?.name ?? "Milai Group of Schools";
 
   return (
-    <div className="relative grid min-h-screen lg:grid-cols-2">
-      {!branding && <LoginCanvasBackground />}
-
+    <div className="grid min-h-screen lg:grid-cols-2">
+      {/* Brand panel */}
       <div
-        className={
-          branding
-            ? "relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex"
-            : "relative z-10 hidden flex-col justify-between overflow-hidden p-10 lg:flex"
-        }
-        style={
-          branding
-            ? { background: `linear-gradient(to bottom right, ${branding.primary_color}, ${branding.primary_color}, ${branding.secondary_color})` }
-            : undefined
-        }
+        className="relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex"
+        style={{
+          background: branding
+            ? `linear-gradient(to bottom right, ${branding.primary_color}, ${branding.primary_color}, ${branding.secondary_color})`
+            : "var(--sidebar)",
+        }}
       >
-        {branding && (
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.12),_transparent_50%)]" />
-        )}
-
-        <div className="relative flex items-center gap-2">
-          <div className={branding ? "flex size-9 items-center justify-center rounded-lg bg-white/15" : "flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"}>
-            <GraduationCap className="size-5" />
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/15">
+            {branding?.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.logo_url} alt={schoolName} className="size-full object-contain p-1" />
+            ) : (
+              <GraduationCap className="size-5" />
+            )}
           </div>
-          <span className={branding ? "text-lg font-semibold" : "text-lg font-semibold text-foreground"}>{schoolName}</span>
+          <div>
+            <p className="text-lg leading-none font-semibold">{schoolName}</p>
+            <p className="mt-1 text-[0.68rem] tracking-widest text-white/50 uppercase">
+              {branding ? "School management" : "Grow. Discover. Lead."}
+            </p>
+          </div>
         </div>
 
-        <div className="relative space-y-4">
-          {!branding && (
-            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur-sm">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
-                <span className="relative inline-flex size-2 rounded-full bg-primary" />
-              </span>
-              The complete school management platform
-            </span>
-          )}
-          <h2 className={branding ? "text-3xl font-semibold leading-tight" : "text-4xl font-semibold leading-tight tracking-tight text-foreground"}>
-            Everything your school needs, in one place.
+        <div className="space-y-6">
+          <h2 className="max-w-sm text-4xl leading-[1.1] font-semibold text-balance">
+            {branding ? "Everything your school needs, in one place." : (
+              <>One platform for Primary, Secondary and Campus.</>
+            )}
           </h2>
-          <p className={branding ? "max-w-md text-sm text-primary-foreground/80" : "max-w-md text-sm text-muted-foreground"}>
-            Attendance, results, fees, communication, and live classes — built for schools
-            and colleges, white-labeled for every institution on board.
-          </p>
+          <ul className="flex flex-col gap-3.5">
+            {FEATURES.map((f) => (
+              <li key={f.label} className="flex items-center gap-3 text-sm text-white/85">
+                <f.icon className="size-4.5 shrink-0 text-white/60" />
+                {f.label}
+              </li>
+            ))}
+          </ul>
         </div>
-        <p className={branding ? "relative text-xs text-primary-foreground/60" : "relative text-xs text-muted-foreground"}>© {new Date().getFullYear()} iSchool</p>
+
+        <p className="text-xs text-white/50">© {new Date().getFullYear()} {schoolName}</p>
       </div>
 
-      <div className={branding ? "flex items-center justify-center bg-background p-6" : "relative z-10 flex items-center justify-center p-6"}>
-        <Card className="w-full max-w-sm rounded-2xl border-none shadow-none lg:border lg:shadow-xl lg:backdrop-blur-sm" style={!branding ? { backgroundColor: "rgba(255,255,255,0.85)" } : undefined}>
-          <CardHeader className="text-center">
-            {branding?.logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={branding.logo_url} alt={schoolName} className="mx-auto mb-2 h-10" />
-            )}
-            <CardTitle className="text-xl">{schoolName}</CardTitle>
-            <CardDescription>Sign in to your account</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
-              <div className="grid gap-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link href="/forgot-password" className="text-xs text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
-                <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-              </div>
+      {/* Sign-in panel */}
+      <div className="flex items-center justify-center bg-background p-6">
+        <div className="w-full max-w-sm">
+          <div className="mb-4">
+            <WritingAnimation />
+          </div>
+          <p className="flex items-center gap-2 text-[0.68rem] font-semibold tracking-widest text-muted-foreground uppercase">
+            <span className="size-1.5 rounded-full bg-primary" /> Sign in
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Welcome back</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Use the email and password the school gave you.</p>
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
+          <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" required placeholder="name@school.ke" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-primary hover:underline"
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
 
-              <Button type="submit" disabled={submitting} className="w-full">
-                {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Signing in..." : "Sign in"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <label className="flex items-center gap-2 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={keepSignedIn}
+                  onChange={(e) => setKeepSignedIn(e.target.checked)}
+                  className="size-4 accent-primary"
+                />
+                Keep me signed in on this device
+              </label>
+              <Link href="/forgot-password" className="shrink-0 text-primary hover:underline">
+                Forgot password?
+              </Link>
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
+            <Button type="submit" disabled={submitting} size="lg" className="w-full">
+              {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );

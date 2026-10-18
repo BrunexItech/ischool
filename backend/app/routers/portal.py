@@ -301,6 +301,15 @@ def start_exam(student_id: int, exam_id: int, db: Session = Depends(get_db), cur
     student = _owned_student(db, current_user, student_id)
     exam = _get_exam_for_student(db, student, exam_id)
 
+    if exam.paper_file_url:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This exam is a downloadable paper, not an online sitting")
+
+    now = datetime.now(timezone.utc)
+    if exam.opens_at and now < exam.opens_at:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"This exam opens at {exam.opens_at.isoformat()}")
+    if exam.closes_at and now > exam.closes_at:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This exam's window has closed")
+
     submission = db.query(ExamSubmission).filter_by(exam_id=exam.id, student_id=student.id).first()
     if submission is not None and submission.status != ExamSubmissionStatus.IN_PROGRESS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You have already submitted this exam")

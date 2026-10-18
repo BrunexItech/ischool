@@ -1,6 +1,16 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export type UserRole = "super_admin" | "school_admin" | "teacher" | "staff" | "student" | "parent";
+export type UserRole =
+  | "super_admin"
+  | "school_admin"
+  | "teacher"
+  | "staff"
+  | "student"
+  | "parent"
+  | "security"
+  | "boarding_staff"
+  | "transport_staff"
+  | "bursar";
 
 export interface User {
   id: number;
@@ -29,6 +39,7 @@ export interface School {
   plan_id: number | null;
   subscription_status: "trialing" | "active" | "past_due" | "suspended";
   trial_ends_at: string;
+  expense_approval_threshold: number;
 }
 
 export interface Plan {
@@ -123,6 +134,11 @@ export interface FeePayment {
   paid_at: string;
 }
 
+export interface FeePaymentHistory extends FeePayment {
+  student_id: number;
+  student_name: string;
+}
+
 export interface FeeInvoice {
   id: number;
   school_id: number;
@@ -181,6 +197,73 @@ export interface TeacherAssignment {
   teacher_user_id: number;
   class_id: number;
   subject_id: number | null;
+}
+
+export interface MyClass {
+  class_id: number;
+  class_name: string;
+  subject_id: number | null;
+  subject_name: string | null;
+  is_homeroom_teacher: boolean;
+  student_count: number;
+  attendance_marked_today: boolean;
+}
+
+export interface TimetableSlot {
+  id: number;
+  school_id: number;
+  class_id: number;
+  subject_id: number;
+  teacher_user_id: number | null;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  room: string | null;
+  class_name: string;
+  subject_name: string;
+  teacher_name: string | null;
+}
+
+export interface MyTimetableSlot {
+  id: number;
+  class_id: number;
+  subject_id: number;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  room: string | null;
+  class_name: string;
+  subject_name: string;
+}
+
+export interface StaffAttendanceRecord {
+  id: number;
+  school_id: number;
+  user_id: number;
+  date: string;
+  clocked_in_at: string | null;
+  clocked_out_at: string | null;
+  note: string | null;
+}
+
+export interface StaffAttendanceWithName extends StaffAttendanceRecord {
+  staff_name: string;
+}
+
+export interface DutyAssignment {
+  id: number;
+  school_id: number;
+  user_id: number;
+  title: string;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+  notes: string | null;
+  assigned_by: number | null;
+}
+
+export interface DutyAssignmentWithName extends DutyAssignment {
+  staff_name: string;
 }
 
 export interface Notification {
@@ -298,6 +381,9 @@ export interface Exam {
   term: string;
   duration_minutes: number;
   is_published: boolean;
+  opens_at: string | null;
+  closes_at: string | null;
+  paper_file_url: string | null;
   total_marks: number;
   question_count: number;
 }
@@ -356,6 +442,10 @@ export interface ReportCard {
   rows: ReportCardRow[];
   average: number | null;
   overall_grade: string | null;
+  class_position: string | null;
+  attendance_rate: number | null;
+  class_teacher_remark: string | null;
+  principal_remark: string | null;
 }
 
 export interface PickupDropoffLog {
@@ -368,6 +458,8 @@ export interface PickupDropoffLog {
   occurred_at: string;
 }
 
+export type ExpenseStatus = "pending" | "approved" | "rejected";
+
 export interface Expense {
   id: number;
   school_id: number;
@@ -375,6 +467,11 @@ export interface Expense {
   description: string;
   amount: number;
   date: string;
+  status: ExpenseStatus;
+  recorded_by: number | null;
+  approved_by: number | null;
+  approved_at: string | null;
+  rejected_reason: string | null;
   created_at: string;
 }
 
@@ -408,12 +505,492 @@ export interface Award {
   date_awarded: string;
 }
 
+export type LeadStage = "enquiry" | "visit_booked" | "applied" | "offer_sent" | "enrolled" | "lost";
+
+export interface Lead {
+  id: number;
+  school_id: number;
+  child_name: string;
+  grade_interested: string | null;
+  guardian_name: string;
+  guardian_phone: string | null;
+  guardian_email: string | null;
+  source: string | null;
+  stage: LeadStage;
+  notes: string | null;
+  student_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CalendarEventType = "meeting" | "exam" | "sports" | "admissions" | "holiday" | "term" | "trip_briefing" | "college" | "other";
+
+export interface CalendarEvent {
+  id: number;
+  school_id: number;
+  title: string;
+  event_type: CalendarEventType;
+  start_date: string;
+  end_date: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttendanceTrendPoint {
+  date: string;
+  rate: number | null;
+}
+
+export interface PendingRegister {
+  class_id: number;
+  class_name: string;
+  teacher_name: string | null;
+  student_count: number;
+}
+
+export interface TopBalance {
+  student_id: number;
+  student_name: string;
+  admission_number: string;
+  class_name: string | null;
+  balance: number;
+}
+
+export interface RecentActivityItem {
+  action: string;
+  entity_type: string;
+  entity_id: number;
+  created_at: string;
+  actor_name: string | null;
+}
+
+export interface DashboardSummary {
+  total_students: number;
+  total_staff: number;
+  active_staff: number;
+  amount_billed: number;
+  amount_paid: number;
+  fee_collection_rate: number;
+  today_attendance_rate: number | null;
+  yesterday_attendance_rate: number | null;
+  attendance_trend: AttendanceTrendPoint[];
+  classes_total: number;
+  classes_marked_today: number;
+  pending_registers: PendingRegister[];
+  top_balances: TopBalance[];
+  recent_activity: RecentActivityItem[];
+}
+
+export interface GroupBranchSummary {
+  school_id: number;
+  name: string;
+  is_group: boolean;
+  total_students: number;
+  active_staff: number;
+  amount_billed: number;
+  amount_paid: number;
+  fee_collection_rate: number;
+  today_attendance_rate: number | null;
+  classes_total: number;
+  classes_marked_today: number;
+}
+
+export interface GroupSummary {
+  group_id: number;
+  group_name: string;
+  rows: GroupBranchSummary[];
+  total_students: number;
+  total_active_staff: number;
+  total_amount_billed: number;
+  total_amount_paid: number;
+  overall_fee_collection_rate: number;
+}
+
 export interface MealMenuEntry {
   id: number;
   school_id: number;
   date: string;
   meal_type: "breakfast" | "lunch" | "snack";
   description: string;
+}
+
+// --- Boarding ---
+
+export interface BoardingHouse {
+  id: number;
+  school_id: number;
+  name: string;
+  gender: string;
+  total_beds: number;
+  occupied_beds: number;
+}
+
+export interface BoardingAssignment {
+  id: number;
+  student_id: number;
+  house_id: number;
+  bed_number: string;
+  assigned_at: string;
+}
+
+export type RollSession = "morning" | "evening" | "night";
+
+export interface RollCall {
+  id: number;
+  house_id: number;
+  date: string;
+  session: RollSession;
+  marks: Record<string, "P" | "A" | "S">;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ExeatStatus = "pending" | "approved" | "denied" | "out" | "returned" | "returned_late";
+
+export interface Exeat {
+  id: number;
+  student_id: number;
+  from_date: string;
+  to_date: string;
+  reason: string;
+  detail: string | null;
+  pickup_name: string;
+  pickup_relation: string | null;
+  pickup_phone: string | null;
+  status: ExeatStatus;
+  gate_pass: string | null;
+  out_at: string | null;
+  back_at: string | null;
+  created_at: string;
+}
+
+export type SickBayAction = "rest_in_sick_bay" | "refer_to_clinic" | "first_aid";
+
+export interface SickBayVisit {
+  id: number;
+  student_id: number;
+  complaint: string;
+  temperature: number | null;
+  action: SickBayAction;
+  status: string;
+  parent_notified: boolean;
+  created_at: string;
+}
+
+export type IncidentStatus = "open" | "closed";
+
+export interface BoardingIncident {
+  id: number;
+  house_id: number;
+  type: string;
+  description: string;
+  action_taken: string;
+  status: IncidentStatus;
+  created_at: string;
+}
+
+// --- Security ---
+
+export interface Visitor {
+  id: number;
+  badge: string;
+  name: string;
+  id_number_masked: string;
+  phone: string;
+  purpose: string;
+  host_name: string;
+  vehicle_registration: string | null;
+  signed_in_at: string;
+  signed_out_at: string | null;
+}
+
+export type VehicleDirection = "in" | "out";
+
+export interface VehicleLogEntry {
+  id: number;
+  registration: string;
+  direction: VehicleDirection;
+  driver_name: string;
+  purpose: string;
+  logged_at: string;
+}
+
+export interface EarlyPickup {
+  id: number;
+  student_id: number;
+  collected_by: string;
+  relation: string;
+  reason: string;
+  verified: boolean;
+  note: string | null;
+  created_at: string;
+}
+
+export type IncidentSeverity = "low" | "medium" | "high";
+export type SecurityIncidentStatus = "open" | "closed";
+
+export interface SecurityIncident {
+  id: number;
+  type: string;
+  location: string;
+  severity: IncidentSeverity;
+  description: string;
+  action_taken: string;
+  status: SecurityIncidentStatus;
+  created_at: string;
+}
+
+export interface SecurityAlert {
+  id: number;
+  type: string;
+  message: string;
+  active: boolean;
+  sms_parents: boolean;
+  created_at: string;
+}
+
+export interface PatrolLogEntry {
+  id: number;
+  post: string;
+  ok: boolean;
+  note: string;
+  created_at: string;
+}
+
+// --- Ledger / ERP finance ---
+
+export type AccountType = "asset" | "liability" | "equity" | "income" | "expense";
+
+export interface LedgerAccount {
+  id: number;
+  code: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+}
+
+export interface JournalLine {
+  id: number;
+  account_id: number;
+  account_code: string;
+  account_name: string;
+  debit: number;
+  credit: number;
+}
+
+export interface JournalEntry {
+  id: number;
+  entry_date: string;
+  reference: string;
+  memo: string;
+  source: string;
+  created_at: string;
+  lines: JournalLine[];
+}
+
+export interface TrialBalanceRow {
+  account_code: string;
+  account_name: string;
+  type: AccountType;
+  debit: number;
+  credit: number;
+}
+
+export interface IncomeStatement {
+  income_total: number;
+  expense_total: number;
+  surplus: number;
+  income_lines: TrialBalanceRow[];
+  expense_lines: TrialBalanceRow[];
+}
+
+export interface BalanceSheet {
+  assets_total: number;
+  liabilities_total: number;
+  equity_total: number;
+  period_surplus: number;
+  asset_lines: TrialBalanceRow[];
+  liability_lines: TrialBalanceRow[];
+  equity_lines: TrialBalanceRow[];
+}
+
+// --- Fixed assets ---
+
+export type AssetStatus = "active" | "disposed";
+
+export interface FixedAsset {
+  id: number;
+  code: string;
+  name: string;
+  account_id: number;
+  acquisition_date: string;
+  cost: number;
+  residual_value: number;
+  useful_life_years: number;
+  accumulated_depreciation: number;
+  net_book_value: number;
+  status: AssetStatus;
+}
+
+export interface DepreciationRun {
+  id: number;
+  period: string;
+  total_amount: number;
+  created_at: string;
+}
+
+// --- Payroll ---
+
+export type EmploymentType = "teaching" | "non_teaching";
+
+export interface PayrollProfile {
+  id: number;
+  user_id: number;
+  staff_name: string;
+  employment_type: EmploymentType;
+  basic_salary: number;
+  house_allowance: number;
+  transport_allowance: number;
+  kra_pin: string;
+  nssf_number: string;
+  is_active: boolean;
+}
+
+export type PayRunStatus = "draft" | "paid";
+
+export interface PayslipLine {
+  id: number;
+  user_id: number;
+  staff_name: string;
+  employment_type: EmploymentType;
+  basic: number;
+  house: number;
+  transport: number;
+  gross: number;
+  nssf: number;
+  shif: number;
+  ahl: number;
+  paye: number;
+  net: number;
+}
+
+export interface PayRun {
+  id: number;
+  period: string;
+  status: PayRunStatus;
+  created_at: string;
+  lines: PayslipLine[];
+}
+
+// --- Stores ---
+
+export interface StockItem {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+  unit: string;
+  quantity: number;
+  reorder_level: number;
+  unit_cost: number;
+  account_id: number;
+}
+
+export type StockMovementType = "receipt" | "issue";
+
+export interface StockMovement {
+  id: number;
+  item_id: number;
+  type: StockMovementType;
+  quantity: number;
+  department: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+// --- Budgets ---
+
+export interface BudgetLine {
+  account_id: number;
+  account_code: string;
+  account_name: string;
+  year: number;
+  budget: number;
+  actual: number;
+  committed: number;
+  available: number;
+}
+
+// --- Procurement ---
+
+export type RequisitionStatus = "submitted" | "approved" | "declined";
+
+export interface Requisition {
+  id: number;
+  reference: string;
+  department: string;
+  account_id: number;
+  description: string;
+  quantity: number;
+  unit_cost: number;
+  total: number;
+  status: RequisitionStatus;
+  created_at: string;
+}
+
+export type PurchaseOrderStatus = "issued" | "received" | "cancelled";
+
+export interface PurchaseOrder {
+  id: number;
+  reference: string;
+  requisition_id: number;
+  supplier_id: number;
+  delivery_date: string;
+  total: number;
+  status: PurchaseOrderStatus;
+  created_at: string;
+}
+
+// --- Suppliers ---
+
+export interface Supplier {
+  id: number;
+  name: string;
+  kra_pin: string;
+  category: string;
+  phone: string;
+  email: string;
+  bank_account: string | null;
+  etims_registered: boolean;
+  is_active: boolean;
+  since: string;
+  created_at: string;
+}
+
+// --- Trips ---
+
+export type TripStatus = "requested" | "approved" | "in_progress" | "completed" | "declined" | "cancelled";
+
+export interface Trip {
+  id: number;
+  reference: string;
+  title: string;
+  trip_type: string;
+  purpose: string;
+  destination: string;
+  start_date: string;
+  end_date: string;
+  departure_time: string;
+  return_time: string;
+  class_ids: number[];
+  student_ids: number[];
+  staff_count: number;
+  distance_km: number;
+  estimated_cost: number;
+  vehicle_id: number | null;
+  status: TripStatus;
+  created_at: string;
 }
 
 export interface PaymentConfigStatus {
@@ -604,7 +1181,14 @@ export const api = {
   updateBranding: (
     token: string,
     schoolId: number,
-    payload: Partial<{ name: string; logo_url: string; primary_color: string; secondary_color: string; custom_domain: string }>
+    payload: Partial<{
+      name: string;
+      logo_url: string;
+      primary_color: string;
+      secondary_color: string;
+      custom_domain: string;
+      expense_approval_threshold: number;
+    }>
   ) =>
     request<School>(
       `/schools/${schoolId}/branding`,
@@ -625,6 +1209,30 @@ export const api = {
     request<ModuleToggle>(
       `/schools/${schoolId}/modules/${moduleKey}`,
       { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled }) },
+      token
+    ),
+
+  demoDataStatus: (token: string, schoolId: number) =>
+    request<{ has_demo_data: boolean }>(`/schools/${schoolId}/demo-data`, {}, token),
+
+  generateDemoData: (token: string, schoolId: number) =>
+    request<{ classes: number; students: number; staff: number; teacher_login: { email: string; password: string } }>(
+      `/schools/${schoolId}/demo-data`,
+      { method: "POST" },
+      token
+    ),
+
+  deleteDemoData: (token: string, schoolId: number) =>
+    request<{ students: number; classes: number; staff: number; users: number }>(
+      `/schools/${schoolId}/demo-data`,
+      { method: "DELETE" },
+      token
+    ),
+
+  triggerWeeklyReports: (token: string) =>
+    request<{ schools_processed: number; branch_reports_sent: number; group_reports_sent: number }>(
+      `/schools/weekly-reports/send`,
+      { method: "POST" },
       token
     ),
 
@@ -699,7 +1307,7 @@ export const api = {
       email: string;
       full_name: string;
       password: string;
-      role: "teacher" | "staff";
+      role: "teacher" | "staff" | "security" | "boarding_staff" | "transport_staff" | "bursar";
       staff_number: string;
       department?: string;
       phone?: string;
@@ -719,6 +1327,12 @@ export const api = {
       {},
       token
     ),
+
+  listAttendanceHistory: (token: string, schoolId: number, dateFrom: string, dateTo: string, classId?: number) => {
+    const qs = new URLSearchParams({ date_from: dateFrom, date_to: dateTo });
+    if (classId != null) qs.set("class_id", String(classId));
+    return request<AttendanceRecord[]>(`/schools/${schoolId}/attendance?${qs}`, {}, token);
+  },
 
   markAttendance: (
     token: string,
@@ -755,8 +1369,24 @@ export const api = {
   getChildReportCard: (token: string, studentId: number, term: string) =>
     request<ReportCard>(`/portal/students/${studentId}/report-card?term=${encodeURIComponent(term)}`, {}, token),
 
+  updateReportCardRemarks: (
+    token: string,
+    schoolId: number,
+    studentId: number,
+    term: string,
+    payload: { class_teacher_remark?: string; principal_remark?: string }
+  ) =>
+    request<ReportCard>(
+      `/schools/${schoolId}/students/${studentId}/report-card-remarks?term=${encodeURIComponent(term)}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
   getResultsAnalytics: (token: string, schoolId: number, term?: string) =>
     request<ResultsAnalytics>(`/schools/${schoolId}/analytics/results${term ? `?term=${encodeURIComponent(term)}` : ""}`, {}, token),
+
+  getAttendanceTrend: (token: string, schoolId: number) =>
+    request<AttendanceTrendPoint[]>(`/schools/${schoolId}/analytics/attendance-trend`, {}, token),
 
   // --- Exams ---
 
@@ -771,6 +1401,8 @@ export const api = {
       title: string;
       term: string;
       duration_minutes: number;
+      opens_at?: string;
+      closes_at?: string;
       questions: {
         question_text: string;
         question_type: ExamQuestionType;
@@ -786,6 +1418,12 @@ export const api = {
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       token
     ),
+
+  uploadExamPaper: (token: string, schoolId: number, examId: number, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<Exam>(`/schools/${schoolId}/exams/${examId}/paper`, { method: "POST", body: form }, token);
+  },
 
   getExam: (token: string, schoolId: number, examId: number) => request<ExamDetail>(`/schools/${schoolId}/exams/${examId}`, {}, token),
 
@@ -853,7 +1491,21 @@ export const api = {
 
   // --- Finance ---
 
-  listExpenses: (token: string, schoolId: number) => request<Expense[]>(`/schools/${schoolId}/finance/expenses`, {}, token),
+  listExpenses: (token: string, schoolId: number, dateFrom?: string, dateTo?: string) => {
+    const qs = new URLSearchParams();
+    if (dateFrom) qs.set("date_from", dateFrom);
+    if (dateTo) qs.set("date_to", dateTo);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<Expense[]>(`/schools/${schoolId}/finance/expenses${suffix}`, {}, token);
+  },
+
+  listFeePayments: (token: string, schoolId: number, dateFrom?: string, dateTo?: string) => {
+    const qs = new URLSearchParams();
+    if (dateFrom) qs.set("date_from", dateFrom);
+    if (dateTo) qs.set("date_to", dateTo);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<FeePaymentHistory[]>(`/schools/${schoolId}/fees/payments${suffix}`, {}, token);
+  },
 
   createExpense: (token: string, schoolId: number, payload: { category: string; description: string; amount: number; date: string }) =>
     request<Expense>(
@@ -864,6 +1516,16 @@ export const api = {
 
   deleteExpense: (token: string, schoolId: number, expenseId: number) =>
     request<void>(`/schools/${schoolId}/finance/expenses/${expenseId}`, { method: "DELETE" }, token),
+
+  approveExpense: (token: string, schoolId: number, expenseId: number) =>
+    request<Expense>(`/schools/${schoolId}/finance/expenses/${expenseId}/approve`, { method: "POST" }, token),
+
+  rejectExpense: (token: string, schoolId: number, expenseId: number, reason: string) =>
+    request<Expense>(
+      `/schools/${schoolId}/finance/expenses/${expenseId}/reject`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }) },
+      token
+    ),
 
   getFinanceSummary: (token: string, schoolId: number) => request<FinanceSummary>(`/schools/${schoolId}/finance/summary`, {}, token),
 
@@ -930,9 +1592,10 @@ export const api = {
       event_end_date?: string;
       location?: string;
       send_sms?: boolean;
+      send_email?: boolean;
     }
   ) =>
-    request<{ announcement: Announcement; sms_sent: number; sms_error: string | null }>(
+    request<{ announcement: Announcement; sms_sent: number; sms_error: string | null; email_sent: number; email_error: string | null }>(
       `/schools/${schoolId}/announcements`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       token
@@ -1013,6 +1676,84 @@ export const api = {
 
   deleteTeacherAssignment: (token: string, schoolId: number, assignmentId: number) =>
     request<void>(`/schools/${schoolId}/teacher-assignments/${assignmentId}`, { method: "DELETE" }, token),
+
+  listMyClasses: (token: string, schoolId: number) =>
+    request<MyClass[]>(`/schools/${schoolId}/teacher-assignments/mine`, {}, token),
+
+  // --- Timetable ---
+
+  listTimetable: (token: string, schoolId: number, classId?: number) =>
+    request<TimetableSlot[]>(`/schools/${schoolId}/timetable${classId ? `?class_id=${classId}` : ""}`, {}, token),
+
+  listMyTimetable: (token: string, schoolId: number) =>
+    request<MyTimetableSlot[]>(`/schools/${schoolId}/timetable/mine`, {}, token),
+
+  createTimetableSlot: (
+    token: string,
+    schoolId: number,
+    payload: { class_id: number; subject_id: number; teacher_user_id?: number; day_of_week: number; start_time: string; end_time: string; room?: string }
+  ) =>
+    request<TimetableSlot>(
+      `/schools/${schoolId}/timetable`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteTimetableSlot: (token: string, schoolId: number, slotId: number) =>
+    request<void>(`/schools/${schoolId}/timetable/${slotId}`, { method: "DELETE" }, token),
+
+  // --- Staff attendance & duty roster ---
+
+  clockIn: (token: string, schoolId: number, note?: string) =>
+    request<StaffAttendanceRecord>(
+      `/schools/${schoolId}/staff-attendance/clock-in`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) },
+      token
+    ),
+
+  clockOut: (token: string, schoolId: number) =>
+    request<StaffAttendanceRecord>(`/schools/${schoolId}/staff-attendance/clock-out`, { method: "POST" }, token),
+
+  myStaffAttendance: (token: string, schoolId: number, dateFrom?: string, dateTo?: string) => {
+    const qs = new URLSearchParams();
+    if (dateFrom) qs.set("date_from", dateFrom);
+    if (dateTo) qs.set("date_to", dateTo);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<StaffAttendanceRecord[]>(`/schools/${schoolId}/staff-attendance/mine${suffix}`, {}, token);
+  },
+
+  listStaffAttendance: (token: string, schoolId: number, dateFrom?: string, dateTo?: string) => {
+    const qs = new URLSearchParams();
+    if (dateFrom) qs.set("date_from", dateFrom);
+    if (dateTo) qs.set("date_to", dateTo);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<StaffAttendanceWithName[]>(`/schools/${schoolId}/staff-attendance${suffix}`, {}, token);
+  },
+
+  listMyDuties: (token: string, schoolId: number) =>
+    request<DutyAssignment[]>(`/schools/${schoolId}/duties/mine`, {}, token),
+
+  listDuties: (token: string, schoolId: number, dateFrom?: string, dateTo?: string) => {
+    const qs = new URLSearchParams();
+    if (dateFrom) qs.set("date_from", dateFrom);
+    if (dateTo) qs.set("date_to", dateTo);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<DutyAssignmentWithName[]>(`/schools/${schoolId}/duties${suffix}`, {}, token);
+  },
+
+  createDuty: (
+    token: string,
+    schoolId: number,
+    payload: { user_id: number; title: string; date: string; start_time?: string; end_time?: string; notes?: string }
+  ) =>
+    request<DutyAssignment>(
+      `/schools/${schoolId}/duties`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteDuty: (token: string, schoolId: number, dutyId: number) =>
+    request<void>(`/schools/${schoolId}/duties/${dutyId}`, { method: "DELETE" }, token),
 
   // --- Audit log ---
 
@@ -1172,6 +1913,109 @@ export const api = {
 
   getChildAwards: (token: string, studentId: number) => request<Award[]>(`/portal/students/${studentId}/awards`, {}, token),
 
+  // --- Admissions CRM ---
+
+  listLeads: (token: string, schoolId: number) => request<Lead[]>(`/schools/${schoolId}/leads`, {}, token),
+
+  createLead: (
+    token: string,
+    schoolId: number,
+    payload: {
+      child_name: string;
+      grade_interested?: string;
+      guardian_name: string;
+      guardian_phone?: string;
+      guardian_email?: string;
+      source?: string;
+      notes?: string;
+    }
+  ) =>
+    request<Lead>(
+      `/schools/${schoolId}/leads`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  updateLead: (
+    token: string,
+    schoolId: number,
+    leadId: number,
+    payload: Partial<{
+      child_name: string;
+      grade_interested: string;
+      guardian_name: string;
+      guardian_phone: string;
+      guardian_email: string;
+      source: string;
+      stage: LeadStage;
+      notes: string;
+    }>
+  ) =>
+    request<Lead>(
+      `/schools/${schoolId}/leads/${leadId}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteLead: (token: string, schoolId: number, leadId: number) =>
+    request<void>(`/schools/${schoolId}/leads/${leadId}`, { method: "DELETE" }, token),
+
+  convertLead: (
+    token: string,
+    schoolId: number,
+    leadId: number,
+    payload: { admission_number: string; first_name: string; last_name: string; class_id?: number }
+  ) =>
+    request<Student>(
+      `/schools/${schoolId}/leads/${leadId}/convert`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  // --- School calendar ---
+
+  listCalendarEvents: (token: string, schoolId: number, fromDate?: string, toDate?: string) => {
+    const params = new URLSearchParams();
+    if (fromDate) params.set("from_date", fromDate);
+    if (toDate) params.set("to_date", toDate);
+    const qs = params.toString();
+    return request<CalendarEvent[]>(`/schools/${schoolId}/calendar-events${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  createCalendarEvent: (
+    token: string,
+    schoolId: number,
+    payload: { title: string; event_type: CalendarEventType; start_date: string; end_date?: string; description?: string }
+  ) =>
+    request<CalendarEvent>(
+      `/schools/${schoolId}/calendar-events`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  updateCalendarEvent: (
+    token: string,
+    schoolId: number,
+    eventId: number,
+    payload: Partial<{ title: string; event_type: CalendarEventType; start_date: string; end_date: string | null; description: string }>
+  ) =>
+    request<CalendarEvent>(
+      `/schools/${schoolId}/calendar-events/${eventId}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteCalendarEvent: (token: string, schoolId: number, eventId: number) =>
+    request<void>(`/schools/${schoolId}/calendar-events/${eventId}`, { method: "DELETE" }, token),
+
+  // --- Dashboard summary ---
+
+  getDashboardSummary: (token: string, schoolId: number) =>
+    request<DashboardSummary>(`/schools/${schoolId}/dashboard/summary`, {}, token),
+
+  getGroupSummary: (token: string, schoolId: number) =>
+    request<GroupSummary>(`/schools/${schoolId}/dashboard/group-summary`, {}, token),
+
   // --- Activities & Competitions ---
 
   listActivities: (token: string, schoolId: number) => request<Activity[]>(`/schools/${schoolId}/activities`, {}, token),
@@ -1328,6 +2172,426 @@ export const api = {
 
   deleteLessonPlanEntry: (token: string, schoolId: number, planId: number, entryId: number) =>
     request<void>(`/schools/${schoolId}/lesson-plans/${planId}/entries/${entryId}`, { method: "DELETE" }, token),
+
+  // --- Boarding ---
+
+  listBoardingHouses: (token: string, schoolId: number) =>
+    request<BoardingHouse[]>(`/schools/${schoolId}/boarding/houses`, {}, token),
+
+  createBoardingHouse: (token: string, schoolId: number, payload: { name: string; gender: string; total_beds: number }) =>
+    request<BoardingHouse>(
+      `/schools/${schoolId}/boarding/houses`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listBoardingAssignments: (token: string, schoolId: number, houseId?: number) => {
+    const qs = houseId ? `?house_id=${houseId}` : "";
+    return request<BoardingAssignment[]>(`/schools/${schoolId}/boarding/assignments${qs}`, {}, token);
+  },
+
+  assignBed: (token: string, schoolId: number, payload: { student_id: number; house_id: number; bed_number: string }) =>
+    request<BoardingAssignment>(
+      `/schools/${schoolId}/boarding/assignments`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listRollCalls: (token: string, schoolId: number, houseId: number, date: string) =>
+    request<RollCall[]>(`/schools/${schoolId}/boarding/roll-calls?house_id=${houseId}&date=${date}`, {}, token),
+
+  submitRollCall: (
+    token: string,
+    schoolId: number,
+    payload: { house_id: number; date: string; session: RollSession; marks: Record<string, string> }
+  ) =>
+    request<RollCall>(
+      `/schools/${schoolId}/boarding/roll-calls`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listExeats: (token: string, schoolId: number, status?: ExeatStatus) => {
+    const qs = status ? `?status_filter=${status}` : "";
+    return request<Exeat[]>(`/schools/${schoolId}/boarding/exeats${qs}`, {}, token);
+  },
+
+  createExeat: (
+    token: string,
+    schoolId: number,
+    payload: {
+      student_id: number;
+      from_date: string;
+      to_date: string;
+      reason: string;
+      detail?: string;
+      pickup_name: string;
+      pickup_relation?: string;
+      pickup_phone?: string;
+    }
+  ) =>
+    request<Exeat>(
+      `/schools/${schoolId}/boarding/exeats`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  approveExeat: (token: string, schoolId: number, exeatId: number) =>
+    request<Exeat>(`/schools/${schoolId}/boarding/exeats/${exeatId}/approve`, { method: "POST" }, token),
+
+  denyExeat: (token: string, schoolId: number, exeatId: number) =>
+    request<Exeat>(`/schools/${schoolId}/boarding/exeats/${exeatId}/deny`, { method: "POST" }, token),
+
+  checkOutExeat: (token: string, schoolId: number, exeatId: number) =>
+    request<Exeat>(`/schools/${schoolId}/boarding/exeats/${exeatId}/check-out`, { method: "POST" }, token),
+
+  checkInExeat: (token: string, schoolId: number, exeatId: number) =>
+    request<Exeat>(`/schools/${schoolId}/boarding/exeats/${exeatId}/check-in`, { method: "POST" }, token),
+
+  listSickBayVisits: (token: string, schoolId: number) =>
+    request<SickBayVisit[]>(`/schools/${schoolId}/boarding/sick-bay`, {}, token),
+
+  createSickBayVisit: (
+    token: string,
+    schoolId: number,
+    payload: { student_id: number; complaint: string; temperature?: number; action: SickBayAction; parent_notified?: boolean }
+  ) =>
+    request<SickBayVisit>(
+      `/schools/${schoolId}/boarding/sick-bay`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listBoardingIncidents: (token: string, schoolId: number) =>
+    request<BoardingIncident[]>(`/schools/${schoolId}/boarding/incidents`, {}, token),
+
+  createBoardingIncident: (
+    token: string,
+    schoolId: number,
+    payload: { house_id: number; type: string; description: string; action_taken: string }
+  ) =>
+    request<BoardingIncident>(
+      `/schools/${schoolId}/boarding/incidents`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  closeBoardingIncident: (token: string, schoolId: number, incidentId: number) =>
+    request<BoardingIncident>(`/schools/${schoolId}/boarding/incidents/${incidentId}/close`, { method: "POST" }, token),
+
+  findExeatByGatePass: (token: string, schoolId: number, code: string) =>
+    request<Exeat>(`/schools/${schoolId}/boarding/exeats/by-pass/${encodeURIComponent(code)}`, {}, token),
+
+  // --- Security ---
+
+  listVisitors: (token: string, schoolId: number, dateFrom?: string, dateTo?: string) => {
+    const qs = new URLSearchParams();
+    if (dateFrom) qs.set("date_from", dateFrom);
+    if (dateTo) qs.set("date_to", dateTo);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<Visitor[]>(`/schools/${schoolId}/security/visitors${suffix}`, {}, token);
+  },
+
+  signInVisitor: (
+    token: string,
+    schoolId: number,
+    payload: { name: string; id_number: string; phone: string; purpose: string; host_name: string; vehicle_registration?: string }
+  ) =>
+    request<Visitor>(
+      `/schools/${schoolId}/security/visitors`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  signOutVisitor: (token: string, schoolId: number, visitorId: number) =>
+    request<Visitor>(`/schools/${schoolId}/security/visitors/${visitorId}/sign-out`, { method: "POST" }, token),
+
+  listVehicleLogs: (token: string, schoolId: number) => request<VehicleLogEntry[]>(`/schools/${schoolId}/security/vehicles`, {}, token),
+
+  logVehicle: (
+    token: string,
+    schoolId: number,
+    payload: { registration: string; direction: VehicleDirection; driver_name: string; purpose: string }
+  ) =>
+    request<VehicleLogEntry>(
+      `/schools/${schoolId}/security/vehicles`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listEarlyPickups: (token: string, schoolId: number) => request<EarlyPickup[]>(`/schools/${schoolId}/security/pickups`, {}, token),
+
+  logEarlyPickup: (
+    token: string,
+    schoolId: number,
+    payload: { student_id: number; collected_by: string; relation: string; reason: string; verified?: boolean; note?: string }
+  ) =>
+    request<EarlyPickup>(
+      `/schools/${schoolId}/security/pickups`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listSecurityIncidents: (token: string, schoolId: number) =>
+    request<SecurityIncident[]>(`/schools/${schoolId}/security/incidents`, {}, token),
+
+  reportSecurityIncident: (
+    token: string,
+    schoolId: number,
+    payload: { type: string; location: string; severity: IncidentSeverity; description: string; action_taken: string }
+  ) =>
+    request<SecurityIncident>(
+      `/schools/${schoolId}/security/incidents`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  closeSecurityIncident: (token: string, schoolId: number, incidentId: number) =>
+    request<SecurityIncident>(`/schools/${schoolId}/security/incidents/${incidentId}/close`, { method: "POST" }, token),
+
+  listSecurityAlerts: (token: string, schoolId: number) => request<SecurityAlert[]>(`/schools/${schoolId}/security/alerts`, {}, token),
+
+  raiseSecurityAlert: (token: string, schoolId: number, payload: { type: string; message: string; sms_parents?: boolean }) =>
+    request<SecurityAlert>(
+      `/schools/${schoolId}/security/alerts`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  standDownSecurityAlert: (token: string, schoolId: number, alertId: number) =>
+    request<SecurityAlert>(`/schools/${schoolId}/security/alerts/${alertId}/stand-down`, { method: "POST" }, token),
+
+  listPatrolLogs: (token: string, schoolId: number) => request<PatrolLogEntry[]>(`/schools/${schoolId}/security/patrols`, {}, token),
+
+  logPatrol: (token: string, schoolId: number, payload: { post: string; ok?: boolean; note: string }) =>
+    request<PatrolLogEntry>(
+      `/schools/${schoolId}/security/patrols`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  // --- Trips ---
+
+  listTrips: (token: string, schoolId: number) => request<Trip[]>(`/schools/${schoolId}/trips`, {}, token),
+
+  requestTrip: (
+    token: string,
+    schoolId: number,
+    payload: {
+      title: string;
+      trip_type: string;
+      purpose: string;
+      destination: string;
+      start_date: string;
+      end_date: string;
+      departure_time: string;
+      return_time: string;
+      class_ids: number[];
+      student_ids: number[];
+      staff_count: number;
+      distance_km: number;
+    }
+  ) =>
+    request<Trip>(
+      `/schools/${schoolId}/trips`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  approveTrip: (token: string, schoolId: number, tripId: number, vehicleId?: number) =>
+    request<Trip>(
+      `/schools/${schoolId}/trips/${tripId}/approve`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vehicle_id: vehicleId }) },
+      token
+    ),
+
+  declineTrip: (token: string, schoolId: number, tripId: number) =>
+    request<Trip>(`/schools/${schoolId}/trips/${tripId}/decline`, { method: "POST" }, token),
+
+  startTrip: (token: string, schoolId: number, tripId: number) =>
+    request<Trip>(`/schools/${schoolId}/trips/${tripId}/start`, { method: "POST" }, token),
+
+  completeTrip: (token: string, schoolId: number, tripId: number) =>
+    request<Trip>(`/schools/${schoolId}/trips/${tripId}/complete`, { method: "POST" }, token),
+
+  cancelTrip: (token: string, schoolId: number, tripId: number) =>
+    request<Trip>(`/schools/${schoolId}/trips/${tripId}/cancel`, { method: "POST" }, token),
+
+  // --- Ledger / ERP finance ---
+
+  listLedgerAccounts: (token: string, schoolId: number) => request<LedgerAccount[]>(`/schools/${schoolId}/ledger/accounts`, {}, token),
+
+  listJournalEntries: (token: string, schoolId: number) => request<JournalEntry[]>(`/schools/${schoolId}/ledger/entries`, {}, token),
+
+  createJournalEntry: (
+    token: string,
+    schoolId: number,
+    payload: { entry_date: string; reference: string; memo: string; lines: { account_id: number; debit: number; credit: number }[] }
+  ) =>
+    request<JournalEntry>(
+      `/schools/${schoolId}/ledger/entries`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  getTrialBalance: (token: string, schoolId: number) => request<TrialBalanceRow[]>(`/schools/${schoolId}/ledger/trial-balance`, {}, token),
+
+  getIncomeStatement: (token: string, schoolId: number) => request<IncomeStatement>(`/schools/${schoolId}/ledger/income-statement`, {}, token),
+
+  getBalanceSheet: (token: string, schoolId: number) => request<BalanceSheet>(`/schools/${schoolId}/ledger/balance-sheet`, {}, token),
+
+  // --- Suppliers ---
+
+  listSuppliers: (token: string, schoolId: number) => request<Supplier[]>(`/schools/${schoolId}/suppliers`, {}, token),
+
+  createSupplier: (
+    token: string,
+    schoolId: number,
+    payload: { name: string; kra_pin: string; category: string; phone: string; email: string; bank_account?: string; etims_registered?: boolean }
+  ) =>
+    request<Supplier>(
+      `/schools/${schoolId}/suppliers`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listRequisitions: (token: string, schoolId: number) => request<Requisition[]>(`/schools/${schoolId}/requisitions`, {}, token),
+
+  createRequisition: (
+    token: string,
+    schoolId: number,
+    payload: { department: string; account_id: number; description: string; quantity: number; unit_cost: number }
+  ) =>
+    request<Requisition>(
+      `/schools/${schoolId}/requisitions`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  approveRequisition: (token: string, schoolId: number, id: number) =>
+    request<Requisition>(`/schools/${schoolId}/requisitions/${id}/approve`, { method: "POST" }, token),
+
+  declineRequisition: (token: string, schoolId: number, id: number) =>
+    request<Requisition>(`/schools/${schoolId}/requisitions/${id}/decline`, { method: "POST" }, token),
+
+  listPurchaseOrders: (token: string, schoolId: number) => request<PurchaseOrder[]>(`/schools/${schoolId}/purchase-orders`, {}, token),
+
+  issuePurchaseOrder: (token: string, schoolId: number, payload: { requisition_id: number; supplier_id: number; delivery_date: string }) =>
+    request<PurchaseOrder>(
+      `/schools/${schoolId}/purchase-orders`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  receivePurchaseOrder: (token: string, schoolId: number, id: number) =>
+    request<PurchaseOrder>(`/schools/${schoolId}/purchase-orders/${id}/receive`, { method: "POST" }, token),
+
+  cancelPurchaseOrder: (token: string, schoolId: number, id: number) =>
+    request<PurchaseOrder>(`/schools/${schoolId}/purchase-orders/${id}/cancel`, { method: "POST" }, token),
+
+  listBudgets: (token: string, schoolId: number, year: number) =>
+    request<BudgetLine[]>(`/schools/${schoolId}/budgets?year=${year}`, {}, token),
+
+  listStockItems: (token: string, schoolId: number) => request<StockItem[]>(`/schools/${schoolId}/stores/items`, {}, token),
+
+  createStockItem: (
+    token: string,
+    schoolId: number,
+    payload: { name: string; category: string; unit: string; reorder_level: number; unit_cost: number; account_id: number }
+  ) =>
+    request<StockItem>(
+      `/schools/${schoolId}/stores/items`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listStockMovements: (token: string, schoolId: number, itemId?: number) => {
+    const qs = itemId ? `?item_id=${itemId}` : "";
+    return request<StockMovement[]>(`/schools/${schoolId}/stores/movements${qs}`, {}, token);
+  },
+
+  receiveStock: (token: string, schoolId: number, payload: { item_id: number; quantity: number; unit_cost?: number; note?: string }) =>
+    request<StockMovement>(
+      `/schools/${schoolId}/stores/receipts`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listPayrollProfiles: (token: string, schoolId: number) => request<PayrollProfile[]>(`/schools/${schoolId}/payroll/profiles`, {}, token),
+
+  createPayrollProfile: (
+    token: string,
+    schoolId: number,
+    payload: { user_id: number; employment_type: EmploymentType; basic_salary: number; house_allowance?: number; transport_allowance?: number; kra_pin: string; nssf_number: string; bank_name?: string; bank_account?: string }
+  ) =>
+    request<PayrollProfile>(
+      `/schools/${schoolId}/payroll/profiles`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listPayRuns: (token: string, schoolId: number) => request<PayRun[]>(`/schools/${schoolId}/payroll/runs`, {}, token),
+
+  createPayRun: (token: string, schoolId: number, period: string) =>
+    request<PayRun>(
+      `/schools/${schoolId}/payroll/runs`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ period }) },
+      token
+    ),
+
+  listFixedAssets: (token: string, schoolId: number) => request<FixedAsset[]>(`/schools/${schoolId}/assets`, {}, token),
+
+  createFixedAsset: (
+    token: string,
+    schoolId: number,
+    payload: { name: string; account_id: number; acquisition_date: string; cost: number; residual_value?: number; useful_life_years: number }
+  ) =>
+    request<FixedAsset>(
+      `/schools/${schoolId}/assets`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  disposeFixedAsset: (token: string, schoolId: number, assetId: number) =>
+    request<FixedAsset>(`/schools/${schoolId}/assets/${assetId}/dispose`, { method: "POST" }, token),
+
+  listDepreciationRuns: (token: string, schoolId: number) => request<DepreciationRun[]>(`/schools/${schoolId}/assets/depreciation-runs`, {}, token),
+
+  runDepreciation: (token: string, schoolId: number, period: string) =>
+    request<DepreciationRun>(
+      `/schools/${schoolId}/assets/depreciation-runs`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ period }) },
+      token
+    ),
+
+  payRun: (token: string, schoolId: number, runId: number) =>
+    request<PayRun>(`/schools/${schoolId}/payroll/runs/${runId}/pay`, { method: "POST" }, token),
+
+  issueStock: (token: string, schoolId: number, payload: { item_id: number; quantity: number; department: string; note?: string }) =>
+    request<StockMovement>(
+      `/schools/${schoolId}/stores/issues`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  setBudget: (token: string, schoolId: number, payload: { account_id: number; year: number; amount: number }) =>
+    request<BudgetLine>(
+      `/schools/${schoolId}/budgets`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  updateSupplier: (
+    token: string,
+    schoolId: number,
+    supplierId: number,
+    payload: Partial<{ name: string; category: string; phone: string; email: string; bank_account: string; etims_registered: boolean; is_active: boolean }>
+  ) =>
+    request<Supplier>(
+      `/schools/${schoolId}/suppliers/${supplierId}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
 };
 
 export { ApiError };

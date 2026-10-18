@@ -26,9 +26,29 @@ router = APIRouter(prefix="/schools/{school_id}", tags=["students & staff"])
 
 # Anyone with a login at the school can look students/classes up (teachers need
 # rosters, staff need records); only admins manage enrollment/HR records.
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
+VIEW_ROLES = (
+    UserRole.SUPER_ADMIN,
+    UserRole.SCHOOL_ADMIN,
+    UserRole.TEACHER,
+    UserRole.STAFF,
+    UserRole.SECURITY,
+    UserRole.BOARDING_STAFF,
+    UserRole.TRANSPORT_STAFF,
+    UserRole.BURSAR,
+)
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
 ENROLL_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF)
+# Job-function roles an admin may hand out when adding a staff account —
+# each narrows that login to its own working view (see require_roles usage
+# in security.py / boarding.py / transport.py / finance.py / fees.py).
+STAFF_CREATABLE_ROLES = (
+    UserRole.TEACHER,
+    UserRole.STAFF,
+    UserRole.SECURITY,
+    UserRole.BOARDING_STAFF,
+    UserRole.TRANSPORT_STAFF,
+    UserRole.BURSAR,
+)
 
 
 # --- Classes ---
@@ -40,7 +60,7 @@ ENROLL_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF)
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("students_staff"))],
 )
 def list_classes(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return db.query(SchoolClass).filter_by(school_id=school_id).all()
 
 
@@ -56,7 +76,7 @@ def create_class(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     if db.query(SchoolClass).filter_by(school_id=school_id, name=payload.name).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "A class with that name already exists")
@@ -84,7 +104,7 @@ def promote_class(
     to_class_id to promote them into the next class, or omit it to graduate
     them (cleared class, marked inactive) — e.g. a final-year class leaving
     the school."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     source = db.query(SchoolClass).filter_by(school_id=school_id, id=class_id).first()
     if source is None:
@@ -135,7 +155,7 @@ def list_students(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     query = db.query(Student).filter_by(school_id=school_id)
     if class_id is not None:
         query = query.filter_by(class_id=class_id)
@@ -154,7 +174,7 @@ def enroll_student(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     if db.query(Student).filter_by(school_id=school_id, admission_number=payload.admission_number).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That admission number is already in use")
@@ -177,7 +197,7 @@ def get_student(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
@@ -196,7 +216,7 @@ def update_student(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
@@ -223,7 +243,7 @@ def create_student_account(
     current_user: User = Depends(get_current_user),
 ):
     """Issues the student their own portal login."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
@@ -265,7 +285,7 @@ def create_guardian_account(
     """Issues a parent/guardian portal login. If a guardian account with this
     email already exists at the school (a sibling already enrolled it), this
     just links this student to that same account instead of erroring."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
@@ -319,7 +339,7 @@ def _staff_out(profile: StaffProfile) -> StaffOut:
     dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
 )
 def list_staff(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     profiles = db.query(StaffProfile).filter_by(school_id=school_id).all()
     return [_staff_out(p) for p in profiles]
 
@@ -336,10 +356,10 @@ def create_staff(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
-    if payload.role not in (UserRole.TEACHER, UserRole.STAFF):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Staff accounts must have role 'teacher' or 'staff'")
+    if payload.role not in STAFF_CREATABLE_ROLES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Not a valid staff role")
     if db.query(User).filter_by(email=payload.email).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That email is already registered")
     if db.query(StaffProfile).filter_by(school_id=school_id, staff_number=payload.staff_number).first():
@@ -388,7 +408,7 @@ def admin_reset_password(
     """A school admin sets a new password directly for an account they manage
     (staff, student, or guardian) — e.g. when someone is locked out and can't
     self-serve a reset. The user must change it again at next login."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     target = db.query(User).filter_by(id=user_id, school_id=school_id).first()
     if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")

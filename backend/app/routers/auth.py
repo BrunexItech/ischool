@@ -45,7 +45,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         if school is not None and school.subscription_status == SubscriptionStatus.SUSPENDED:
             raise HTTPException(
                 status.HTTP_402_PAYMENT_REQUIRED,
-                "This school's iSchool subscription is suspended — contact iSchool support to reactivate.",
+                "This school's Milai Group of Schools subscription is suspended — contact Milai Group of Schools support to reactivate.",
             )
 
     clear_attempts(rate_limit_key)
@@ -91,7 +91,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
         reset_link = f"{settings.frontend_url}/reset-password?token={token_value}"
         send_email(
             to=user.email,
-            subject="Reset your iSchool password",
+            subject="Reset your Milai Group of Schools password",
             body=f"Hi {user.full_name},\n\nReset your password here (valid for 1 hour):\n{reset_link}\n\nIf you didn't request this, ignore this email.",
         )
 

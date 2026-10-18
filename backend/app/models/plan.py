@@ -13,7 +13,7 @@ class BillingPeriod(str, enum.Enum):
 
 
 class Plan(Base):
-    """A subscription tier iSchool sells to schools — this is our own
+    """A subscription tier Milai Group of Schools sells to schools — this is our own
     revenue, separate from and never mixed with the fee money schools
     collect from parents. No payment collection is wired to this yet;
     a super-admin assigns/changes a school's plan and status by hand

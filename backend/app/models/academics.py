@@ -17,6 +17,9 @@ class SchoolClass(Base):
     homeroom_teacher_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    # Tags sample data a super-admin generated for a school demo — lets the
+    # superadmin wipe it with one click without touching real records.
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     school: Mapped["School"] = relationship("School", back_populates="classes")
     homeroom_teacher: Mapped["User | None"] = relationship("User")
@@ -61,6 +64,7 @@ class Student(Base):
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     school: Mapped["School"] = relationship("School", back_populates="students")
@@ -93,6 +97,7 @@ class StaffProfile(Base):
     staff_number: Mapped[str] = mapped_column(String(50), nullable=False)
     department: Mapped[str | None] = mapped_column(String(100), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     school: Mapped["School"] = relationship("School", back_populates="staff_profiles")
     user: Mapped["User"] = relationship("User")

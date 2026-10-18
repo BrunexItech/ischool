@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -46,7 +46,12 @@ class School(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    # iSchool's own revenue from this school — entirely separate from the
+    # Maker-checker ceiling: an expense at or above this amount needs a
+    # school_admin's sign-off before it counts toward finance totals. Below
+    # it, whoever records it (bursar or admin) is trusted to self-approve.
+    expense_approval_threshold: Mapped[float] = mapped_column(Numeric(12, 2), default=50000, server_default="50000")
+
+    # Milai Group of Schools' own revenue from this school — entirely separate from the
     # fees a school collects from its own parents. No payment collection is
     # wired to this yet: a super-admin assigns a plan and flips the status
     # by hand once a school has paid outside the system.

@@ -7,6 +7,7 @@ from app.core.deps import ensure_school_access, get_current_user, require_featur
 from app.models.academics import SchoolClass, Student
 from app.models.results import Result, Subject
 from app.models.user import User, UserRole
+from app.routers.dashboard import compute_attendance_trend
 from app.schemas.analytics import (
     ClassAverage,
     GradeCount,
@@ -15,10 +16,33 @@ from app.schemas.analytics import (
     TermTrendPoint,
     TopStudent,
 )
+from app.schemas.dashboard import AttendanceTrendPoint
 
 router = APIRouter(prefix="/schools/{school_id}/analytics", tags=["analytics"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
+VIEW_ROLES = (
+    UserRole.SUPER_ADMIN,
+    UserRole.SCHOOL_ADMIN,
+    UserRole.TEACHER,
+    UserRole.STAFF,
+    UserRole.SECURITY,
+    UserRole.BOARDING_STAFF,
+    UserRole.TRANSPORT_STAFF,
+    UserRole.BURSAR,
+)
+
+
+@router.get(
+    "/attendance-trend",
+    response_model=list[AttendanceTrendPoint],
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("attendance"))],
+)
+def get_attendance_trend(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """The last 7 days' attendance rate — shared with the Analytics page so
+    non-admin roles (teacher, staff, bursar...) can see it without needing
+    access to the admin-only dashboard summary it would otherwise ride on."""
+    ensure_school_access(db, current_user, school_id)
+    return compute_attendance_trend(db, school_id)
 
 
 @router.get(
@@ -32,7 +56,7 @@ def get_results_analytics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     base_query = db.query(Result).filter_by(school_id=school_id)
     if term is not None:

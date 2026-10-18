@@ -433,8 +433,16 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
                   <TableCell>{e.score !== null ? `${e.score}/${e.total_marks}` : "—"}</TableCell>
                   {user?.role === "student" && (
                     <TableCell className="text-right">
-                      {(e.submission_status === null || e.submission_status === "in_progress") && (
-                        <Button size="sm" render={<Link href={`/dashboard/take-exam/${e.id}`}><PlayCircle /> {e.submission_status === "in_progress" ? "Continue" : "Start"}</Link>} />
+                      {e.paper_file_url ? (
+                        <Button size="sm" variant="outline" render={<a href={e.paper_file_url} target="_blank" rel="noreferrer">Download paper</a>} />
+                      ) : e.opens_at && new Date(e.opens_at) > new Date() ? (
+                        <span className="text-xs text-muted-foreground">Opens {new Date(e.opens_at).toLocaleString()}</span>
+                      ) : e.closes_at && new Date(e.closes_at) < new Date() && e.submission_status === null ? (
+                        <span className="text-xs text-muted-foreground">Window closed</span>
+                      ) : (
+                        (e.submission_status === null || e.submission_status === "in_progress") && (
+                          <Button size="sm" render={<Link href={`/dashboard/take-exam/${e.id}`}><PlayCircle /> {e.submission_status === "in_progress" ? "Continue" : "Start"}</Link>} />
+                        )
                       )}
                     </TableCell>
                   )}

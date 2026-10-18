@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -7,14 +9,21 @@ from app.core.deps import ensure_school_access, get_current_user, require_featur
 from app.core.notify import notify
 from app.core.payments import apply_payment
 from app.models.academics import Student
-from app.models.fees import FeeInvoice
+from app.models.fees import FeeInvoice, FeePayment
 from app.models.user import User, UserRole
-from app.schemas.fees import FeeInvoiceCreate, FeeInvoiceDetailOut, FeeInvoiceOut, FeePaymentCreate, FeePaymentOut
+from app.schemas.fees import (
+    FeeInvoiceCreate,
+    FeeInvoiceDetailOut,
+    FeeInvoiceOut,
+    FeePaymentCreate,
+    FeePaymentHistoryOut,
+    FeePaymentOut,
+)
 
 router = APIRouter(prefix="/schools/{school_id}/fees", tags=["fees"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF, UserRole.TEACHER)
-MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF, UserRole.TEACHER, UserRole.BURSAR)
+MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF, UserRole.BURSAR)
 
 
 def _status_for(amount_due: float, amount_paid: float) -> str:
@@ -54,7 +63,7 @@ def list_invoices(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     query = db.query(FeeInvoice).filter_by(school_id=school_id)
     if student_id is not None:
         query = query.filter_by(student_id=student_id)
@@ -75,7 +84,7 @@ def create_invoice(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     invoice = FeeInvoice(school_id=school_id, **payload.model_dump())
     db.add(invoice)
     db.flush()
@@ -116,7 +125,7 @@ def get_invoice(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     invoice = db.query(FeeInvoice).filter_by(school_id=school_id, id=invoice_id).first()
     if invoice is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
@@ -138,7 +147,7 @@ def record_payment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     invoice = db.query(FeeInvoice).filter_by(school_id=school_id, id=invoice_id).first()
     if invoice is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
@@ -157,3 +166,48 @@ def record_payment(
 
     base = _invoice_out(invoice)
     return FeeInvoiceDetailOut(**base.model_dump(), payments=[FeePaymentOut.model_validate(p) for p in invoice.payments])
+
+
+@router.get(
+    "/payments",
+    response_model=list[FeePaymentHistoryOut],
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("fees"))],
+)
+def list_payments(
+    school_id: int,
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    student_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Every payment recorded for this school, newest first — the bursar's
+    own history view for 'what came in between these two dates'."""
+    ensure_school_access(db, current_user, school_id)
+    query = (
+        db.query(FeePayment, Student)
+        .join(FeeInvoice, FeeInvoice.id == FeePayment.invoice_id)
+        .join(Student, Student.id == FeeInvoice.student_id)
+        .filter(FeePayment.school_id == school_id)
+    )
+    if date_from is not None:
+        query = query.filter(FeePayment.paid_at >= date_from)
+    if date_to is not None:
+        query = query.filter(FeePayment.paid_at < date_to + timedelta(days=1))
+    if student_id is not None:
+        query = query.filter(FeeInvoice.student_id == student_id)
+
+    rows = query.order_by(FeePayment.paid_at.desc()).all()
+    return [
+        FeePaymentHistoryOut(
+            id=p.id,
+            invoice_id=p.invoice_id,
+            student_id=s.id,
+            student_name=f"{s.first_name} {s.last_name}",
+            amount=float(p.amount),
+            method=p.method,
+            reference=p.reference,
+            paid_at=p.paid_at,
+        )
+        for p, s in rows
+    ]

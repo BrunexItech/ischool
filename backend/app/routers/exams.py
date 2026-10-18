@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.core.uploads import save_document
 from app.models.exam import Exam, ExamAnswer, ExamQuestion, ExamQuestionType, ExamSubmission, ExamSubmissionStatus
 from app.models.results import Subject
 from app.models.user import User, UserRole
@@ -32,7 +34,7 @@ def _detail_out(exam: Exam) -> ExamDetailOut:
 
 @router.get("", response_model=list[ExamOut], dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("exams"))])
 def list_exams(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return db.query(Exam).filter_by(school_id=school_id).order_by(Exam.created_at.desc()).all()
 
 
@@ -43,7 +45,7 @@ def list_exams(school_id: int, db: Session = Depends(get_db), current_user: User
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("exams"))],
 )
 def create_exam(school_id: int, payload: ExamCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     subject = db.query(Subject).filter_by(school_id=school_id, id=payload.subject_id).first()
     if subject is None:
@@ -56,6 +58,8 @@ def create_exam(school_id: int, payload: ExamCreate, db: Session = Depends(get_d
         title=payload.title,
         term=payload.term,
         duration_minutes=payload.duration_minutes,
+        opens_at=payload.opens_at,
+        closes_at=payload.closes_at,
         created_by=current_user.id,
     )
     db.add(exam)
@@ -85,7 +89,7 @@ def create_exam(school_id: int, payload: ExamCreate, db: Session = Depends(get_d
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("exams"))],
 )
 def get_exam(school_id: int, exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     exam = db.query(Exam).filter_by(school_id=school_id, id=exam_id).first()
     if exam is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Exam not found")
@@ -100,12 +104,41 @@ def get_exam(school_id: int, exam_id: int, db: Session = Depends(get_db), curren
 def set_exam_published(
     school_id: int, exam_id: int, published: bool, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     exam = db.query(Exam).filter_by(school_id=school_id, id=exam_id).first()
     if exam is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Exam not found")
 
     exam.is_published = published
+    db.commit()
+    db.refresh(exam)
+    return exam
+
+
+@router.post(
+    "/{exam_id}/paper",
+    response_model=ExamOut,
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("exams"))],
+)
+def upload_exam_paper(
+    school_id: int,
+    exam_id: int,
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Uploads a ready-made PDF as the exam paper — an alternative to
+    entering questions one by one. Published, a student downloads it from
+    their portal within the scheduled window and sits it on paper; there's
+    no online answer capture for this kind, so grading happens through the
+    normal Results page afterwards."""
+    ensure_school_access(db, current_user, school_id)
+    exam = db.query(Exam).filter_by(school_id=school_id, id=exam_id).first()
+    if exam is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Exam not found")
+
+    relative_path = save_document(file, subdir=f"schools/{school_id}/exam-papers", base_name=f"exam-{exam.id}")
+    exam.paper_file_url = f"{settings.backend_url}/uploads/{relative_path}"
     db.commit()
     db.refresh(exam)
     return exam
@@ -117,7 +150,7 @@ def set_exam_published(
     dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("exams"))],
 )
 def delete_exam(school_id: int, exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     exam = db.query(Exam).filter_by(school_id=school_id, id=exam_id).first()
     if exam is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Exam not found")
@@ -132,7 +165,7 @@ def delete_exam(school_id: int, exam_id: int, db: Session = Depends(get_db), cur
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("exams"))],
 )
 def list_submissions(school_id: int, exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     exam = db.query(Exam).filter_by(school_id=school_id, id=exam_id).first()
     if exam is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Exam not found")
@@ -162,7 +195,7 @@ def grade_answer(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     submission = (
         db.query(ExamSubmission)
         .join(Exam, ExamSubmission.exam_id == Exam.id)

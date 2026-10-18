@@ -25,6 +25,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session as SQLASession
 
+from app.core.chart_of_accounts import seed_chart_of_accounts
 from app.core.database import Base, get_db
 from app.core.security import hash_password
 from app.main import app
@@ -71,6 +72,7 @@ def school(db_session):
     db_session.flush()
     for key in MODULE_KEYS:
         db_session.add(SchoolModule(school_id=s.id, module_key=key, enabled=True))
+    seed_chart_of_accounts(db_session, s.id)
     db_session.commit()
     return s
 
@@ -83,6 +85,7 @@ def other_school(db_session):
     db_session.flush()
     for key in MODULE_KEYS:
         db_session.add(SchoolModule(school_id=s.id, module_key=key, enabled=True))
+    seed_chart_of_accounts(db_session, s.id)
     db_session.commit()
     return s
 
@@ -127,6 +130,36 @@ def other_school_admin_token(client, db_session, other_school):
 @pytest.fixture
 def teacher_token(client, db_session, school):
     user, password = _make_user(db_session, school, UserRole.TEACHER, "teacher@test-academy.test")
+    return _login(client, user.email, password)
+
+
+@pytest.fixture
+def staff_token(client, db_session, school):
+    user, password = _make_user(db_session, school, UserRole.STAFF, "staff@test-academy.test")
+    return _login(client, user.email, password)
+
+
+@pytest.fixture
+def security_token(client, db_session, school):
+    user, password = _make_user(db_session, school, UserRole.SECURITY, "security@test-academy.test")
+    return _login(client, user.email, password)
+
+
+@pytest.fixture
+def boarding_staff_token(client, db_session, school):
+    user, password = _make_user(db_session, school, UserRole.BOARDING_STAFF, "matron@test-academy.test")
+    return _login(client, user.email, password)
+
+
+@pytest.fixture
+def transport_staff_token(client, db_session, school):
+    user, password = _make_user(db_session, school, UserRole.TRANSPORT_STAFF, "transport@test-academy.test")
+    return _login(client, user.email, password)
+
+
+@pytest.fixture
+def bursar_token(client, db_session, school):
+    user, password = _make_user(db_session, school, UserRole.BURSAR, "bursar@test-academy.test")
     return _login(client, user.email, password)
 
 

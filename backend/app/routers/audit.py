@@ -20,7 +20,7 @@ def list_audit_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     query = db.query(AuditLog).filter_by(school_id=school_id)
     if entity_type is not None:
         query = query.filter_by(entity_type=entity_type)

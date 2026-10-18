@@ -2,6 +2,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.expense import ExpenseStatus
+
 
 class ExpenseCreate(BaseModel):
     category: str
@@ -19,7 +21,16 @@ class ExpenseOut(BaseModel):
     description: str
     amount: float
     date: date
+    status: ExpenseStatus
+    recorded_by: int | None
+    approved_by: int | None
+    approved_at: datetime | None
+    rejected_reason: str | None
     created_at: datetime
+
+
+class ExpenseRejectIn(BaseModel):
+    reason: str
 
 
 class CategoryTotal(BaseModel):

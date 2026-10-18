@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str | None = None
     smtp_password: str | None = None
-    smtp_from: str = "iSchool <noreply@ischool.local>"
+    smtp_from: str = "Milai Group of Schools <noreply@ischool.local>"
 
     frontend_url: str = "http://localhost:3000"
     backend_url: str = "http://localhost:8000"
@@ -35,9 +35,18 @@ class Settings(BaseSettings):
     sentry_dsn: str | None = None
     environment: str = "development"
 
+    # AI-written narrative commentary for weekly reports — unset by default;
+    # reports fall back to plain templated text instead of failing.
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4o-mini"
+
     @property
     def email_enabled(self) -> bool:
         return bool(self.smtp_host and self.smtp_user and self.smtp_password)
+
+    @property
+    def ai_enabled(self) -> bool:
+        return bool(self.openai_api_key)
 
 
 settings = Settings()

@@ -8,9 +8,10 @@ from app.core.notify import notify
 from app.core.report_card import build_report_card
 from app.core.teaching import ensure_can_grade
 from app.models.academics import Student
+from app.models.report_card_remark import ReportCardRemark
 from app.models.results import Result, Subject
 from app.models.user import User, UserRole
-from app.schemas.results import ReportCardOut, ResultOut, ResultUpsert, SubjectCreate, SubjectOut
+from app.schemas.results import ReportCardOut, ReportCardRemarkUpdate, ResultOut, ResultUpsert, SubjectCreate, SubjectOut
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["results"])
 
@@ -40,7 +41,7 @@ def _grade_for(score: float) -> str:
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("results"))],
 )
 def list_subjects(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return db.query(Subject).filter_by(school_id=school_id).all()
 
 
@@ -56,7 +57,7 @@ def create_subject(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     if db.query(Subject).filter_by(school_id=school_id, name=payload.name).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That subject already exists")
 
@@ -83,7 +84,7 @@ def list_results(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     query = db.query(Result).filter_by(school_id=school_id)
     if student_id is not None:
         query = query.filter_by(student_id=student_id)
@@ -106,10 +107,55 @@ def get_report_card(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
+    return build_report_card(db, student, term)
+
+
+@router.patch(
+    "/students/{student_id}/report-card-remarks",
+    response_model=ReportCardOut,
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("results"))],
+)
+def update_report_card_remarks(
+    school_id: int,
+    student_id: int,
+    term: str,
+    payload: ReportCardRemarkUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """A school_admin can set either comment; a teacher can only set the
+    class-teacher comment, and only for a class they're the homeroom
+    teacher of — the head teacher's word isn't a subject teacher's to give."""
+    ensure_school_access(db, current_user, school_id)
+    student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
+    if student is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
+
+    is_admin = current_user.role in (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+    if not is_admin:
+        if payload.principal_remark is not None:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only a school admin can set the principal's remark")
+        is_homeroom_teacher = (
+            student.school_class is not None and student.school_class.homeroom_teacher_id == current_user.id
+        )
+        if not is_homeroom_teacher:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only this class's homeroom teacher can add a remark")
+
+    remark = db.query(ReportCardRemark).filter_by(school_id=school_id, student_id=student_id, term=term).first()
+    if remark is None:
+        remark = ReportCardRemark(school_id=school_id, student_id=student_id, term=term)
+        db.add(remark)
+
+    if payload.class_teacher_remark is not None:
+        remark.class_teacher_remark = payload.class_teacher_remark
+    if payload.principal_remark is not None:
+        remark.principal_remark = payload.principal_remark
+
+    db.commit()
     return build_report_card(db, student, term)
 
 
@@ -126,7 +172,7 @@ def upsert_result(
 ):
     """Upserts a student's score for a subject/term — re-submitting corrects it,
     matching how a teacher actually enters grades over time."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     student = db.query(Student).filter_by(school_id=school_id, id=payload.student_id).first()
     if student is None:

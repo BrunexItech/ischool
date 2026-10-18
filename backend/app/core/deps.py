@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.module import SchoolModule
+from app.models.school import School
 from app.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -30,25 +31,38 @@ def require_roles(*roles: UserRole):
     return dependency
 
 
-def ensure_school_access(current_user: User, school_id: int) -> None:
-    """Non-super-admins may only act within their own school; super-admins manage any school."""
-    if current_user.role != UserRole.SUPER_ADMIN and current_user.school_id != school_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not permitted for this school")
+def ensure_school_access(db: Session, current_user: User, school_id: int) -> None:
+    """Non-super-admins may only act within their own school — except a group
+    owner (a school_admin whose own school is the *parent* of the target
+    school) may also act within any of their own branches. Super-admins
+    manage any school."""
+    if current_user.role == UserRole.SUPER_ADMIN or current_user.school_id == school_id:
+        return
+    if current_user.role == UserRole.SCHOOL_ADMIN and current_user.school_id is not None:
+        target = db.get(School, school_id)
+        if target is not None and target.parent_school_id == current_user.school_id:
+            return
+    raise HTTPException(status.HTTP_403_FORBIDDEN, "Not permitted for this school")
 
 
 def require_feature(module_key: str):
-    """Blocks access unless the current user's school has this module enabled.
-    Super-admins bypass the check (they manage schools, not enrolled in one)."""
+    """Blocks access unless the target school has this module enabled. The
+    target is the `school_id` path parameter when the route has one (so a
+    group owner viewing a branch is correctly gated on that branch's own
+    modules); routes with no `school_id` in their path (e.g. /portal/...,
+    which is scoped by the caller's own identity) fall back to the caller's
+    own school. Super-admins bypass the check."""
 
-    def dependency(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
+    def dependency(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+        school_id: int | None = None,
+    ) -> User:
         if current_user.role == UserRole.SUPER_ADMIN:
             return current_user
 
-        module = (
-            db.query(SchoolModule)
-            .filter_by(school_id=current_user.school_id, module_key=module_key)
-            .first()
-        )
+        target_school_id = school_id if school_id is not None else current_user.school_id
+        module = db.query(SchoolModule).filter_by(school_id=target_school_id, module_key=module_key).first()
         if module is None or not module.enabled:
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN, f"The '{module_key}' module is not enabled for your school"

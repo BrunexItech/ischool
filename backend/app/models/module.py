@@ -4,7 +4,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 # Every module a school can be gated on. Add new modules here as they ship.
+# The *_section keys gate which school levels/campuses a school operates, as opposed
+# to the feature modules below them (attendance, fees, etc.).
 MODULE_KEYS = [
+    "pre_primary",
+    "primary_section",
+    "secondary_section",
+    "college_section",
     "students_staff",
     "attendance",
     "results",
@@ -20,6 +26,14 @@ MODULE_KEYS = [
     "exams",
     "sms",
     "lesson_plans",
+    "admissions_crm",
+    "school_calendar",
+    "boarding",
+    "security",
+    "trips",
+    "erp_finance",
+    "timetable",
+    "staff_attendance",
 ]
 
 

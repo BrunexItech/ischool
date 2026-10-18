@@ -41,7 +41,7 @@ def list_lesson_plans(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     query = db.query(LessonPlan).filter_by(school_id=school_id)
     if class_id is not None:
         query = query.filter_by(class_id=class_id)
@@ -61,7 +61,7 @@ def list_lesson_plans(
 def create_lesson_plan(
     school_id: int, payload: LessonPlanCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     ensure_can_grade(db, current_user, payload.class_id, payload.subject_id)
 
     if db.query(LessonPlan).filter_by(school_id=school_id, class_id=payload.class_id, subject_id=payload.subject_id, term=payload.term).first():
@@ -80,7 +80,7 @@ def create_lesson_plan(
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("lesson_plans"))],
 )
 def get_lesson_plan(school_id: int, plan_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return _get_plan(db, school_id, plan_id)
 
 
@@ -90,7 +90,7 @@ def get_lesson_plan(school_id: int, plan_id: int, db: Session = Depends(get_db),
     dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("lesson_plans"))],
 )
 def delete_lesson_plan(school_id: int, plan_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     plan = _get_plan(db, school_id, plan_id)
     db.delete(plan)
     db.commit()
@@ -110,7 +110,7 @@ def add_entry(
     current_user: User = Depends(get_current_user),
 ):
     """Adds one entry — the "fill it in as the term goes" path."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     plan = _get_plan(db, school_id, plan_id)
     ensure_can_grade(db, current_user, plan.class_id, plan.subject_id)
 
@@ -137,7 +137,7 @@ def replace_entries(
     term's plan right now" path, as opposed to adding entries one at a
     time. Either path works on the same plan; nothing forces one over
     the other."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     plan = _get_plan(db, school_id, plan_id)
     ensure_can_grade(db, current_user, plan.class_id, plan.subject_id)
 
@@ -163,7 +163,7 @@ def update_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     plan = _get_plan(db, school_id, plan_id)
     ensure_can_grade(db, current_user, plan.class_id, plan.subject_id)
 
@@ -187,7 +187,7 @@ def update_entry(
 def delete_entry(
     school_id: int, plan_id: int, entry_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     plan = _get_plan(db, school_id, plan_id)
     ensure_can_grade(db, current_user, plan.class_id, plan.subject_id)
 

@@ -27,7 +27,16 @@ def test_super_admin_bypasses_module_gating(client, super_admin_token, school):
     assert response.status_code == 200
 
 
-def test_school_admin_cannot_toggle_modules(client, school_admin_token, school):
-    """Only super-admin may enable/disable a module — school admins can view but not flip the switch."""
+def test_school_admin_can_toggle_their_own_modules(client, school_admin_token, school):
+    """A school_admin manages their own school's modules (and, per
+    test_group_schools.py, their own branches') — but nobody else's."""
     response = client.patch(f"/schools/{school.id}/modules/meals", headers=auth_headers(school_admin_token), json={"enabled": False})
+    assert response.status_code == 200
+    assert response.json()["enabled"] is False
+
+
+def test_school_admin_cannot_toggle_another_schools_modules(client, other_school_admin_token, school):
+    response = client.patch(
+        f"/schools/{school.id}/modules/meals", headers=auth_headers(other_school_admin_token), json={"enabled": False}
+    )
     assert response.status_code == 403

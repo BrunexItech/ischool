@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ResetPasswordDialog } from "@/components/ResetPasswordDialog";
-import { CheckCircle2, KeyRound, UserPlus, XCircle } from "lucide-react";
+import { CheckCircle2, KeyRound, Search, UserPlus, XCircle } from "lucide-react";
 
 function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpdated: (s: Student) => void }) {
   const { token, user } = useAuth();
@@ -123,7 +123,7 @@ function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpda
               </div>
               <label className="flex items-start gap-2 text-xs text-muted-foreground">
                 <Checkbox required checked={guardianConsent} onCheckedChange={(v) => setGuardianConsent(v === true)} className="mt-0.5" />
-                I confirm the guardian has consented to this account and to iSchool processing their and their child&apos;s data.
+                I confirm the guardian has consented to this account and to Milai Group of Schools processing their and their child&apos;s data.
               </label>
               <Button size="sm" type="submit" disabled={submittingGuardian || !guardianConsent}>{submittingGuardian ? "Creating..." : "Create login"}</Button>
             </form>
@@ -141,6 +141,7 @@ export default function StudentsPage() {
   const { user, token } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     admission_number: "",
@@ -166,6 +167,17 @@ export default function StudentsPage() {
     if (!classId) return null;
     return classes.find((c) => c.id === classId)?.name ?? `#${classId}`;
   }
+
+  const filteredStudents = students.filter((s) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      s.admission_number.toLowerCase().includes(q) ||
+      `${s.first_name} ${s.last_name}`.toLowerCase().includes(q) ||
+      (s.guardian_name ?? "").toLowerCase().includes(q) ||
+      (classNameFor(s.class_id) ?? "").toLowerCase().includes(q)
+    );
+  });
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -258,6 +270,17 @@ export default function StudentsPage() {
       )}
 
       <Card>
+        <CardContent className="pt-6 pb-0">
+          <div className="relative max-w-sm">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, admission #, class, or guardian..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </CardContent>
         <Table>
           <TableHeader>
             <TableRow>
@@ -269,7 +292,7 @@ export default function StudentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {students.map((s) => (
+            {filteredStudents.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{s.admission_number}</TableCell>
                 <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>
@@ -287,10 +310,10 @@ export default function StudentsPage() {
                 )}
               </TableRow>
             ))}
-            {students.length === 0 && (
+            {filteredStudents.length === 0 && (
               <TableRow>
                 <TableCell colSpan={canEnroll ? 5 : 4} className="h-24 text-center text-muted-foreground">
-                  No students enrolled yet.
+                  {students.length === 0 ? "No students enrolled yet." : "No students match your search."}
                 </TableCell>
               </TableRow>
             )}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowDownCircle, ArrowUpCircle, Plus, Trash2, Wallet } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Check, Hourglass, Plus, Trash2, Wallet, X } from "lucide-react";
 import { api, ApiError, Expense, FinanceSummary } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
@@ -12,7 +12,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+
+function StatusBadge({ status }: { status: Expense["status"] }) {
+  if (status === "approved") return <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10"><Check className="size-3" />Approved</Badge>;
+  if (status === "rejected") return <Badge variant="destructive"><X className="size-3" />Rejected</Badge>;
+  return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/10"><Hourglass className="size-3" />Pending</Badge>;
+}
+
+function RejectDialog({ onReject }: { onReject: (reason: string) => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleReject() {
+    if (!reason.trim()) return;
+    setSubmitting(true);
+    try {
+      await onReject(reason.trim());
+      setOpen(false);
+      setReason("");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive"><X /></Button>} />
+      <DialogContent>
+        <DialogHeader><DialogTitle>Reject this expense</DialogTitle></DialogHeader>
+        <div className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label>Reason</Label>
+            <Textarea required value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why is this being rejected?" />
+          </div>
+          <Button variant="destructive" disabled={submitting || !reason.trim()} onClick={handleReject}>
+            {submitting ? "Rejecting..." : "Reject expense"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function FinancePage() {
   const router = useRouter();
@@ -24,7 +69,7 @@ export default function FinancePage() {
   const [form, setForm] = useState({ category: "", description: "", amount: "", date: "" });
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "super_admin"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["school_admin", "super_admin", "bursar"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   function refresh() {
@@ -70,7 +115,32 @@ export default function FinancePage() {
     }
   }
 
+  async function handleApprove(id: number) {
+    if (!token || !user?.school_id) return;
+    try {
+      await api.approveExpense(token, user.school_id, id);
+      toast.success("Expense approved");
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to approve expense");
+    }
+  }
+
+  async function handleReject(id: number, reason: string) {
+    if (!token || !user?.school_id) return;
+    try {
+      await api.rejectExpense(token, user.school_id, id, reason);
+      toast.success("Expense rejected");
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to reject expense");
+    }
+  }
+
   if (loading || dataLoading) return <PageLoader />;
+
+  const canApprove = user?.role === "school_admin" || user?.role === "super_admin";
+  const pendingCount = expenses.filter((e) => e.status === "pending").length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -105,6 +175,18 @@ export default function FinancePage() {
           </CardContent>
         </Card>
       </div>
+
+      {canApprove && pendingCount > 0 && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="flex items-center gap-3 pt-6">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600"><Hourglass className="size-4.5" /></div>
+            <div>
+              <p className="text-sm font-medium">{pendingCount} expense{pendingCount === 1 ? "" : "s"} waiting on your approval</p>
+              <p className="text-xs text-muted-foreground">Pending expenses aren&apos;t counted in the totals above until approved.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -160,6 +242,7 @@ export default function FinancePage() {
               <TableHead>Category</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Amount</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -168,15 +251,29 @@ export default function FinancePage() {
               <TableRow key={e.id}>
                 <TableCell>{new Date(e.date).toLocaleDateString()}</TableCell>
                 <TableCell className="capitalize">{e.category}</TableCell>
-                <TableCell>{e.description}</TableCell>
+                <TableCell>
+                  {e.description}
+                  {e.status === "rejected" && e.rejected_reason && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">Reason: {e.rejected_reason}</p>
+                  )}
+                </TableCell>
                 <TableCell>KES {e.amount.toLocaleString()}</TableCell>
+                <TableCell><StatusBadge status={e.status} /></TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(e.id)}><Trash2 /></Button>
+                  <div className="flex items-center justify-end gap-1">
+                    {canApprove && e.status === "pending" && (
+                      <>
+                        <Button variant="ghost" size="icon-sm" className="text-emerald-600 hover:text-emerald-600" onClick={() => handleApprove(e.id)}><Check /></Button>
+                        <RejectDialog onReject={(reason) => handleReject(e.id, reason)} />
+                      </>
+                    )}
+                    <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(e.id)}><Trash2 /></Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
             {expenses.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No expenses recorded yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No expenses recorded yet.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>

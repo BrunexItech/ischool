@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { GraduationCap, Upload } from "lucide-react";
+import { GraduationCap, ShieldCheck, Upload } from "lucide-react";
 import { api, ApiError, School } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
@@ -21,7 +21,9 @@ export default function BrandingPage() {
   const [name, setName] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#1D4ED8");
   const [secondaryColor, setSecondaryColor] = useState("#111827");
+  const [threshold, setThreshold] = useState("50000");
   const [savingDetails, setSavingDetails] = useState(false);
+  const [savingThreshold, setSavingThreshold] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,6 +40,7 @@ export default function BrandingPage() {
         setName(s.name);
         setPrimaryColor(s.primary_color);
         setSecondaryColor(s.secondary_color);
+        setThreshold(String(s.expense_approval_threshold));
       })
       .finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
@@ -58,6 +61,21 @@ export default function BrandingPage() {
       toast.error(err instanceof ApiError ? err.message : "Failed to update branding");
     } finally {
       setSavingDetails(false);
+    }
+  }
+
+  async function handleSaveThreshold(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !user?.school_id) return;
+    setSavingThreshold(true);
+    try {
+      const updated = await api.updateBranding(token, user.school_id, { expense_approval_threshold: Number(threshold) });
+      setSchool(updated);
+      toast.success("Approval threshold updated");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update threshold");
+    } finally {
+      setSavingThreshold(false);
     }
   }
 
@@ -133,6 +151,26 @@ export default function BrandingPage() {
             <div className="col-span-full">
               <Button type="submit" disabled={savingDetails}>
                 {savingDetails && <Spinner size={16} className="text-current" />} {savingDetails ? "Saving..." : "Save details"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="size-4.5" /> Expense approvals</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSaveThreshold} className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label>Approval threshold (KES)</Label>
+              <Input required type="number" min={0} step="0.01" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Expenses at or above this amount need your sign-off before they count toward totals. Below it, whoever records it is trusted.</p>
+            </div>
+            <div className="col-span-full">
+              <Button type="submit" disabled={savingThreshold}>
+                {savingThreshold && <Spinner size={16} className="text-current" />} {savingThreshold ? "Saving..." : "Save threshold"}
               </Button>
             </div>
           </form>

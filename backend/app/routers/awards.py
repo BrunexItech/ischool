@@ -26,7 +26,7 @@ def list_awards(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     query = db.query(Award).filter_by(school_id=school_id)
     if student_id is not None:
         query = query.filter_by(student_id=student_id)
@@ -44,7 +44,7 @@ def list_awards(
 def create_award(
     school_id: int, payload: AwardCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     if payload.student_id is not None:
         student = db.query(Student).filter_by(school_id=school_id, id=payload.student_id).first()
@@ -68,7 +68,7 @@ def create_award(
     dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("awards"))],
 )
 def delete_award(school_id: int, award_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     award = db.query(Award).filter_by(school_id=school_id, id=award_id).first()
     if award is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Award not found")

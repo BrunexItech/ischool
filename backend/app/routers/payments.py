@@ -39,7 +39,7 @@ def _config_out(config: SchoolPaymentConfig | None) -> SchoolPaymentConfigOut:
     dependencies=[Depends(require_roles(*ADMIN_ROLES))],
 )
 def get_payment_config(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     config = db.query(SchoolPaymentConfig).filter_by(school_id=school_id).first()
     return _config_out(config)
 
@@ -57,7 +57,7 @@ def set_payment_config(
 ):
     """Each provider's fields are independently optional — saving card
     credentials doesn't require re-entering M-Pesa's, and vice versa."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     config = db.query(SchoolPaymentConfig).filter_by(school_id=school_id).first()
     if config is None:

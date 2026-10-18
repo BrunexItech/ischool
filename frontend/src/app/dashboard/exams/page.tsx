@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, FileUp, Plus, Trash2, Upload } from "lucide-react";
 import { api, ApiError, Exam, ExamQuestionType, SchoolClass, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
@@ -40,8 +40,11 @@ export default function ExamsPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [form, setForm] = useState({ subjectId: "", classId: NO_CLASS, title: "", term: "", duration: "60" });
+  const [form, setForm] = useState({ subjectId: "", classId: NO_CLASS, title: "", term: "", duration: "60", opensAt: "", closesAt: "" });
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyQuestion()]);
+  const [mode, setMode] = useState<"questions" | "paper">("questions");
+  const [paperFile, setPaperFile] = useState<File | null>(null);
+  const [uploadingPaperFor, setUploadingPaperFor] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading && user && !["school_admin", "teacher", "staff", "super_admin"].includes(user.role)) router.replace("/dashboard");
@@ -75,15 +78,20 @@ export default function ExamsPage() {
     e.preventDefault();
     if (!token || !user?.school_id || !form.subjectId || !form.title || !form.term) return;
 
-    for (const q of questions) {
-      if (!q.question_text.trim()) {
-        toast.error("Every question needs its text filled in");
-        return;
+    if (mode === "questions") {
+      for (const q of questions) {
+        if (!q.question_text.trim()) {
+          toast.error("Every question needs its text filled in");
+          return;
+        }
+        if (q.question_type === "mcq" && (q.correct_option_index === null || q.options.some((o) => !o.trim()))) {
+          toast.error("Every MCQ option needs text, and a correct answer must be selected");
+          return;
+        }
       }
-      if (q.question_type === "mcq" && (q.correct_option_index === null || q.options.some((o) => !o.trim()))) {
-        toast.error("Every MCQ option needs text, and a correct answer must be selected");
-        return;
-      }
+    } else if (!paperFile) {
+      toast.error("Choose a PDF file for the exam paper");
+      return;
     }
 
     setSubmitting(true);
@@ -94,23 +102,49 @@ export default function ExamsPage() {
         title: form.title,
         term: form.term,
         duration_minutes: Number(form.duration),
-        questions: questions.map((q, i) => ({
-          question_text: q.question_text,
-          question_type: q.question_type,
-          marks: Number(q.marks),
-          order: i + 1,
-          options: q.question_type === "mcq" ? q.options : undefined,
-          correct_option_index: q.question_type === "mcq" ? q.correct_option_index ?? undefined : undefined,
-        })),
+        opens_at: form.opensAt ? new Date(form.opensAt).toISOString() : undefined,
+        closes_at: form.closesAt ? new Date(form.closesAt).toISOString() : undefined,
+        questions:
+          mode === "questions"
+            ? questions.map((q, i) => ({
+                question_text: q.question_text,
+                question_type: q.question_type,
+                marks: Number(q.marks),
+                order: i + 1,
+                options: q.question_type === "mcq" ? q.options : undefined,
+                correct_option_index: q.question_type === "mcq" ? q.correct_option_index ?? undefined : undefined,
+              }))
+            : [],
       });
-      setExams((e) => [created, ...e]);
-      setForm({ subjectId: "", classId: NO_CLASS, title: "", term: "", duration: "60" });
+
+      let finalExam: Exam = created;
+      if (mode === "paper" && paperFile) {
+        finalExam = await api.uploadExamPaper(token, user.school_id, created.id, paperFile);
+      }
+
+      setExams((e) => [finalExam, ...e]);
+      setForm({ subjectId: "", classId: NO_CLASS, title: "", term: "", duration: "60", opensAt: "", closesAt: "" });
       setQuestions([emptyQuestion()]);
-      toast.success(`${created.title} created`);
+      setPaperFile(null);
+      toast.success(`${finalExam.title} created`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to create exam");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleUploadPaper(exam: Exam, file: File) {
+    if (!token || !user?.school_id) return;
+    setUploadingPaperFor(exam.id);
+    try {
+      const updated = await api.uploadExamPaper(token, user.school_id, exam.id, file);
+      setExams((es) => es.map((e) => (e.id === exam.id ? updated : e)));
+      toast.success("Exam paper uploaded");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to upload exam paper");
+    } finally {
+      setUploadingPaperFor(null);
     }
   }
 
@@ -177,8 +211,35 @@ export default function ExamsPage() {
                 <Label>Duration (minutes)</Label>
                 <Input required type="number" min={1} value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} />
               </div>
+              <div className="grid gap-1.5">
+                <Label>Opens (optional)</Label>
+                <Input type="datetime-local" value={form.opensAt} onChange={(e) => setForm((f) => ({ ...f, opensAt: e.target.value }))} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Closes (optional)</Label>
+                <Input type="datetime-local" value={form.closesAt} onChange={(e) => setForm((f) => ({ ...f, closesAt: e.target.value }))} />
+              </div>
             </div>
 
+            <div className="flex items-center gap-3">
+              <Select value={mode} onValueChange={(v) => v && setMode(v as "questions" | "paper")}>
+                <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="questions">Build questions (online sitting)</SelectItem>
+                  <SelectItem value="paper">Upload a PDF paper (offline sitting)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {mode === "paper" ? (
+              <div className="flex items-center gap-3 rounded-lg border border-dashed p-4">
+                <FileUp className="size-5 text-muted-foreground" />
+                <div className="flex-1">
+                  <Input type="file" accept="application/pdf" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} />
+                  <p className="mt-1 text-xs text-muted-foreground">Students download this PDF within the window above and sit it on paper; you record the score via Results afterwards.</p>
+                </div>
+              </div>
+            ) : (
             <div className="flex flex-col gap-3">
               {questions.map((q, i) => (
                 <div key={i} className="flex flex-col gap-3 rounded-lg border p-3">
@@ -227,6 +288,7 @@ export default function ExamsPage() {
                 <Plus /> Add question
               </Button>
             </div>
+            )}
 
             <Button type="submit" disabled={submitting} className="w-fit">
               {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Saving..." : "Create exam"}
@@ -243,15 +305,37 @@ export default function ExamsPage() {
               <div>
                 <p className="font-medium">{exam.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {subjectName(exam.subject_id)} · {className(exam.class_id)} · {exam.term} · {exam.duration_minutes} min · {exam.total_marks} marks · {exam.question_count} questions
+                  {subjectName(exam.subject_id)} · {className(exam.class_id)} · {exam.term}
+                  {exam.paper_file_url ? " · Paper upload" : ` · ${exam.duration_minutes} min · ${exam.total_marks} marks · ${exam.question_count} questions`}
                 </p>
+                {(exam.opens_at || exam.closes_at) && (
+                  <p className="text-xs text-muted-foreground">
+                    Window: {exam.opens_at ? new Date(exam.opens_at).toLocaleString() : "anytime"} – {exam.closes_at ? new Date(exam.closes_at).toLocaleString() : "no end"}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Switch checked={exam.is_published} onCheckedChange={() => handleTogglePublish(exam)} />
                   {exam.is_published ? "Published" : "Draft"}
                 </label>
-                <Button variant="outline" size="sm" render={<Link href={`/dashboard/exams/${exam.id}`}><FileText /> View / Print</Link>} />
+                {exam.paper_file_url ? (
+                  <Button variant="outline" size="sm" render={<a href={exam.paper_file_url} target="_blank" rel="noreferrer"><FileText /> View paper</a>} />
+                ) : exam.question_count === 0 ? (
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs text-primary hover:underline">
+                    <Upload className="size-3.5" />
+                    {uploadingPaperFor === exam.id ? "Uploading..." : "Upload paper"}
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      disabled={uploadingPaperFor === exam.id}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadPaper(exam, f); }}
+                    />
+                  </label>
+                ) : (
+                  <Button variant="outline" size="sm" render={<Link href={`/dashboard/exams/${exam.id}`}><FileText /> View / Print</Link>} />
+                )}
                 {(user?.role === "school_admin" || user?.role === "super_admin") && (
                   <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(exam.id)}><Trash2 /></Button>
                 )}

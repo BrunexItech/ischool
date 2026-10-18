@@ -14,6 +14,7 @@ class AnnouncementCreate(BaseModel):
     event_end_date: date | None = None
     location: str | None = None
     send_sms: bool = False  # best-effort — never blocks the post itself
+    send_email: bool = False  # best-effort — never blocks the post itself
 
 
 class AnnouncementOut(BaseModel):
@@ -36,3 +37,5 @@ class AnnouncementCreateResult(BaseModel):
     announcement: AnnouncementOut
     sms_sent: int
     sms_error: str | None = None
+    email_sent: int = 0
+    email_error: str | None = None

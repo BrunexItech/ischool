@@ -24,6 +24,42 @@ from app.models.activity import Activity, ActivityParticipant
 from app.models.expense import Expense
 from app.models.pickup_dropoff import PickupDropoffLog, PickupDropoffType
 from app.models.exam import Exam, ExamAnswer, ExamQuestion, ExamQuestionType, ExamSubmission, ExamSubmissionStatus
+from app.models.lead import Lead, LeadStage
+from app.models.calendar_event import CalendarEvent, CalendarEventType
+from app.models.boarding import (
+    BoardingHouse,
+    BoardingAssignment,
+    BoardingRollCall,
+    RollSession,
+    Exeat,
+    ExeatStatus,
+    SickBayVisit,
+    SickBayAction,
+    BoardingIncident,
+    IncidentStatus,
+)
+from app.models.security import (
+    VisitorLog,
+    VehicleLog,
+    VehicleDirection,
+    EarlyPickup,
+    SecurityIncident,
+    IncidentSeverity,
+    SecurityIncidentStatus,
+    SecurityAlert,
+    PatrolLog,
+)
+from app.models.trip import Trip, TripStatus
+from app.models.ledger import Account, AccountType, JournalEntry, JournalLine
+from app.models.supplier import Supplier
+from app.models.procurement import PurchaseRequisition, RequisitionStatus, PurchaseOrder, PurchaseOrderStatus
+from app.models.budget import Budget
+from app.models.store import StockItem, StockMovement, StockMovementType
+from app.models.payroll import PayrollProfile, PayRun, PayRunStatus, PayslipLine, EmploymentType
+from app.models.asset import FixedAsset, AssetStatus, DepreciationRun
+from app.models.report_card_remark import ReportCardRemark
+from app.models.timetable import TimetableSlot
+from app.models.staff_attendance import StaffAttendance, DutyAssignment
 
 __all__ = [
     "School",
@@ -76,4 +112,54 @@ __all__ = [
     "LessonPlan",
     "LessonPlanEntry",
     "LessonPlanEntryStatus",
+    "Lead",
+    "LeadStage",
+    "CalendarEvent",
+    "CalendarEventType",
+    "BoardingHouse",
+    "BoardingAssignment",
+    "BoardingRollCall",
+    "RollSession",
+    "Exeat",
+    "ExeatStatus",
+    "SickBayVisit",
+    "SickBayAction",
+    "BoardingIncident",
+    "IncidentStatus",
+    "VisitorLog",
+    "VehicleLog",
+    "VehicleDirection",
+    "EarlyPickup",
+    "SecurityIncident",
+    "IncidentSeverity",
+    "SecurityIncidentStatus",
+    "SecurityAlert",
+    "PatrolLog",
+    "Trip",
+    "TripStatus",
+    "Account",
+    "AccountType",
+    "JournalEntry",
+    "JournalLine",
+    "Supplier",
+    "PurchaseRequisition",
+    "RequisitionStatus",
+    "PurchaseOrder",
+    "PurchaseOrderStatus",
+    "Budget",
+    "StockItem",
+    "StockMovement",
+    "StockMovementType",
+    "PayrollProfile",
+    "PayRun",
+    "PayRunStatus",
+    "PayslipLine",
+    "EmploymentType",
+    "FixedAsset",
+    "AssetStatus",
+    "DepreciationRun",
+    "ReportCardRemark",
+    "TimetableSlot",
+    "StaffAttendance",
+    "DutyAssignment",
 ]

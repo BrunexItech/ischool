@@ -25,7 +25,7 @@ SCHEDULE_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER)
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("live_classes"))],
 )
 def list_live_classes(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     return (
         db.query(LiveClass)
         .filter_by(school_id=school_id)
@@ -46,7 +46,7 @@ def schedule_live_class(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
 
     live_class = LiveClass(
         school_id=school_id,
@@ -76,7 +76,7 @@ def get_host_token(
 ):
     """Anyone with staff-level access to the school can host/co-host — a teacher
     running the class, or an admin/staff member sitting in."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     live_class = db.query(LiveClass).filter_by(school_id=school_id, id=live_class_id).first()
     if live_class is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Live class not found")

@@ -28,16 +28,25 @@ def list_attendance(
     school_id: int,
     class_id: int | None = Query(default=None),
     date: date | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
     student_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    ensure_school_access(current_user, school_id)
+    """`date` picks one exact day (what the marking page uses); `date_from`/
+    `date_to` instead pick an inclusive range, for looking back at history —
+    e.g. "what was attendance last month, the 1st through the 15th"."""
+    ensure_school_access(db, current_user, school_id)
     query = db.query(AttendanceRecord).filter_by(school_id=school_id)
     if class_id is not None:
         query = query.filter_by(class_id=class_id)
     if date is not None:
         query = query.filter_by(date=date)
+    if date_from is not None:
+        query = query.filter(AttendanceRecord.date >= date_from)
+    if date_to is not None:
+        query = query.filter(AttendanceRecord.date <= date_to)
     if student_id is not None:
         query = query.filter_by(student_id=student_id)
     return query.order_by(AttendanceRecord.date.desc()).all()
@@ -56,7 +65,7 @@ def mark_attendance(
 ):
     """Upserts one record per student for the given class/date — resubmitting
     the same day just corrects it, which is how a teacher actually uses this."""
-    ensure_school_access(current_user, school_id)
+    ensure_school_access(db, current_user, school_id)
     ensure_can_manage_attendance(db, current_user, payload.class_id)
 
     existing = {

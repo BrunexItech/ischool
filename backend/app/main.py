@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.core import scheduler
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.logging import configure_logging
@@ -24,29 +25,44 @@ from app.routers import (
     academics,
     activities,
     analytics,
+    asset,
     attendance,
     audit,
     auth,
     awards,
+    boarding,
+    budget,
+    calendar_events,
     communication,
+    dashboard,
     exams,
     fees,
     finance,
+    leads,
+    ledger,
     lesson_plans,
     live_classes,
     meals,
     notifications,
     payments,
+    payroll,
     pickup_dropoff,
     plans,
     portal,
+    procurement,
     results,
     schools,
+    security,
+    staff_attendance,
+    store,
+    supplier,
     teaching,
+    timetable,
     transport,
+    trip,
 )
 
-app = FastAPI(title="iSchool API")
+app = FastAPI(title="Milai Group of Schools API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -81,6 +97,21 @@ app.include_router(pickup_dropoff.router)
 app.include_router(exams.router)
 app.include_router(plans.router)
 app.include_router(lesson_plans.router)
+app.include_router(leads.router)
+app.include_router(calendar_events.router)
+app.include_router(dashboard.router)
+app.include_router(boarding.router)
+app.include_router(security.router)
+app.include_router(trip.router)
+app.include_router(ledger.router)
+app.include_router(supplier.router)
+app.include_router(procurement.router)
+app.include_router(budget.router)
+app.include_router(store.router)
+app.include_router(payroll.router)
+app.include_router(asset.router)
+app.include_router(timetable.router)
+app.include_router(staff_attendance.router)
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -92,6 +123,7 @@ def on_startup():
     # Dev convenience: create tables if they don't exist. Alembic migrations
     # take over once the schema stabilizes.
     Base.metadata.create_all(bind=engine)
+    scheduler.start()
 
 
 @app.get("/health")

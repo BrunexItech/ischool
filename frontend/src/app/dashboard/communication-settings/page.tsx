@@ -70,7 +70,7 @@ export default function CommunicationSettingsPage() {
         <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">
           <MessageSquare className="size-4.5 shrink-0" />
           SMS sends from <strong>your school&apos;s own</strong> MobileSasa account and is paid for out of your
-          own SMS credit — iSchool never holds or touches it. Once connected, you can optionally send an SMS
+          own SMS credit — Milai Group of Schools never holds or touches it. Once connected, you can optionally send an SMS
           alongside any announcement.
         </CardContent>
       </Card>
