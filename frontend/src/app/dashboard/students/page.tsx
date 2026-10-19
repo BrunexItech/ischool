@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { api, ApiError, SchoolClass, Student } from "@/lib/api";
+import { api, ApiError, MyClass, SchoolClass, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
@@ -17,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ResetPasswordDialog } from "@/components/ResetPasswordDialog";
-import { CheckCircle2, KeyRound, Search, UserPlus, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, GraduationCap, KeyRound, Search, UserPlus, Users, XCircle } from "lucide-react";
 
 function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpdated: (s: Student) => void }) {
   const { token, user } = useAuth();
@@ -137,7 +138,140 @@ function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpda
   );
 }
 
-export default function StudentsPage() {
+function ClassRoster({ classInfo, onBack }: { classInfo: MyClass; onBack: () => void }) {
+  const { user, token } = useAuth();
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!token || !user?.school_id) return;
+    api
+      .listStudents(token, user.school_id, classInfo.class_id)
+      .then(setStudents)
+      .catch(() => setStudents([]))
+      .finally(() => setLoading(false));
+  }, [token, user?.school_id, classInfo.class_id]);
+
+  const filteredStudents = students.filter((s) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      s.admission_number.toLowerCase().includes(q) ||
+      `${s.first_name} ${s.last_name}`.toLowerCase().includes(q) ||
+      (s.guardian_name ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title={classInfo.class_name} description={`${students.length} learner${students.length === 1 ? "" : "s"} in this class.`} />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft /> All my classes</Button>
+        <div className="relative max-w-sm flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search by name, admission #, or guardian..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+      </div>
+
+      <Card>
+        {loading ? (
+          <PageLoader />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Admission #</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Guardian</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredStudents.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{s.admission_number}</TableCell>
+                  <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.guardian_name ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+              {filteredStudents.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                    {students.length === 0 ? "No students in this class yet." : "No students match your search."}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function TeacherStudentsView() {
+  const { user, token } = useAuth();
+  const searchParams = useSearchParams();
+  const [myClasses, setMyClasses] = useState<MyClass[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(() => {
+    const fromUrl = searchParams.get("class_id");
+    return fromUrl ? Number(fromUrl) : null;
+  });
+
+  useEffect(() => {
+    if (!token || !user?.school_id) return;
+    api.listMyClasses(token, user.school_id).then(setMyClasses).catch(() => setMyClasses([])).finally(() => setClassesLoading(false));
+  }, [token, user?.school_id]);
+
+  const selectedClass = myClasses.find((c) => c.class_id === selectedClassId);
+
+  if (classesLoading) return <PageLoader />;
+
+  if (selectedClass) {
+    return <ClassRoster key={selectedClass.class_id} classInfo={selectedClass} onBack={() => setSelectedClassId(null)} />;
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Students" description="Choose a class to see its roster." />
+      {myClasses.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+            <Users className="size-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">You&apos;re not assigned to any classes yet.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {myClasses.map((c) => (
+            <button key={c.class_id} type="button" onClick={() => setSelectedClassId(c.class_id)} className="text-left">
+              <Card className="h-full transition-colors hover:border-primary/40 hover:bg-primary/5">
+                <CardContent className="flex items-center gap-3 pt-6">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <GraduationCap className="size-4.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="truncate font-heading text-sm font-semibold">{c.class_name}</p>
+                      {c.is_homeroom_teacher && <Badge className="shrink-0">Class teacher</Badge>}
+                    </div>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Users className="size-3" /> {c.student_count} learners
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminStudentsView() {
   const { user, token } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -322,4 +456,11 @@ export default function StudentsPage() {
       </Card>
     </div>
   );
+}
+
+export default function StudentsPage() {
+  const { user } = useAuth();
+  if (!user) return null;
+  if (user.role === "teacher") return <TeacherStudentsView />;
+  return <AdminStudentsView />;
 }

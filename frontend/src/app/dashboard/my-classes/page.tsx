@@ -78,7 +78,7 @@ function ClassCard({ c }: { c: MyClass }) {
             <Link href="/dashboard/results">
               <Button size="sm" variant="outline">Results</Button>
             </Link>
-            <Link href="/dashboard/students">
+            <Link href={`/dashboard/students?class_id=${c.class_id}`}>
               <Button size="sm" variant="ghost">Roster</Button>
             </Link>
           </div>

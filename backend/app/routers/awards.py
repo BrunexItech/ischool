@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
-from app.models.academics import Student
+from app.models.academics import SchoolClass, Student
 from app.models.award import Award
+from app.models.teacher_assignment import TeacherAssignment
 from app.models.user import User, UserRole
 from app.schemas.award import AwardCreate, AwardOut
 
@@ -44,12 +45,29 @@ def list_awards(
 def create_award(
     school_id: int, payload: AwardCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
+    """Recognizing a student is open to any teacher/staff (scoped to their
+    own classes if they're a teacher); recognizing a colleague is a
+    leadership call, not something teachers hand out to each other."""
     ensure_school_access(db, current_user, school_id)
+
+    if payload.staff_user_id is not None and current_user.role not in ADMIN_ROLES:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only a school admin or supervisor can award a staff member")
 
     if payload.student_id is not None:
         student = db.query(Student).filter_by(school_id=school_id, id=payload.student_id).first()
         if student is None:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "That student does not belong to this school")
+        if current_user.role == UserRole.TEACHER:
+            is_assigned = (
+                db.query(TeacherAssignment).filter_by(school_id=school_id, teacher_user_id=current_user.id, class_id=student.class_id).first()
+                is not None
+            )
+            is_homeroom = (
+                student.class_id is not None
+                and db.query(SchoolClass).filter_by(id=student.class_id, homeroom_teacher_id=current_user.id).first() is not None
+            )
+            if not (is_assigned or is_homeroom):
+                raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't teach this student")
     else:
         staff = db.query(User).filter_by(school_id=school_id, id=payload.staff_user_id).first()
         if staff is None:

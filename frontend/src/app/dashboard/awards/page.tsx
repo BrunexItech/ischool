@@ -36,6 +36,8 @@ export default function AwardsPage() {
     date_awarded: "",
   });
 
+  const canAwardStaff = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
+
   useEffect(() => {
     if (!loading && user && !["school_admin", "teacher", "staff", "super_admin", "supervisor"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
@@ -45,9 +47,9 @@ export default function AwardsPage() {
     Promise.all([
       api.listAwards(token, user.school_id).then(setAwards),
       api.listStudents(token, user.school_id).then(setStudents),
-      api.listStaff(token, user.school_id).then(setStaff),
+      canAwardStaff ? api.listStaff(token, user.school_id).then(setStaff) : Promise.resolve(),
     ]).finally(() => setDataLoading(false));
-  }, [token, user?.school_id]);
+  }, [token, user?.school_id, canAwardStaff]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -100,21 +102,23 @@ export default function AwardsPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+            {canAwardStaff && (
+              <div className="grid gap-1.5">
+                <Label>Recipient type</Label>
+                <Select
+                  value={form.recipientKind}
+                  onValueChange={(v) => v && setForm((f) => ({ ...f, recipientKind: v as "student" | "staff", recipientId: "" }))}
+                >
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="staff">Teacher / Staff</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-1.5">
-              <Label>Recipient type</Label>
-              <Select
-                value={form.recipientKind}
-                onValueChange={(v) => v && setForm((f) => ({ ...f, recipientKind: v as "student" | "staff", recipientId: "" }))}
-              >
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student">Student</SelectItem>
-                  <SelectItem value="staff">Teacher / Staff</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Recipient</Label>
+              <Label>{canAwardStaff ? "Recipient" : "Student"}</Label>
               <Select value={form.recipientId} onValueChange={(v) => v && setForm((f) => ({ ...f, recipientId: v }))}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Choose..." /></SelectTrigger>
                 <SelectContent>

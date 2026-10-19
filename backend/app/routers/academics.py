@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.security import ensure_password_strength, hash_password
 from app.models.academics import SchoolClass, StaffProfile, Student
+from app.models.teacher_assignment import TeacherAssignment
 from app.models.user import User, UserRole
 from app.schemas.academics import (
     GuardianAccountCreate,
@@ -194,10 +195,31 @@ def list_students(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Every other role sees the whole school; a teacher only ever sees
+    students in classes they actually teach or are class teacher of — never
+    the full roster of a school they merely work at."""
     ensure_school_access(db, current_user, school_id)
+
+    if current_user.role == UserRole.TEACHER:
+        assigned_class_ids = {
+            row[0]
+            for row in db.query(TeacherAssignment.class_id).filter_by(school_id=school_id, teacher_user_id=current_user.id)
+        }
+        homeroom_class_ids = {
+            row[0]
+            for row in db.query(SchoolClass.id).filter_by(school_id=school_id, homeroom_teacher_id=current_user.id)
+        }
+        allowed_class_ids = assigned_class_ids | homeroom_class_ids
+        if class_id is not None and class_id not in allowed_class_ids:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't teach this class")
+        if not allowed_class_ids:
+            return []
+
     query = db.query(Student).filter_by(school_id=school_id)
     if class_id is not None:
         query = query.filter_by(class_id=class_id)
+    elif current_user.role == UserRole.TEACHER:
+        query = query.filter(Student.class_id.in_(allowed_class_ids))
     return query.all()
 
 
