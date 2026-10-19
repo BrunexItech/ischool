@@ -216,6 +216,7 @@ export interface MyClass {
   subject_id: number | null;
   subject_name: string | null;
   is_homeroom_teacher: boolean;
+  can_mark_attendance: boolean;
   student_count: number;
   attendance_marked_today: boolean;
 }

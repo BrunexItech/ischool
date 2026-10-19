@@ -23,5 +23,6 @@ class MyClassOut(BaseModel):
     subject_id: int | None
     subject_name: str | None
     is_homeroom_teacher: bool
+    can_mark_attendance: bool
     student_count: int
     attendance_marked_today: bool

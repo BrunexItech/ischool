@@ -8,9 +8,11 @@ from app.models.user import User, UserRole
 
 def ensure_can_manage_attendance(db: Session, current_user: User, class_id: int) -> None:
     """Only constrains the TEACHER role — school_admin/staff/super_admin are
-    unrestricted. The class's own homeroom teacher can always mark its
-    register, even without a separate teaching assignment — that's the
-    whole point of being the class teacher."""
+    unrestricted. The register belongs to the class teacher, not to every
+    teacher who happens to take a subject there: rights come from being the
+    class's homeroom teacher, or from an explicit "attendance only"
+    assignment (subject_id left blank) — never from a subject-specific
+    assignment alone."""
     if current_user.role != UserRole.TEACHER:
         return
     is_homeroom_teacher = (
@@ -18,9 +20,13 @@ def ensure_can_manage_attendance(db: Session, current_user: User, class_id: int)
     )
     if is_homeroom_teacher:
         return
-    assigned = db.query(TeacherAssignment).filter_by(teacher_user_id=current_user.id, class_id=class_id).first()
+    assigned = (
+        db.query(TeacherAssignment)
+        .filter_by(teacher_user_id=current_user.id, class_id=class_id, subject_id=None)
+        .first()
+    )
     if assigned is None:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not assigned to this class")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only this class's class teacher can mark its register")
 
 
 def ensure_can_grade(db: Session, current_user: User, class_id: int | None, subject_id: int) -> None:

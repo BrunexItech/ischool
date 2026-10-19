@@ -27,7 +27,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
-import { api, DashboardSummary, GroupSummary, SupervisorOverview as SupervisorOverviewData } from "@/lib/api";
+import { api, DashboardSummary, GroupSummary, MyClass, SupervisorOverview as SupervisorOverviewData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
@@ -318,6 +318,55 @@ const QUICK_LINKS = [
   { href: "/dashboard/ledger", label: "Ledger", description: "Chart of accounts and journal entries", icon: BookOpenCheck, roles: ["bursar"] },
 ];
 
+function HomeroomStrip() {
+  const { token, user } = useAuth();
+  const [classes, setClasses] = useState<MyClass[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!token || !user?.school_id) return;
+    api.listMyClasses(token, user.school_id).then(setClasses).catch(() => setClasses([])).finally(() => setLoaded(true));
+  }, [token, user?.school_id]);
+
+  const homeroom = classes.filter((c, i, all) => c.is_homeroom_teacher && all.findIndex((x) => x.class_id === c.class_id) === i);
+  if (!loaded || homeroom.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        {homeroom.length > 1 ? "Your classes" : "Your class"}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {homeroom.map((c) => (
+          <Link key={c.class_id} href={`/dashboard/attendance?class_id=${c.class_id}`}>
+            <Card className="h-full border-primary/30 bg-primary/[0.03] transition-colors hover:border-primary/50 hover:bg-primary/5">
+              <CardContent className="flex items-center gap-3 pt-6">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <GraduationCap className="size-4.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate font-heading text-sm font-semibold">{c.class_name}</p>
+                    <Badge className="shrink-0">Class teacher</Badge>
+                  </div>
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Users className="size-3" /> {c.student_count} learners ·{" "}
+                    {c.attendance_marked_today ? (
+                      <span className="text-emerald-600">register marked</span>
+                    ) : (
+                      <span className="text-amber-600">register pending</span>
+                    )}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SimpleDashboard() {
   const { user } = useAuth();
   if (!user) return null;
@@ -326,6 +375,8 @@ function SimpleDashboard() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={`Welcome, ${user.full_name.split(" ")[0]}`} description="Here's what's happening at your school today." />
+
+      {user.role === "teacher" && <HomeroomStrip />}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {links.map((link) => (

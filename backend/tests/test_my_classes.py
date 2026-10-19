@@ -34,6 +34,7 @@ def test_teacher_sees_only_their_own_assigned_classes(client, db_session, school
     assert body[0]["class_name"] == "Grade 2A"
     assert body[0]["subject_name"] == "Math"
     assert body[0]["is_homeroom_teacher"] is False
+    assert body[0]["can_mark_attendance"] is False
 
 
 def test_homeroom_teacher_sees_their_class_even_without_an_assignment_row(client, db_session, school):

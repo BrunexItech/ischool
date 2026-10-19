@@ -39,12 +39,14 @@ def list_my_classes(school_id: int, db: Session = Depends(get_db), current_user:
         marked_today = (
             db.query(AttendanceRecord.id).filter_by(school_id=school_id, class_id=cls.id, date=today).first() is not None
         )
+        is_homeroom = cls.homeroom_teacher_id == current_user.id
         rows[key] = MyClassOut(
             class_id=cls.id,
             class_name=cls.name,
             subject_id=subject_id,
             subject_name=subject_name,
-            is_homeroom_teacher=cls.homeroom_teacher_id == current_user.id,
+            is_homeroom_teacher=is_homeroom,
+            can_mark_attendance=is_homeroom or subject_id is None,
             student_count=student_count,
             attendance_marked_today=marked_today,
         )

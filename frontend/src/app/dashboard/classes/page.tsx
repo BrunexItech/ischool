@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api, ApiError, SchoolClass, Staff } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ArrowUpRight, Phone } from "lucide-react";
+import { Plus, ArrowUpRight, Phone, Search } from "lucide-react";
 
 const GRADUATE = "graduate";
 const NO_TEACHER = "none";
@@ -131,6 +131,7 @@ export default function ClassesPage() {
   const [name, setName] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
 
   const canManage = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
 
@@ -149,6 +150,19 @@ export default function ClassesPage() {
   function handleClassUpdated(updated: SchoolClass) {
     setClasses((cs) => cs.map((c) => (c.id === updated.id ? updated : c)));
   }
+
+  const filteredClasses = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return classes;
+    return classes.filter((c) => {
+      const teacherName = teachers.find((t) => t.user_id === c.homeroom_teacher_id)?.full_name ?? "";
+      return (
+        c.name.toLowerCase().includes(q) ||
+        (c.grade_level ?? "").toLowerCase().includes(q) ||
+        teacherName.toLowerCase().includes(q)
+      );
+    });
+  }, [classes, teachers, search]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -206,6 +220,18 @@ export default function ClassesPage() {
         </Card>
       )}
 
+      {classes.length > 0 && (
+        <div className="relative max-w-sm">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by class, grade, or class teacher..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+      )}
+
       <Card>
         <Table>
           <TableHeader>
@@ -217,7 +243,7 @@ export default function ClassesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {classes.map((c) => (
+            {filteredClasses.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell className="text-muted-foreground">{c.grade_level ?? "—"}</TableCell>
@@ -237,6 +263,13 @@ export default function ClassesPage() {
               <TableRow>
                 <TableCell colSpan={canManage ? 4 : 2} className="h-24 text-center text-muted-foreground">
                   No classes yet.
+                </TableCell>
+              </TableRow>
+            )}
+            {classes.length > 0 && filteredClasses.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={canManage ? 4 : 2} className="h-24 text-center text-muted-foreground">
+                  No classes match your search.
                 </TableCell>
               </TableRow>
             )}
