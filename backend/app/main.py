@@ -56,6 +56,7 @@ from app.routers import (
     staff_attendance,
     store,
     supplier,
+    supervisors,
     teaching,
     timetable,
     transport,
@@ -112,6 +113,7 @@ app.include_router(payroll.router)
 app.include_router(asset.router)
 app.include_router(timetable.router)
 app.include_router(staff_attendance.router)
+app.include_router(supervisors.router)
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)

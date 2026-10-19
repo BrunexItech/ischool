@@ -18,6 +18,7 @@ class UserRole(str, enum.Enum):
     BOARDING_STAFF = "boarding_staff"
     TRANSPORT_STAFF = "transport_staff"
     BURSAR = "bursar"
+    SUPERVISOR = "supervisor"  # platform-level oversight account, linked to specific schools by the super-admin — not tied to any one school itself
 
 
 class User(Base):

@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.module import SchoolModule
 from app.models.school import School
+from app.models.supervisor_link import SupervisorSchoolLink
 from app.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -34,13 +35,18 @@ def require_roles(*roles: UserRole):
 def ensure_school_access(db: Session, current_user: User, school_id: int) -> None:
     """Non-super-admins may only act within their own school — except a group
     owner (a school_admin whose own school is the *parent* of the target
-    school) may also act within any of their own branches. Super-admins
-    manage any school."""
+    school) may also act within any of their own branches, and a SUPERVISOR
+    may act within any school the super-admin has explicitly linked them to.
+    Super-admins manage any school."""
     if current_user.role == UserRole.SUPER_ADMIN or current_user.school_id == school_id:
         return
     if current_user.role == UserRole.SCHOOL_ADMIN and current_user.school_id is not None:
         target = db.get(School, school_id)
         if target is not None and target.parent_school_id == current_user.school_id:
+            return
+    if current_user.role == UserRole.SUPERVISOR:
+        linked = db.query(SupervisorSchoolLink).filter_by(supervisor_user_id=current_user.id, school_id=school_id).first()
+        if linked is not None:
             return
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Not permitted for this school")
 

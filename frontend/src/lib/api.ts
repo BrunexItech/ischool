@@ -10,7 +10,8 @@ export type UserRole =
   | "security"
   | "boarding_staff"
   | "transport_staff"
-  | "bursar";
+  | "bursar"
+  | "supervisor";
 
 export interface User {
   id: number;
@@ -605,6 +606,25 @@ export interface GroupSummary {
   total_amount_billed: number;
   total_amount_paid: number;
   overall_fee_collection_rate: number;
+}
+
+export interface LinkedSchool {
+  id: number;
+  name: string;
+}
+
+export interface Supervisor {
+  id: number;
+  email: string;
+  full_name: string;
+  is_active: boolean;
+  schools: LinkedSchool[];
+}
+
+export interface SupervisorOverview {
+  schools: GroupBranchSummary[];
+  total_students: number;
+  total_active_staff: number;
 }
 
 export interface MealMenuEntry {
@@ -1754,6 +1774,27 @@ export const api = {
 
   deleteDuty: (token: string, schoolId: number, dutyId: number) =>
     request<void>(`/schools/${schoolId}/duties/${dutyId}`, { method: "DELETE" }, token),
+
+  // --- Supervisors ---
+
+  listSupervisors: (token: string) => request<Supervisor[]>(`/supervisors`, {}, token),
+
+  createSupervisor: (token: string, payload: { email: string; full_name: string; password: string }) =>
+    request<Supervisor>(`/supervisors`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }, token),
+
+  linkSupervisorSchool: (token: string, supervisorId: number, schoolId: number) =>
+    request<Supervisor>(
+      `/supervisors/${supervisorId}/schools`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ school_id: schoolId }) },
+      token
+    ),
+
+  unlinkSupervisorSchool: (token: string, supervisorId: number, schoolId: number) =>
+    request<Supervisor>(`/supervisors/${supervisorId}/schools/${schoolId}`, { method: "DELETE" }, token),
+
+  listMyLinkedSchools: (token: string) => request<LinkedSchool[]>(`/supervisor/schools`, {}, token),
+
+  getSupervisorOverview: (token: string) => request<SupervisorOverview>(`/supervisor/overview`, {}, token),
 
   // --- Audit log ---
 

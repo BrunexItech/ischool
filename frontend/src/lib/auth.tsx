@@ -15,12 +15,17 @@ interface AuthState {
    * school they're currently viewing — their own by default, or a branch
    * they've switched into if they own a group of schools. */
   user: User | null;
-  /** Schools this person can switch between (their own school plus any
-   * branches under it) — empty for everyone except a group-owning
-   * school_admin. */
+  /** Schools this person can switch between: their own school plus any
+   * branches under it for a group-owning school_admin, or the explicit set
+   * a super-admin linked them to for a supervisor. Empty otherwise. */
   schoolOptions: SchoolOption[];
   viewingSchoolId: number | null;
   switchSchool: (schoolId: number) => void;
+  /** A supervisor's pages are read-only until they deliberately turn this
+   * on for the school they're currently viewing. Meaningless for anyone
+   * else. */
+  editingEnabled: boolean;
+  toggleEditing: () => void;
   loading: boolean;
   login: (email: string, password: string, persist?: boolean) => Promise<User>;
   logout: () => void;
@@ -37,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [realUser, setRealUser] = useState<User | null>(null);
   const [viewingSchoolId, setViewingSchoolId] = useState<number | null>(null);
   const [schoolOptions, setSchoolOptions] = useState<SchoolOption[]>([]);
+  const [editingEnabled, setEditingEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,22 +63,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!token || !realUser || realUser.role !== "school_admin" || !realUser.school_id) {
-      return;
+    if (!token || !realUser) return;
+
+    if (realUser.role === "school_admin" && realUser.school_id) {
+      let cancelled = false;
+      Promise.all([api.getSchool(token, realUser.school_id), api.listBranches(token, realUser.school_id)])
+        .then(([home, branches]: [School, School[]]) => {
+          if (cancelled || branches.length === 0) return;
+          setSchoolOptions([
+            { id: home.id, name: home.name, isHome: true },
+            ...branches.map((b) => ({ id: b.id, name: b.name, isHome: false })),
+          ]);
+        })
+        .catch(() => setSchoolOptions([]));
+      return () => {
+        cancelled = true;
+      };
     }
-    let cancelled = false;
-    Promise.all([api.getSchool(token, realUser.school_id), api.listBranches(token, realUser.school_id)])
-      .then(([home, branches]: [School, School[]]) => {
-        if (cancelled || branches.length === 0) return;
-        setSchoolOptions([
-          { id: home.id, name: home.name, isHome: true },
-          ...branches.map((b) => ({ id: b.id, name: b.name, isHome: false })),
-        ]);
-      })
-      .catch(() => setSchoolOptions([]));
-    return () => {
-      cancelled = true;
-    };
+
+    if (realUser.role === "supervisor") {
+      let cancelled = false;
+      api
+        .listMyLinkedSchools(token)
+        .then((schools) => {
+          if (cancelled) return;
+          setSchoolOptions(schools.map((s) => ({ id: s.id, name: s.name, isHome: false })));
+        })
+        .catch(() => setSchoolOptions([]));
+      return () => {
+        cancelled = true;
+      };
+    }
   }, [token, realUser]);
 
   function setSession(newToken: string, newUser: User, persist = true) {
@@ -80,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRealUser(newUser);
     setViewingSchoolId(newUser.school_id);
     setSchoolOptions([]);
+    setEditingEnabled(false);
     sessionStorage.removeItem(VIEWING_SCHOOL_KEY);
     const store = persist ? localStorage : sessionStorage;
     store.setItem(STORAGE_KEY, JSON.stringify({ token: newToken, user: newUser }));
@@ -96,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRealUser(null);
     setViewingSchoolId(null);
     setSchoolOptions([]);
+    setEditingEnabled(false);
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(VIEWING_SCHOOL_KEY);
@@ -103,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function switchSchool(schoolId: number) {
     setViewingSchoolId(schoolId);
+    setEditingEnabled(false); // always land read-only on a newly viewed school — a deliberate click turns editing on
     try {
       sessionStorage.setItem(VIEWING_SCHOOL_KEY, String(schoolId));
     } catch {
@@ -110,11 +134,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function toggleEditing() {
+    setEditingEnabled((v) => !v);
+  }
+
   const user: User | null = realUser && viewingSchoolId !== null ? { ...realUser, school_id: viewingSchoolId } : realUser;
 
   return (
     <AuthContext.Provider
-      value={{ token, user, schoolOptions, viewingSchoolId, switchSchool, loading, login, logout, setSession }}
+      value={{ token, user, schoolOptions, viewingSchoolId, switchSchool, editingEnabled, toggleEditing, loading, login, logout, setSession }}
     >
       {children}
     </AuthContext.Provider>

@@ -73,7 +73,7 @@ const NAV_SECTIONS = [
   {
     label: null,
     items: [
-      { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["school_admin", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar"] },
+      { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["school_admin", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "supervisor"] },
     ],
   },
   {
@@ -82,8 +82,8 @@ const NAV_SECTIONS = [
       { href: "/dashboard/my-classes", label: "My Classes", icon: LayoutGrid, roles: ["teacher"] },
       { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/lesson-plans", label: "Lesson Plans", icon: NotebookPen, roles: ["school_admin", "teacher", "staff"] },
-      { href: "/dashboard/students", label: "Students", icon: Users, roles: ["school_admin", "teacher", "staff"] },
-      { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/students", label: "Students", icon: Users, roles: ["school_admin", "teacher", "staff", "supervisor"] },
+      { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff", "supervisor"] },
       { href: "/dashboard/results", label: "Results", icon: Award, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/exams", label: "Exams", icon: FileText, roles: ["school_admin", "teacher", "staff"] },
       { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["school_admin", "teacher", "staff", "bursar"] },
@@ -96,7 +96,7 @@ const NAV_SECTIONS = [
     label: "Recognition",
     items: [
       { href: "/dashboard/awards", label: "Awards", icon: Award, roles: ["school_admin", "teacher", "staff"] },
-      { href: "/dashboard/activities", label: "Activities", icon: Trophy, roles: ["school_admin", "teacher", "staff"] },
+      { href: "/dashboard/activities", label: "Activities", icon: Trophy, roles: ["school_admin", "teacher", "staff", "supervisor"] },
     ],
   },
   {
@@ -144,7 +144,7 @@ const NAV_SECTIONS = [
   {
     label: "Administration",
     items: [
-      { href: "/dashboard/staff", label: "Staff", icon: UserSquare2, roles: ["school_admin"] },
+      { href: "/dashboard/staff", label: "Staff", icon: UserSquare2, roles: ["school_admin", "supervisor"] },
       { href: "/dashboard/branding", label: "Branding", icon: Palette, roles: ["school_admin"] },
       { href: "/dashboard/activity-log", label: "Activity Log", icon: History, roles: ["school_admin"] },
     ],

@@ -35,8 +35,13 @@ VIEW_ROLES = (
     UserRole.BOARDING_STAFF,
     UserRole.TRANSPORT_STAFF,
     UserRole.BURSAR,
+    UserRole.SUPERVISOR,
 )
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+# A supervisor may register staff in a school they're linked to (their one
+# named "edit" power) without getting the rest of ADMIN_ROLES' reach
+# (class management, password resets).
+STAFF_MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 ENROLL_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF)
 # Job-function roles an admin may hand out when adding a staff account —
 # each narrows that login to its own working view (see require_roles usage
@@ -336,7 +341,7 @@ def _staff_out(profile: StaffProfile) -> StaffOut:
 @router.get(
     "/staff",
     response_model=list[StaffOut],
-    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+    dependencies=[Depends(require_roles(*STAFF_MANAGE_ROLES)), Depends(require_feature("students_staff"))],
 )
 def list_staff(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)
@@ -348,7 +353,7 @@ def list_staff(school_id: int, db: Session = Depends(get_db), current_user: User
     "/staff",
     response_model=StaffOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+    dependencies=[Depends(require_roles(*STAFF_MANAGE_ROLES)), Depends(require_feature("students_staff"))],
 )
 def create_staff(
     school_id: int,

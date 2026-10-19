@@ -10,7 +10,7 @@ from app.schemas.activity import ActivityCreate, ActivityDetailOut, ActivityOut,
 
 router = APIRouter(prefix="/schools/{school_id}/activities", tags=["activities"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.SUPERVISOR)
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
 
 

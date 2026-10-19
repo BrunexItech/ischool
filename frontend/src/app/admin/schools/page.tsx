@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
-import { GitBranch, GraduationCap, LogOut, Mail, Pencil, Plus } from "lucide-react";
+import { GitBranch, GraduationCap, LogOut, Mail, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { api, ApiError, ModuleToggle, Plan, School } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -553,6 +554,7 @@ export default function AdminSchoolsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/admin/supervisors"><Button variant="outline" size="sm"><ShieldCheck /> Supervisors</Button></Link>
           <Button variant="outline" size="sm" disabled={sendingReports} onClick={handleSendWeeklyReports}>
             {sendingReports ? <Spinner size={14} className="text-current" /> : <Mail />} {sendingReports ? "Sending..." : "Send weekly reports now"}
           </Button>

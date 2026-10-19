@@ -60,6 +60,7 @@ from app.models.asset import FixedAsset, AssetStatus, DepreciationRun
 from app.models.report_card_remark import ReportCardRemark
 from app.models.timetable import TimetableSlot
 from app.models.staff_attendance import StaffAttendance, DutyAssignment
+from app.models.supervisor_link import SupervisorSchoolLink
 
 __all__ = [
     "School",
@@ -162,4 +163,5 @@ __all__ = [
     "TimetableSlot",
     "StaffAttendance",
     "DutyAssignment",
+    "SupervisorSchoolLink",
 ]
