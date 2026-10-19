@@ -328,7 +328,7 @@ function HomeroomStrip() {
     api.listMyClasses(token, user.school_id).then(setClasses).catch(() => setClasses([])).finally(() => setLoaded(true));
   }, [token, user?.school_id]);
 
-  const homeroom = classes.filter((c, i, all) => c.is_homeroom_teacher && all.findIndex((x) => x.class_id === c.class_id) === i);
+  const homeroom = classes.filter((c) => c.is_homeroom_teacher);
   if (!loaded || homeroom.length === 0) return null;
 
   return (

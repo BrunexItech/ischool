@@ -9,7 +9,7 @@ from app.models.academics import SchoolClass, Student
 from app.models.attendance import AttendanceRecord
 from app.models.teacher_assignment import TeacherAssignment
 from app.models.user import User, UserRole
-from app.schemas.teaching import MyClassOut, TeacherAssignmentCreate, TeacherAssignmentOut
+from app.schemas.teaching import MyClassOut, MyClassSubjectOut, TeacherAssignmentCreate, TeacherAssignmentOut
 
 router = APIRouter(prefix="/schools/{school_id}/teacher-assignments", tags=["teacher assignments"])
 
@@ -22,34 +22,33 @@ ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
     dependencies=[Depends(require_roles(UserRole.TEACHER)), Depends(require_feature("students_staff"))],
 )
 def list_my_classes(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """A teacher's own landing view: every class/subject they're assigned to
-    teach, plus every class they're the homeroom teacher of (even without an
-    explicit TeacherAssignment row) — so 'my classes' never misses the one
-    class a homeroom teacher is most responsible for."""
+    """A teacher's own landing view: one card per class, listing every
+    subject they teach there, plus whether they're its class teacher — a
+    class teacher who also teaches a subject in their own class sees one
+    card, not two."""
     ensure_school_access(db, current_user, school_id)
     today = date.today()
 
-    rows: dict[tuple[int, int | None], MyClassOut] = {}
+    rows: dict[int, MyClassOut] = {}
 
-    def _add(cls: SchoolClass, subject_id: int | None, subject_name: str | None):
-        key = (cls.id, subject_id)
-        if key in rows:
-            return
-        student_count = db.query(Student).filter_by(school_id=school_id, class_id=cls.id, is_active=True).count()
-        marked_today = (
-            db.query(AttendanceRecord.id).filter_by(school_id=school_id, class_id=cls.id, date=today).first() is not None
-        )
-        is_homeroom = cls.homeroom_teacher_id == current_user.id
-        rows[key] = MyClassOut(
-            class_id=cls.id,
-            class_name=cls.name,
-            subject_id=subject_id,
-            subject_name=subject_name,
-            is_homeroom_teacher=is_homeroom,
-            can_mark_attendance=is_homeroom or subject_id is None,
-            student_count=student_count,
-            attendance_marked_today=marked_today,
-        )
+    def _row(cls: SchoolClass) -> MyClassOut:
+        if cls.id not in rows:
+            student_count = db.query(Student).filter_by(school_id=school_id, class_id=cls.id, is_active=True).count()
+            marked_today = (
+                db.query(AttendanceRecord.id).filter_by(school_id=school_id, class_id=cls.id, date=today).first()
+                is not None
+            )
+            is_homeroom = cls.homeroom_teacher_id == current_user.id
+            rows[cls.id] = MyClassOut(
+                class_id=cls.id,
+                class_name=cls.name,
+                is_homeroom_teacher=is_homeroom,
+                can_mark_attendance=is_homeroom,
+                subjects=[],
+                student_count=student_count,
+                attendance_marked_today=marked_today,
+            )
+        return rows[cls.id]
 
     assignments = (
         db.query(TeacherAssignment)
@@ -57,13 +56,20 @@ def list_my_classes(school_id: int, db: Session = Depends(get_db), current_user:
         .all()
     )
     for a in assignments:
-        _add(a.school_class, a.subject_id, a.subject.name if a.subject else None)
+        row = _row(a.school_class)
+        if a.subject_id is None:
+            row.can_mark_attendance = True
+        elif not any(s.subject_id == a.subject_id for s in row.subjects):
+            row.subjects.append(MyClassSubjectOut(subject_id=a.subject_id, subject_name=a.subject.name if a.subject else f"#{a.subject_id}"))
 
     homeroom_classes = db.query(SchoolClass).filter_by(school_id=school_id, homeroom_teacher_id=current_user.id).all()
     for cls in homeroom_classes:
-        _add(cls, None, None)
+        _row(cls)
 
-    return sorted(rows.values(), key=lambda r: (r.class_name, r.subject_name or ""))
+    for row in rows.values():
+        row.subjects.sort(key=lambda s: s.subject_name)
+
+    return sorted(rows.values(), key=lambda r: r.class_name)
 
 
 @router.get(

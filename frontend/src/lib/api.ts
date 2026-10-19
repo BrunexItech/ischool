@@ -210,13 +210,17 @@ export interface TeacherAssignment {
   subject_id: number | null;
 }
 
+export interface MyClassSubject {
+  subject_id: number;
+  subject_name: string;
+}
+
 export interface MyClass {
   class_id: number;
   class_name: string;
-  subject_id: number | null;
-  subject_name: string | null;
   is_homeroom_teacher: boolean;
   can_mark_attendance: boolean;
+  subjects: MyClassSubject[];
   student_count: number;
   attendance_marked_today: boolean;
 }

@@ -33,7 +33,9 @@ function ClassCard({ c }: { c: MyClass }) {
             <p className="truncate font-heading text-sm font-semibold">{c.class_name}</p>
             {c.is_homeroom_teacher && <Badge className="gap-1 shrink-0"><GraduationCap className="size-3" /> Class teacher</Badge>}
           </div>
-          <p className="truncate text-xs text-muted-foreground">{c.subject_name ?? "Homeroom"}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {c.subjects.length > 0 ? c.subjects.map((s) => s.subject_name).join(", ") : "Homeroom"}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {c.can_mark_attendance && (
@@ -49,6 +51,11 @@ function ClassCard({ c }: { c: MyClass }) {
 
       {open && (
         <CardContent className="flex flex-col gap-3 border-t pt-3 pb-4">
+          {c.subjects.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {c.subjects.map((s) => <Badge key={s.subject_id} variant="secondary">{s.subject_name}</Badge>)}
+            </div>
+          )}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5"><Users className="size-3.5" /> {c.student_count} learners</span>
             {c.can_mark_attendance && (
@@ -106,11 +113,13 @@ export default function MyClassesPage() {
   const sorted = useMemo(() => {
     const q = search.trim().toLowerCase();
     const filtered = q
-      ? classes.filter((c) => c.class_name.toLowerCase().includes(q) || (c.subject_name ?? "").toLowerCase().includes(q))
+      ? classes.filter(
+          (c) => c.class_name.toLowerCase().includes(q) || c.subjects.some((s) => s.subject_name.toLowerCase().includes(q))
+        )
       : classes;
     return [...filtered].sort((a, b) => {
       if (a.is_homeroom_teacher !== b.is_homeroom_teacher) return a.is_homeroom_teacher ? -1 : 1;
-      return a.class_name.localeCompare(b.class_name) || (a.subject_name ?? "").localeCompare(b.subject_name ?? "");
+      return a.class_name.localeCompare(b.class_name);
     });
   }, [classes, search]);
 
@@ -141,7 +150,7 @@ export default function MyClassesPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {sorted.map((c) => (
-          <ClassCard key={`${c.class_id}-${c.subject_id ?? "home"}`} c={c} />
+          <ClassCard key={c.class_id} c={c} />
         ))}
       </div>
 
