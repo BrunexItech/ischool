@@ -43,6 +43,16 @@ export interface School {
   expense_approval_threshold: number;
 }
 
+export interface PlatformOverview {
+  total_schools: number;
+  total_students: number;
+  total_teachers: number;
+  total_active_staff: number;
+  total_amount_billed: number;
+  total_amount_paid: number;
+  overall_fee_collection_rate: number;
+}
+
 export interface Plan {
   id: number;
   name: string;
@@ -1157,6 +1167,9 @@ export const api = {
     ),
 
   listSchools: (token: string) => request<School[]>("/schools", {}, token),
+
+  getPlatformOverview: (token: string) =>
+    request<PlatformOverview>("/schools/platform-overview", {}, token),
 
   onboardSchool: (
     token: string,

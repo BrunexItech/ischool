@@ -67,3 +67,16 @@ class ModuleToggleOut(BaseModel):
 
 class ModuleToggleUpdate(BaseModel):
     enabled: bool
+
+
+class PlatformOverviewOut(BaseModel):
+    """Aggregated, platform-wide numbers for the super-admin — every school
+    rolled into one glance, distinct from any single school's own numbers."""
+
+    total_schools: int
+    total_students: int
+    total_teachers: int
+    total_active_staff: int
+    total_amount_billed: float
+    total_amount_paid: float
+    overall_fee_collection_rate: float

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { GitBranch, GraduationCap, LogOut, Mail, Pencil, Plus, ShieldCheck } from "lucide-react";
-import { api, ApiError, ModuleToggle, Plan, School } from "@/lib/api";
+import { GitBranch, GraduationCap, LogOut, Mail, Pencil, Plus, ShieldCheck, Users, UserCheck, Wallet } from "lucide-react";
+import { api, ApiError, ModuleToggle, Plan, PlatformOverview, School } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -497,6 +497,7 @@ export default function AdminSchoolsPage() {
   const { user, token, loading, logout } = useAuth();
   const [schools, setSchools] = useState<School[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [overview, setOverview] = useState<PlatformOverview | null>(null);
   const [schoolsLoading, setSchoolsLoading] = useState(true);
   const [sendingReports, setSendingReports] = useState(false);
 
@@ -522,6 +523,7 @@ export default function AdminSchoolsPage() {
     Promise.all([
       api.listSchools(token).then(setSchools).catch(() => setSchools([])),
       api.listPlans(token).then(setPlans).catch(() => setPlans([])),
+      api.getPlatformOverview(token).then(setOverview).catch(() => setOverview(null)),
     ]).finally(() => setSchoolsLoading(false));
   }, [token]);
 
@@ -563,10 +565,55 @@ export default function AdminSchoolsPage() {
       </header>
 
       <main className="mx-auto max-w-5xl p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight">Overall</h1>
+          <p className="mb-4 text-sm text-muted-foreground">Aggregated across every school on the platform — each school&apos;s own numbers are on its card below.</p>
+          {overview && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardContent className="flex items-center gap-3 pt-6">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><GraduationCap className="size-4.5" /></div>
+                  <div>
+                    <p className="font-heading text-2xl font-semibold tabular-nums">{overview.total_schools}</p>
+                    <p className="text-xs text-muted-foreground">Schools on the platform</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="flex items-center gap-3 pt-6">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Users className="size-4.5" /></div>
+                  <div>
+                    <p className="font-heading text-2xl font-semibold tabular-nums">{overview.total_students.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Total students</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="flex items-center gap-3 pt-6">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><UserCheck className="size-4.5" /></div>
+                  <div>
+                    <p className="font-heading text-2xl font-semibold tabular-nums">{overview.total_teachers.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Teachers · {overview.total_active_staff.toLocaleString()} active staff total</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="flex items-center gap-3 pt-6">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Wallet className="size-4.5" /></div>
+                  <div>
+                    <p className="font-heading text-2xl font-semibold tabular-nums">{overview.overall_fee_collection_rate.toFixed(1)}%</p>
+                    <p className="text-xs text-muted-foreground">Fee collection across all schools</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Schools</h1>
-            <p className="text-sm text-muted-foreground">Onboard schools and manage which modules they can use.</p>
+            <p className="text-sm text-muted-foreground">Onboard schools and manage which modules they can use — each one gives its own distinct numbers.</p>
           </div>
           <OnboardDialog schools={schools} onCreated={(school) => setSchools((s) => [...s, school])} />
         </div>

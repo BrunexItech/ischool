@@ -11,10 +11,12 @@ from app.core.uploads import save_image
 from app.models.module import MODULE_KEYS, SchoolModule
 from app.models.school import School
 from app.models.user import User, UserRole
+from app.routers.dashboard import _lean_branch_summary
 from app.schemas.plan import SubscriptionUpdate
 from app.schemas.school import (
     ModuleToggleOut,
     ModuleToggleUpdate,
+    PlatformOverviewOut,
     SchoolBrandingUpdate,
     SchoolCreate,
     SchoolOut,
@@ -23,6 +25,32 @@ from app.schemas.school import (
 from app.services.weekly_reports import send_all_weekly_reports
 
 router = APIRouter(prefix="/schools", tags=["schools"])
+
+
+@router.get(
+    "/platform-overview",
+    response_model=PlatformOverviewOut,
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
+)
+def get_platform_overview(db: Session = Depends(get_db)):
+    """Every school on the platform rolled into one glance — distinct from
+    any single school's own dashboard, which only ever sees itself."""
+    schools = db.query(School).all()
+    rows = [_lean_branch_summary(db, s, is_group=s.parent_school_id is None) for s in schools]
+
+    total_billed = sum(r.amount_billed for r in rows)
+    total_paid = sum(r.amount_paid for r in rows)
+    total_teachers = db.query(User).filter_by(role=UserRole.TEACHER, is_active=True).count()
+
+    return PlatformOverviewOut(
+        total_schools=len(schools),
+        total_students=sum(r.total_students for r in rows),
+        total_teachers=total_teachers,
+        total_active_staff=sum(r.active_staff for r in rows),
+        total_amount_billed=round(total_billed, 2),
+        total_amount_paid=round(total_paid, 2),
+        overall_fee_collection_rate=round(total_paid / total_billed * 100, 1) if total_billed else 0.0,
+    )
 
 
 @router.get("/by-slug/{slug}", response_model=SchoolPublicOut)

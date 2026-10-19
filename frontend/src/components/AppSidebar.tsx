@@ -81,6 +81,7 @@ const NAV_SECTIONS = [
     items: [
       { href: "/dashboard/my-classes", label: "My Classes", icon: LayoutGrid, roles: ["teacher"] },
       { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["school_admin", "teacher", "staff", "supervisor"] },
+      { href: "/dashboard/teachers", label: "Teachers", icon: GraduationCap, roles: ["school_admin", "supervisor"] },
       { href: "/dashboard/lesson-plans", label: "Lesson Plans", icon: NotebookPen, roles: ["school_admin", "teacher", "staff", "supervisor"] },
       { href: "/dashboard/students", label: "Students", icon: Users, roles: ["school_admin", "teacher", "staff", "supervisor"] },
       { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["school_admin", "teacher", "staff", "supervisor"] },
