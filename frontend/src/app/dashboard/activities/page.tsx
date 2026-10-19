@@ -99,7 +99,7 @@ export default function ActivitiesPage() {
   const [form, setForm] = useState({ name: "", category: "", date: "", description: "" });
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin", "supervisor"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   function refresh() {
@@ -205,7 +205,7 @@ export default function ActivitiesPage() {
               </div>
               <div className="flex items-center gap-2">
                 <ManageParticipantsDialog activity={a} students={students} onChanged={refresh} />
-                {(user?.role === "school_admin" || user?.role === "super_admin") && (
+                {(user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor") && (
                   <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(a.id)}><Trash2 /></Button>
                 )}
               </div>

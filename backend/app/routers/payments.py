@@ -18,7 +18,7 @@ from app.schemas.payments import PaymentMethodsOut, SchoolPaymentConfigOut, Scho
 
 router = APIRouter(tags=["payments"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 def _config_out(config: SchoolPaymentConfig | None) -> SchoolPaymentConfigOut:

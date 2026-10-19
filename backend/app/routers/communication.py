@@ -27,13 +27,14 @@ AUDIENCE_ROLES: dict[AnnouncementAudience, tuple[UserRole, ...]] = {
 VIEW_ROLES = (
     UserRole.SUPER_ADMIN,
     UserRole.SCHOOL_ADMIN,
+    UserRole.SUPERVISOR,
     UserRole.TEACHER,
     UserRole.STAFF,
     UserRole.STUDENT,
     UserRole.PARENT,
 )
-POST_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+POST_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.TEACHER)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 @router.get(

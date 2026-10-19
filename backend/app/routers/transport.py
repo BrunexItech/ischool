@@ -17,8 +17,8 @@ from app.schemas.transport import (
 
 router = APIRouter(prefix="/schools/{school_id}/transport", tags=["transport"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.TRANSPORT_STAFF)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TRANSPORT_STAFF)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.TEACHER, UserRole.STAFF, UserRole.TRANSPORT_STAFF)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.TRANSPORT_STAFF)
 
 
 # --- Vehicles ---

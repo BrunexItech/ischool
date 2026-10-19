@@ -100,7 +100,7 @@ def onboard_school(payload: SchoolCreate, db: Session = Depends(get_db)):
 @router.get(
     "/{school_id}",
     response_model=SchoolOut,
-    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR))],
 )
 def get_school(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)
@@ -134,7 +134,7 @@ def update_subscription(school_id: int, payload: SubscriptionUpdate, db: Session
 @router.get(
     "/{school_id}/branches",
     response_model=list[SchoolOut],
-    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR))],
 )
 def list_branches(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)
@@ -156,7 +156,7 @@ def get_branding(school_id: int, db: Session = Depends(get_db), current_user: Us
 @router.patch(
     "/{school_id}/branding",
     response_model=SchoolOut,
-    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR))],
 )
 def update_branding(
     school_id: int,
@@ -180,7 +180,7 @@ def update_branding(
 @router.post(
     "/{school_id}/branding/logo",
     response_model=SchoolOut,
-    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR))],
 )
 def upload_school_logo(
     school_id: int,
@@ -203,7 +203,7 @@ def upload_school_logo(
 @router.get(
     "/{school_id}/modules",
     response_model=list[ModuleToggleOut],
-    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR))],
 )
 def list_modules(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)
@@ -213,7 +213,7 @@ def list_modules(school_id: int, db: Session = Depends(get_db), current_user: Us
 @router.patch(
     "/{school_id}/modules/{module_key}",
     response_model=ModuleToggleOut,
-    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))],
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR))],
 )
 def toggle_module(
     school_id: int,

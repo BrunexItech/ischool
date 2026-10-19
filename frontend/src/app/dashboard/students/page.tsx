@@ -153,7 +153,7 @@ export default function StudentsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const canEnroll = user?.role === "school_admin" || user?.role === "staff" || user?.role === "super_admin";
+  const canEnroll = user?.role === "school_admin" || user?.role === "staff" || user?.role === "super_admin" || user?.role === "supervisor";
 
   useEffect(() => {
     if (!token || !user?.school_id) return;

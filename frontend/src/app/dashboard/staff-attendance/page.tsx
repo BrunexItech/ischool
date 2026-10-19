@@ -269,10 +269,10 @@ function AdminRoster() {
 export default function StaffAttendancePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const isAdmin = user?.role === "school_admin" || user?.role === "super_admin";
+  const isAdmin = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
 
   useEffect(() => {
-    if (!loading && user && !EMPLOYEE_ROLES.includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !EMPLOYEE_ROLES.includes(user.role) && user.role !== "supervisor") router.replace("/dashboard");
   }, [loading, user, router]);
 
   if (loading || !user) return <PageLoader />;

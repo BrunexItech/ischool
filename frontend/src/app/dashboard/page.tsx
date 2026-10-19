@@ -509,42 +509,6 @@ function SupervisorOverview() {
   );
 }
 
-function SupervisorSchoolLanding() {
-  const { schoolOptions, viewingSchoolId } = useAuth();
-  const school = schoolOptions.find((o) => o.id === viewingSchoolId);
-
-  const sections = [
-    { href: "/dashboard/students", icon: GraduationCap, label: "Students", description: "Rosters, classes and guardians" },
-    { href: "/dashboard/attendance", icon: ClipboardCheck, label: "Attendance", description: "Daily records and history" },
-    { href: "/dashboard/staff", icon: UserCheck, label: "Staff", description: "Teachers and other staff" },
-    { href: "/dashboard/activities", icon: Award, label: "Activities", description: "Clubs, sports and events" },
-  ];
-
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title={school?.name ?? "School"}
-        description="Browse this branch using the sections below — editing stays off until you turn it on."
-      />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {sections.map(({ href, icon: Icon, label, description }) => (
-          <Link key={href} href={href}>
-            <Card className="h-full transition-colors hover:border-primary/40 hover:bg-primary/5">
-              <CardContent className="flex flex-col gap-3 pt-6">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4.5" /></div>
-                <div>
-                  <p className="font-heading font-semibold">{label}</p>
-                  <p className="text-xs text-muted-foreground">{description}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function DashboardPage() {
   const { user, schoolOptions, viewingSchoolId } = useAuth();
   if (!user) return null;
@@ -558,7 +522,7 @@ export default function DashboardPage() {
   }
   if (user.role === "supervisor") {
     if (viewingSchoolId === null) return <SupervisorOverview />;
-    return <SupervisorSchoolLanding />;
+    return <AdminDashboard schoolId={viewingSchoolId} />;
   }
   return <SimpleDashboard />;
 }

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
-const STAFF_ROLES = ["school_admin", "teacher", "staff", "super_admin"];
+const STAFF_ROLES = ["school_admin", "teacher", "staff", "super_admin", "supervisor"];
 
 const GRADE_STYLE: Record<string, string> = {
   A: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",

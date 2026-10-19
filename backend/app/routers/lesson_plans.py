@@ -17,8 +17,8 @@ from app.schemas.lesson_plan import (
 
 router = APIRouter(prefix="/schools/{school_id}/lesson-plans", tags=["lesson-plans"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.TEACHER, UserRole.STAFF)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 def _get_plan(db: Session, school_id: int, plan_id: int) -> LessonPlan:

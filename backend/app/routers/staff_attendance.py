@@ -30,7 +30,7 @@ EMPLOYEE_ROLES = (
     UserRole.TRANSPORT_STAFF,
     UserRole.BURSAR,
 )
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 # --- Staff attendance (clock in/out) ---

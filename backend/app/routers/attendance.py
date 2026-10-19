@@ -16,7 +16,7 @@ from app.schemas.attendance import AttendanceMarkRequest, AttendanceRecordOut
 router = APIRouter(prefix="/schools/{school_id}/attendance", tags=["attendance"])
 
 VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.SUPERVISOR)
-MARK_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
+MARK_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.TEACHER, UserRole.STAFF)
 
 
 @router.get(

@@ -47,7 +47,7 @@ export default function ExamsPage() {
   const [uploadingPaperFor, setUploadingPaperFor] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin", "supervisor"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   function refresh() {
@@ -336,7 +336,7 @@ export default function ExamsPage() {
                 ) : (
                   <Button variant="outline" size="sm" render={<Link href={`/dashboard/exams/${exam.id}`}><FileText /> View / Print</Link>} />
                 )}
-                {(user?.role === "school_admin" || user?.role === "super_admin") && (
+                {(user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor") && (
                   <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(exam.id)}><Trash2 /></Button>
                 )}
               </div>

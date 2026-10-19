@@ -82,7 +82,7 @@ export default function ClassesPage() {
   const [gradeLevel, setGradeLevel] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const canManage = user?.role === "school_admin" || user?.role === "super_admin";
+  const canManage = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
 
   function refreshClasses() {
     if (!token || !user?.school_id) return;

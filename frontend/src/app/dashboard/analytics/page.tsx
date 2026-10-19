@@ -54,7 +54,7 @@ function ChartCard({ title, description, empty, children }: { title: string; des
 export default function AnalyticsPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
-  const canSeeFinance = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "bursar";
+  const canSeeFinance = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "bursar" || user?.role === "supervisor";
 
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
   const [selectedTerm, setSelectedTerm] = useState(ALL_TERMS);
@@ -64,7 +64,7 @@ export default function AnalyticsPage() {
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin", "bursar"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin", "bursar", "supervisor"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {

@@ -11,7 +11,7 @@ from app.schemas.lead import LeadCreate, LeadOut, LeadUpdate
 
 router = APIRouter(prefix="/schools/{school_id}/leads", tags=["leads"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 @router.get(

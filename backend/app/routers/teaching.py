@@ -13,7 +13,7 @@ from app.schemas.teaching import MyClassOut, TeacherAssignmentCreate, TeacherAss
 
 router = APIRouter(prefix="/schools/{school_id}/teacher-assignments", tags=["teacher assignments"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 @router.get(

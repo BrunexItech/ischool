@@ -29,7 +29,7 @@ export default function CommunicationSettingsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && user.role !== "school_admin") router.replace("/dashboard");
+    if (!loading && user && user.role !== "school_admin" && user.role !== "supervisor") router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {

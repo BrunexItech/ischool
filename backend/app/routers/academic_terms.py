@@ -9,8 +9,8 @@ from app.schemas.academic_term import AcademicTermCreate, AcademicTermOut
 
 router = APIRouter(prefix="/schools/{school_id}/academic-terms", tags=["academic terms"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.TEACHER, UserRole.STAFF)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 @router.get("", response_model=list[AcademicTermOut], dependencies=[Depends(require_roles(*VIEW_ROLES))])

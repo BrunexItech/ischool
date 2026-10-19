@@ -159,7 +159,7 @@ export default function TimetablePage() {
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && user && user.role !== "school_admin" && user.role !== "super_admin") router.replace("/dashboard");
+    if (!loading && user && user.role !== "school_admin" && user.role !== "super_admin" && user.role !== "supervisor") router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {

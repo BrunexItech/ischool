@@ -14,10 +14,10 @@ from app.schemas.finance import CategoryTotal, ExpenseCreate, ExpenseOut, Expens
 
 router = APIRouter(prefix="/schools/{school_id}/finance", tags=["finance"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.BURSAR)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.BURSAR)
 # Only a full admin signs off on a pending expense — the bursar who raised
 # it is the "maker" and can't also be its "checker".
-APPROVE_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+APPROVE_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 @router.get(
@@ -57,7 +57,7 @@ def create_expense(
     # the school's threshold wait for an admin to sign off before they count
     # as real spend.
     needs_approval = (
-        current_user.role not in (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+        current_user.role not in (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
         and payload.amount >= float(school.expense_approval_threshold)
     )
     expense = Expense(

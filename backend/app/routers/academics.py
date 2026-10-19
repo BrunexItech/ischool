@@ -37,12 +37,12 @@ VIEW_ROLES = (
     UserRole.BURSAR,
     UserRole.SUPERVISOR,
 )
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 # A supervisor may register staff in a school they're linked to (their one
 # named "edit" power) without getting the rest of ADMIN_ROLES' reach
 # (class management, password resets).
 STAFF_MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
-ENROLL_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF)
+ENROLL_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.STAFF)
 # Job-function roles an admin may hand out when adding a staff account —
 # each narrows that login to its own working view (see require_roles usage
 # in security.py / boarding.py / transport.py / finance.py / fees.py).

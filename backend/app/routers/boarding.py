@@ -36,8 +36,8 @@ from app.schemas.boarding import (
 
 router = APIRouter(prefix="/schools/{school_id}/boarding", tags=["boarding"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
-STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF, UserRole.BOARDING_STAFF)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
+STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.STAFF, UserRole.BOARDING_STAFF)
 
 
 def _house_or_404(db: Session, school_id: int, house_id: int) -> BoardingHouse:

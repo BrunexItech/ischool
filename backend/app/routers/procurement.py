@@ -11,8 +11,8 @@ from app.schemas.procurement import PurchaseOrderCreate, PurchaseOrderOut, Requi
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["procurement"])
 
-STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.STAFF)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 ACCOUNTS_PAYABLE_CODE = "2010"
 

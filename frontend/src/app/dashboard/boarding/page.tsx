@@ -702,7 +702,7 @@ export default function BoardingPage() {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
   if (!user) return null;
-  const canEdit = user.role === "school_admin";
+  const canEdit = user.role === "school_admin" || user.role === "supervisor";
 
   return (
     <div className="flex flex-col gap-6">

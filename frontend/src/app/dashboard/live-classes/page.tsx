@@ -31,7 +31,7 @@ export default function LiveClassesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const canSchedule = user?.role === "school_admin" || user?.role === "teacher" || user?.role === "super_admin";
+  const canSchedule = user?.role === "school_admin" || user?.role === "teacher" || user?.role === "super_admin" || user?.role === "supervisor";
 
   useEffect(() => {
     if (!token || !user?.school_id) return;

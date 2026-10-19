@@ -28,7 +28,7 @@ export default function BrandingPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!loading && user && user.role !== "school_admin") router.replace("/dashboard");
+    if (!loading && user && user.role !== "school_admin" && user.role !== "supervisor") router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {

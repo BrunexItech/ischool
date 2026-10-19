@@ -33,7 +33,7 @@ from app.schemas.security import (
 
 router = APIRouter(prefix="/schools/{school_id}/security", tags=["security"])
 
-STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.STAFF, UserRole.SECURITY)
+STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.STAFF, UserRole.SECURITY)
 
 
 def _student_or_404(db: Session, school_id: int, student_id: int) -> Student:

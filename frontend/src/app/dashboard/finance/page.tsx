@@ -69,7 +69,7 @@ export default function FinancePage() {
   const [form, setForm] = useState({ category: "", description: "", amount: "", date: "" });
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "super_admin", "bursar"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["school_admin", "super_admin", "bursar", "supervisor"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   function refresh() {
@@ -139,7 +139,7 @@ export default function FinancePage() {
 
   if (loading || dataLoading) return <PageLoader />;
 
-  const canApprove = user?.role === "school_admin" || user?.role === "super_admin";
+  const canApprove = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
   const pendingCount = expenses.filter((e) => e.status === "pending").length;
 
   return (

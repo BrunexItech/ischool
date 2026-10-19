@@ -15,12 +15,13 @@ router = APIRouter(prefix="/schools/{school_id}/calendar-events", tags=["calenda
 ALL_ROLES = (
     UserRole.SUPER_ADMIN,
     UserRole.SCHOOL_ADMIN,
+    UserRole.SUPERVISOR,
     UserRole.TEACHER,
     UserRole.STAFF,
     UserRole.STUDENT,
     UserRole.PARENT,
 )
-EDIT_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+EDIT_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 @router.get(

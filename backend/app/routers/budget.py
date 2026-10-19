@@ -14,7 +14,7 @@ from app.schemas.budget import BudgetLineOut, BudgetSet
 
 router = APIRouter(prefix="/schools/{school_id}/budgets", tags=["budgets"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 def _actual(db: Session, school_id: int, account_id: int, year: int) -> float:
