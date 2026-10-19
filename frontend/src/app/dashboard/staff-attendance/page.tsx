@@ -287,7 +287,7 @@ function AdminRoster() {
   .bar { width: 64px; height: 5px; border-radius: 999px; background: #2563eb; }
   h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: #0f172a; }
   p.subtitle { font-size: 18px; color: #475569; margin: 0; font-weight: 500; }
-  img { border: 14px solid #0f172a; border-radius: 20px; margin-top: 8px; }
+  img { border: 10px solid #0f172a; margin-top: 8px; }
   p.hint { font-size: 13px; color: #94a3b8; margin-top: 8px; }
   @media print { body { background: #fff; } }
 </style>
