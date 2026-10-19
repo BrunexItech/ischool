@@ -1083,6 +1083,8 @@ export interface LessonPlan {
   class_id: number;
   subject_id: number;
   term: string;
+  created_by: number | null;
+  created_by_name: string | null;
   created_at: string;
   updated_at: string;
   entry_count: number;
@@ -1091,6 +1093,56 @@ export interface LessonPlan {
 
 export interface LessonPlanDetail extends LessonPlan {
   entries: LessonPlanEntry[];
+}
+
+export type HomeworkSubmissionStatus = "not_submitted" | "submitted" | "reviewed";
+
+export interface Homework {
+  id: number;
+  school_id: number;
+  class_id: number;
+  subject_id: number;
+  title: string;
+  instructions: string | null;
+  due_date: string;
+  allow_digital_submission: boolean;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface HomeworkListItem extends Homework {
+  created_by_name: string | null;
+  total_students: number;
+  submitted_count: number;
+  reviewed_count: number;
+}
+
+export interface HomeworkSubmissionRow {
+  student_id: number;
+  student_name: string;
+  status: HomeworkSubmissionStatus;
+  file_url: string | null;
+  submitted_at: string | null;
+  score: number | null;
+  teacher_comment: string | null;
+  reviewed_at: string | null;
+}
+
+export interface HomeworkDetail extends HomeworkListItem {
+  submissions: HomeworkSubmissionRow[];
+}
+
+export interface HomeworkForStudent {
+  id: number;
+  subject_name: string;
+  title: string;
+  instructions: string | null;
+  due_date: string;
+  allow_digital_submission: boolean;
+  status: HomeworkSubmissionStatus;
+  file_url: string | null;
+  score: number | null;
+  teacher_comment: string | null;
 }
 
 class ApiError extends Error {
@@ -1276,6 +1328,18 @@ export const api = {
     request<SchoolClass>(
       `/schools/${schoolId}/classes`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  updateClass: (
+    token: string,
+    schoolId: number,
+    classId: number,
+    payload: { name?: string; grade_level?: string | null; homeroom_teacher_id?: number | null }
+  ) =>
+    request<SchoolClass>(
+      `/schools/${schoolId}/classes/${classId}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       token
     ),
 
@@ -1747,6 +1811,16 @@ export const api = {
   clockOut: (token: string, schoolId: number) =>
     request<StaffAttendanceRecord>(`/schools/${schoolId}/staff-attendance/clock-out`, { method: "POST" }, token),
 
+  getAttendanceQrCode: (token: string, schoolId: number) =>
+    request<{ token: string }>(`/schools/${schoolId}/staff-attendance/qr-code`, {}, token),
+
+  scanAttendanceQr: (token: string, schoolId: number, qrToken: string) =>
+    request<{ action: "clocked_in" | "clocked_out"; record: StaffAttendanceRecord }>(
+      `/schools/${schoolId}/staff-attendance/scan`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: qrToken }) },
+      token
+    ),
+
   myStaffAttendance: (token: string, schoolId: number, dateFrom?: string, dateTo?: string) => {
     const qs = new URLSearchParams();
     if (dateFrom) qs.set("date_from", dateFrom);
@@ -2186,6 +2260,52 @@ export const api = {
 
   deleteLessonPlan: (token: string, schoolId: number, planId: number) =>
     request<void>(`/schools/${schoolId}/lesson-plans/${planId}`, { method: "DELETE" }, token),
+
+  // --- Homework ---
+
+  listHomework: (token: string, schoolId: number, classId?: number) => {
+    const qs = classId ? `?class_id=${classId}` : "";
+    return request<HomeworkListItem[]>(`/schools/${schoolId}/homework${qs}`, {}, token);
+  },
+
+  createHomework: (
+    token: string,
+    schoolId: number,
+    payload: { class_id: number; subject_id: number; title: string; instructions?: string; due_date: string; allow_digital_submission: boolean }
+  ) =>
+    request<HomeworkListItem>(
+      `/schools/${schoolId}/homework`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  getHomework: (token: string, schoolId: number, homeworkId: number) =>
+    request<HomeworkDetail>(`/schools/${schoolId}/homework/${homeworkId}`, {}, token),
+
+  reviewHomeworkSubmission: (
+    token: string,
+    schoolId: number,
+    homeworkId: number,
+    studentId: number,
+    payload: { status: HomeworkSubmissionStatus; score?: number; teacher_comment?: string }
+  ) =>
+    request<HomeworkSubmissionRow>(
+      `/schools/${schoolId}/homework/${homeworkId}/submissions/${studentId}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteHomework: (token: string, schoolId: number, homeworkId: number) =>
+    request<void>(`/schools/${schoolId}/homework/${homeworkId}`, { method: "DELETE" }, token),
+
+  getChildHomework: (token: string, studentId: number) =>
+    request<HomeworkForStudent[]>(`/portal/students/${studentId}/homework`, {}, token),
+
+  submitChildHomework: (token: string, studentId: number, homeworkId: number, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<HomeworkForStudent>(`/portal/students/${studentId}/homework/${homeworkId}/submit`, { method: "POST", body: form }, token);
+  },
 
   addLessonPlanEntry: (
     token: string,

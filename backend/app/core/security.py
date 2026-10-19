@@ -39,3 +39,27 @@ def decode_access_token(token: str) -> dict | None:
         return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
     except JWTError:
         return None
+
+
+ATTENDANCE_QR_PURPOSE = "staff_attendance_qr"
+
+
+def create_attendance_qr_token(school_id: int) -> str:
+    """A long-lived, printable token for one school's attendance QR sheet —
+    deliberately has no short expiry, since it's meant to be laminated and
+    stuck on a wall, not refreshed every login cycle."""
+    expire = datetime.now(timezone.utc) + timedelta(days=3650)
+    payload = {"purpose": ATTENDANCE_QR_PURPOSE, "school_id": school_id, "exp": expire}
+    return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+
+
+def decode_attendance_qr_token(token: str) -> int | None:
+    """Returns the school_id encoded in a valid attendance QR token, or
+    None if the token is malformed, expired, or not an attendance QR token."""
+    try:
+        claims = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    except JWTError:
+        return None
+    if claims.get("purpose") != ATTENDANCE_QR_PURPOSE:
+        return None
+    return claims.get("school_id")

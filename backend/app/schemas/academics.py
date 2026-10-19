@@ -11,6 +11,12 @@ class SchoolClassCreate(BaseModel):
     homeroom_teacher_id: int | None = None
 
 
+class SchoolClassUpdate(BaseModel):
+    name: str | None = None
+    grade_level: str | None = None
+    homeroom_teacher_id: int | None = None
+
+
 class SchoolClassOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

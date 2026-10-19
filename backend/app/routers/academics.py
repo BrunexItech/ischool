@@ -13,6 +13,7 @@ from app.schemas.academics import (
     PromoteClassResult,
     SchoolClassCreate,
     SchoolClassOut,
+    SchoolClassUpdate,
     StaffCreate,
     StaffOut,
     StudentAccountCreate,
@@ -88,6 +89,39 @@ def create_class(
 
     school_class = SchoolClass(school_id=school_id, **payload.model_dump())
     db.add(school_class)
+    db.commit()
+    db.refresh(school_class)
+    return school_class
+
+
+@router.patch(
+    "/classes/{class_id}",
+    response_model=SchoolClassOut,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+)
+def update_class(
+    school_id: int,
+    class_id: int,
+    payload: SchoolClassUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(db, current_user, school_id)
+    school_class = db.query(SchoolClass).filter_by(school_id=school_id, id=class_id).first()
+    if school_class is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Class not found")
+
+    updates = payload.model_dump(exclude_unset=True)
+    if "homeroom_teacher_id" in updates and updates["homeroom_teacher_id"] is not None:
+        teacher = db.query(User).filter_by(id=updates["homeroom_teacher_id"], school_id=school_id, role=UserRole.TEACHER).first()
+        if teacher is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "That teacher was not found at this school")
+    if "name" in updates and updates["name"] != school_class.name:
+        if db.query(SchoolClass).filter_by(school_id=school_id, name=updates["name"]).first():
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "A class with that name already exists")
+
+    for field, value in updates.items():
+        setattr(school_class, field, value)
     db.commit()
     db.refresh(school_class)
     return school_class

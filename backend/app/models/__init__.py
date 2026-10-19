@@ -61,6 +61,7 @@ from app.models.report_card_remark import ReportCardRemark
 from app.models.timetable import TimetableSlot
 from app.models.staff_attendance import StaffAttendance, DutyAssignment
 from app.models.supervisor_link import SupervisorSchoolLink
+from app.models.homework import Homework, HomeworkSubmission, HomeworkSubmissionStatus
 
 __all__ = [
     "School",
@@ -164,4 +165,7 @@ __all__ = [
     "StaffAttendance",
     "DutyAssignment",
     "SupervisorSchoolLink",
+    "Homework",
+    "HomeworkSubmission",
+    "HomeworkSubmissionStatus",
 ]

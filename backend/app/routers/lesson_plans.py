@@ -28,6 +28,17 @@ def _get_plan(db: Session, school_id: int, plan_id: int) -> LessonPlan:
     return plan
 
 
+def _creator_name(db: Session, plan: LessonPlan) -> str | None:
+    if plan.created_by is None:
+        return None
+    creator = db.get(User, plan.created_by)
+    return creator.full_name if creator else None
+
+
+def _plan_out(db: Session, plan: LessonPlan, model=LessonPlanOut):
+    return model(**model.model_validate(plan).model_dump(exclude={"created_by_name"}), created_by_name=_creator_name(db, plan))
+
+
 @router.get(
     "",
     response_model=list[LessonPlanOut],
@@ -49,7 +60,8 @@ def list_lesson_plans(
         query = query.filter_by(subject_id=subject_id)
     if term is not None:
         query = query.filter_by(term=term)
-    return query.order_by(LessonPlan.updated_at.desc()).all()
+    plans = query.order_by(LessonPlan.updated_at.desc()).all()
+    return [_plan_out(db, p) for p in plans]
 
 
 @router.post(
@@ -71,7 +83,7 @@ def create_lesson_plan(
     db.add(plan)
     db.commit()
     db.refresh(plan)
-    return plan
+    return _plan_out(db, plan, model=LessonPlanDetailOut)
 
 
 @router.get(
@@ -81,7 +93,8 @@ def create_lesson_plan(
 )
 def get_lesson_plan(school_id: int, plan_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)
-    return _get_plan(db, school_id, plan_id)
+    plan = _get_plan(db, school_id, plan_id)
+    return _plan_out(db, plan, model=LessonPlanDetailOut)
 
 
 @router.delete(
@@ -147,7 +160,7 @@ def replace_entries(
 
     db.commit()
     db.refresh(plan)
-    return plan
+    return _plan_out(db, plan, model=LessonPlanDetailOut)
 
 
 @router.patch(

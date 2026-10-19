@@ -38,6 +38,7 @@ from app.routers import (
     exams,
     fees,
     finance,
+    homework,
     leads,
     ledger,
     lesson_plans,
@@ -114,6 +115,7 @@ app.include_router(asset.router)
 app.include_router(timetable.router)
 app.include_router(staff_attendance.router)
 app.include_router(supervisors.router)
+app.include_router(homework.router)
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)

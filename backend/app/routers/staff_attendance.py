@@ -5,9 +5,13 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.core.security import create_attendance_qr_token, decode_attendance_qr_token
 from app.models.staff_attendance import DutyAssignment, StaffAttendance
 from app.models.user import User, UserRole
 from app.schemas.staff_attendance import (
+    AttendanceQrCodeOut,
+    AttendanceQrScanRequest,
+    AttendanceQrScanResult,
     DutyAssignmentCreate,
     DutyAssignmentOut,
     DutyAssignmentWithNameOut,
@@ -34,6 +38,60 @@ ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 # --- Staff attendance (clock in/out) ---
+
+
+@router.get(
+    "/staff-attendance/qr-code",
+    response_model=AttendanceQrCodeOut,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("staff_attendance"))],
+)
+def get_attendance_qr_code(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """The signed token this school's printable attendance QR code encodes
+    — the frontend renders it into an actual QR image client-side."""
+    ensure_school_access(db, current_user, school_id)
+    return AttendanceQrCodeOut(token=create_attendance_qr_token(school_id))
+
+
+@router.post(
+    "/staff-attendance/scan",
+    response_model=AttendanceQrScanResult,
+    dependencies=[Depends(require_roles(*EMPLOYEE_ROLES)), Depends(require_feature("staff_attendance"))],
+)
+def scan_attendance_qr(
+    school_id: int,
+    payload: AttendanceQrScanRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """One scan toggles: clocks in if not yet in today, clocks out if
+    already in and not yet out. The scanned code must belong to this
+    school — proves whoever is scanning is physically at its printed
+    location, not just anywhere with the app open."""
+    ensure_school_access(db, current_user, school_id)
+    token_school_id = decode_attendance_qr_token(payload.token)
+    if token_school_id is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That QR code isn't a valid attendance code")
+    if token_school_id != school_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That QR code belongs to a different school")
+
+    today = date.today()
+    record = db.query(StaffAttendance).filter_by(school_id=school_id, user_id=current_user.id, date=today).first()
+    if record is None:
+        record = StaffAttendance(school_id=school_id, user_id=current_user.id, date=today)
+        db.add(record)
+
+    if record.clocked_in_at is None:
+        record.clocked_in_at = datetime.now(timezone.utc)
+        action = "clocked_in"
+    elif record.clocked_out_at is None:
+        record.clocked_out_at = datetime.now(timezone.utc)
+        action = "clocked_out"
+    else:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You've already clocked in and out today")
+
+    db.commit()
+    db.refresh(record)
+    return AttendanceQrScanResult(action=action, record=record)
 
 
 @router.post(

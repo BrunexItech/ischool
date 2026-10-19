@@ -81,7 +81,14 @@ function BulkFillDialog({ schoolId, planId, nextOrder, onReplaced }: { schoolId:
   const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  const [weekCount, setWeekCount] = useState("13");
   const [submitting, setSubmitting] = useState(false);
+
+  function generateWeeks() {
+    const n = Math.max(1, Math.min(52, Number(weekCount) || 0));
+    const lines = Array.from({ length: n }, (_, i) => `Week ${nextOrder + i} | `);
+    setText(lines.join("\n"));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -114,6 +121,13 @@ function BulkFillDialog({ schoolId, planId, nextOrder, onReplaced }: { schoolId:
         <p className="text-sm text-muted-foreground">
           One line per week: <code>Label | Topic</code>. This replaces every entry currently in the plan.
         </p>
+        <div className="flex items-end gap-2 rounded-lg border bg-muted/30 p-3">
+          <div className="grid gap-1.5">
+            <Label className="text-xs">Weeks in this term</Label>
+            <Input type="number" min={1} max={52} value={weekCount} onChange={(e) => setWeekCount(e.target.value)} className="w-24" />
+          </div>
+          <Button type="button" variant="outline" onClick={generateWeeks}><Wand2 /> Generate week rows</Button>
+        </div>
         <Textarea
           rows={10}
           placeholder={"Week 1 | Introduction to Algebra\nWeek 2 | Linear Equations\nWeek 3 | Quadratic Equations"}
@@ -193,7 +207,10 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={plan.term} description={`${plan.completed_count} of ${plan.entry_count} entries covered so far`} />
+      <PageHeader
+        title={plan.term}
+        description={`${plan.completed_count} of ${plan.entry_count} entries covered so far${plan.created_by_name ? ` · set up by ${plan.created_by_name}` : ""}`}
+      />
 
       <div className="flex flex-wrap gap-3">
         <BulkFillDialog schoolId={plan.school_id} planId={plan.id} nextOrder={(plan.entries[plan.entries.length - 1]?.order ?? 0) + 1} onReplaced={handleReplaced} />

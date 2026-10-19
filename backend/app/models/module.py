@@ -34,6 +34,7 @@ MODULE_KEYS = [
     "erp_finance",
     "timetable",
     "staff_attendance",
+    "homework",
 ]
 
 

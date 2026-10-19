@@ -1,7 +1,7 @@
 import secrets
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -13,12 +13,14 @@ from app.core.payments import apply_payment
 from app.core.pesapal import PesapalError, get_transaction_status, submit_order
 from app.core.phone import normalize_kenyan_phone
 from app.core.report_card import build_report_card
+from app.core.uploads import save_image
 from app.models.academics import Student
 from app.models.activity import Activity, ActivityParticipant
 from app.models.attendance import AttendanceRecord
 from app.models.award import Award
 from app.models.exam import Exam, ExamAnswer, ExamSubmission, ExamSubmissionStatus
 from app.models.fees import FeeInvoice
+from app.models.homework import Homework, HomeworkSubmission, HomeworkSubmissionStatus
 from app.models.meals import MealMenu
 from app.models.pickup_dropoff import PickupDropoffLog
 from app.models.payment_config import SchoolPaymentConfig
@@ -47,6 +49,7 @@ from app.schemas.exam import (
     ExamSubmissionCreate,
     ExamSubmissionOut,
 )
+from app.schemas.homework import HomeworkForStudentOut
 from app.schemas.meals import MealMenuOut
 from app.schemas.pickup_dropoff import PickupDropoffOut
 from app.schemas.results import ReportCardOut, ResultOut
@@ -379,6 +382,88 @@ def submit_exam(
     db.commit()
     db.refresh(submission)
     return submission
+
+
+@router.get(
+    "/students/{student_id}/homework",
+    response_model=list[HomeworkForStudentOut],
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("homework"))],
+)
+def list_child_homework(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    student = _owned_student(db, current_user, student_id)
+    items = (
+        db.query(Homework)
+        .filter(Homework.school_id == student.school_id, Homework.class_id == student.class_id)
+        .order_by(Homework.due_date.desc())
+        .all()
+    )
+    out = []
+    for hw in items:
+        submission = db.query(HomeworkSubmission).filter_by(homework_id=hw.id, student_id=student.id).first()
+        out.append(
+            HomeworkForStudentOut(
+                id=hw.id,
+                subject_name=hw.subject.name,
+                title=hw.title,
+                instructions=hw.instructions,
+                due_date=hw.due_date,
+                allow_digital_submission=hw.allow_digital_submission,
+                status=submission.status if submission else HomeworkSubmissionStatus.NOT_SUBMITTED,
+                file_url=submission.file_url if submission else None,
+                score=submission.score if submission else None,
+                teacher_comment=submission.teacher_comment if submission else None,
+            )
+        )
+    return out
+
+
+@router.post(
+    "/students/{student_id}/homework/{homework_id}/submit",
+    response_model=HomeworkForStudentOut,
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("homework"))],
+)
+def submit_homework(
+    student_id: int,
+    homework_id: int,
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """A photo of the completed work — the digital-submission path for
+    homework that allows it. The teacher still reviews and marks it from
+    their own side; this just records that it came in, and when."""
+    student = _owned_student(db, current_user, student_id)
+    hw = db.query(Homework).filter_by(school_id=student.school_id, id=homework_id, class_id=student.class_id).first()
+    if hw is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Homework not found")
+    if not hw.allow_digital_submission:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This homework doesn't accept digital submissions — hand it in at school")
+
+    relative_path = save_image(file, subdir=f"schools/{student.school_id}/homework/{hw.id}", base_name=f"student-{student.id}")
+
+    submission = db.query(HomeworkSubmission).filter_by(homework_id=hw.id, student_id=student.id).first()
+    if submission is None:
+        submission = HomeworkSubmission(homework_id=hw.id, student_id=student.id)
+        db.add(submission)
+
+    submission.status = HomeworkSubmissionStatus.SUBMITTED
+    submission.file_url = f"{settings.backend_url}/uploads/{relative_path}"
+    submission.submitted_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(submission)
+
+    return HomeworkForStudentOut(
+        id=hw.id,
+        subject_name=hw.subject.name,
+        title=hw.title,
+        instructions=hw.instructions,
+        due_date=hw.due_date,
+        allow_digital_submission=hw.allow_digital_submission,
+        status=submission.status,
+        file_url=submission.file_url,
+        score=submission.score,
+        teacher_comment=submission.teacher_comment,
+    )
 
 
 def _owned_invoice(db: Session, student: Student, invoice_id: int) -> FeeInvoice:

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api, ApiError, SchoolClass } from "@/lib/api";
+import { api, ApiError, SchoolClass, Staff } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
@@ -13,9 +13,58 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ArrowUpRight } from "lucide-react";
+import { Plus, ArrowUpRight, Phone } from "lucide-react";
 
 const GRADUATE = "graduate";
+const NO_TEACHER = "none";
+
+function ClassTeacherCell({
+  schoolClass,
+  teachers,
+  onUpdated,
+}: {
+  schoolClass: SchoolClass;
+  teachers: Staff[];
+  onUpdated: (c: SchoolClass) => void;
+}) {
+  const { token, user } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const current = teachers.find((t) => t.user_id === schoolClass.homeroom_teacher_id);
+
+  async function handleChange(value: string) {
+    if (!token || !user?.school_id) return;
+    setSaving(true);
+    try {
+      const updated = await api.updateClass(token, user.school_id, schoolClass.id, {
+        homeroom_teacher_id: value === NO_TEACHER ? null : Number(value),
+      });
+      onUpdated(updated);
+      toast.success(value === NO_TEACHER ? "Class teacher removed" : "Class teacher assigned");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update class teacher");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Select
+        items={{ [NO_TEACHER]: "Not assigned", ...Object.fromEntries(teachers.map((t) => [String(t.user_id), t.full_name])) }}
+        disabled={saving}
+        value={schoolClass.homeroom_teacher_id ? String(schoolClass.homeroom_teacher_id) : NO_TEACHER}
+        onValueChange={(v) => v && handleChange(v)}
+      >
+        <SelectTrigger className="w-48"><SelectValue placeholder="Not assigned" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NO_TEACHER}>Not assigned</SelectItem>
+          {teachers.map((t) => <SelectItem key={t.user_id} value={String(t.user_id)}>{t.full_name}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      {current?.phone && <p className="flex items-center gap-1 text-xs text-muted-foreground"><Phone className="size-3" /> {current.phone}</p>}
+    </div>
+  );
+}
 
 function PromoteDialog({ schoolClass, allClasses, onPromoted }: { schoolClass: SchoolClass; allClasses: SchoolClass[]; onPromoted: () => void }) {
   const { token, user } = useAuth();
@@ -77,6 +126,7 @@ function PromoteDialog({ schoolClass, allClasses, onPromoted }: { schoolClass: S
 export default function ClassesPage() {
   const { user, token } = useAuth();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [teachers, setTeachers] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
@@ -90,6 +140,15 @@ export default function ClassesPage() {
   }
 
   useEffect(refreshClasses, [token, user?.school_id]);
+
+  useEffect(() => {
+    if (!token || !user?.school_id || !canManage) return;
+    api.listStaff(token, user.school_id).then((s) => setTeachers(s.filter((x) => x.role === "teacher"))).catch(() => setTeachers([]));
+  }, [token, user?.school_id, canManage]);
+
+  function handleClassUpdated(updated: SchoolClass) {
+    setClasses((cs) => cs.map((c) => (c.id === updated.id ? updated : c)));
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -153,6 +212,7 @@ export default function ClassesPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Grade level</TableHead>
+              {canManage && <TableHead>Class teacher</TableHead>}
               {canManage && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -162,6 +222,11 @@ export default function ClassesPage() {
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell className="text-muted-foreground">{c.grade_level ?? "—"}</TableCell>
                 {canManage && (
+                  <TableCell>
+                    <ClassTeacherCell schoolClass={c} teachers={teachers} onUpdated={handleClassUpdated} />
+                  </TableCell>
+                )}
+                {canManage && (
                   <TableCell className="text-right">
                     <PromoteDialog schoolClass={c} allClasses={classes} onPromoted={refreshClasses} />
                   </TableCell>
@@ -170,7 +235,7 @@ export default function ClassesPage() {
             ))}
             {classes.length === 0 && (
               <TableRow>
-                <TableCell colSpan={canManage ? 3 : 2} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={canManage ? 4 : 2} className="h-24 text-center text-muted-foreground">
                   No classes yet.
                 </TableCell>
               </TableRow>

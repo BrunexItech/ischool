@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarClock, Clock, LogIn, LogOut, Plus, Trash2 } from "lucide-react";
+import jsQR from "jsqr";
+import QRCode from "qrcode";
+import { CalendarClock, Clock, Plus, QrCode, ScanLine, Trash2 } from "lucide-react";
 import { api, ApiError, DutyAssignment, DutyAssignmentWithName, Staff, StaffAttendanceRecord, StaffAttendanceWithName } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
@@ -15,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const EMPLOYEE_ROLES = ["school_admin", "super_admin", "teacher", "staff", "security", "boarding_staff", "transport_staff", "bursar"];
 
@@ -22,12 +25,119 @@ function fmtTime(iso: string | null) {
   return iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—";
 }
 
+function ScanDialog({ onScanned }: { onScanned: () => void }) {
+  const { token, user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    let stream: MediaStream | null = null;
+    let rafId: number;
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    async function handleDecoded(data: string) {
+      cancelled = true;
+      stream?.getTracks().forEach((t) => t.stop());
+      setBusy(true);
+      try {
+        if (!token || !user?.school_id) return;
+        const result = await api.scanAttendanceQr(token, user.school_id, data);
+        const time = result.action === "clocked_in" ? result.record.clocked_in_at : result.record.clocked_out_at;
+        toast.success(`${result.action === "clocked_in" ? "Clocked in" : "Clocked out"} at ${fmtTime(time)}`);
+        setOpen(false);
+        onScanned();
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Failed to record attendance");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function tick() {
+      if (cancelled) return;
+      const video = videoRef.current;
+      if (video && video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code?.data) {
+          handleDecoded(code.data);
+          return;
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "environment" } })
+      .then((s) => {
+        if (cancelled) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = s;
+        if (videoRef.current) {
+          videoRef.current.srcObject = s;
+          videoRef.current.play();
+        }
+        rafId = requestAnimationFrame(tick);
+      })
+      .catch(() => setError("Camera access was denied — allow camera permission to scan."));
+
+    return () => {
+      cancelled = true;
+      if (rafId) cancelAnimationFrame(rafId);
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [open, token, user?.school_id, onScanned]);
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          setError(null);
+          setBusy(false);
+        }
+      }}
+    >
+      <DialogTrigger render={<Button className="flex-1"><ScanLine /> Scan to clock in / out</Button>} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Scan the attendance QR code</DialogTitle>
+          <DialogDescription>Point your camera at the code posted at your school — one scan clocks you in, the next clocks you out.</DialogDescription>
+        </DialogHeader>
+        {error ? (
+          <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>
+        ) : (
+          <div className="relative overflow-hidden rounded-lg bg-black">
+            <video ref={videoRef} className="aspect-square w-full object-cover" muted playsInline />
+            {busy && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                <Spinner size={24} className="text-white" />
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ClockCard() {
   const { token, user } = useAuth();
   const [today, setToday] = useState<StaffAttendanceRecord | null>(null);
   const [history, setHistory] = useState<StaffAttendanceRecord[]>([]);
   const [duties, setDuties] = useState<DutyAssignment[]>([]);
-  const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
   function refresh() {
@@ -43,34 +153,6 @@ function ClockCard() {
   }
 
   useEffect(refresh, [token, user?.school_id]);
-
-  async function handleClockIn() {
-    if (!token || !user?.school_id) return;
-    setBusy(true);
-    try {
-      await api.clockIn(token, user.school_id);
-      toast.success("Clocked in");
-      refresh();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Failed to clock in");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleClockOut() {
-    if (!token || !user?.school_id) return;
-    setBusy(true);
-    try {
-      await api.clockOut(token, user.school_id);
-      toast.success("Clocked out");
-      refresh();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Failed to clock out");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   if (loading) return <PageLoader />;
 
@@ -90,14 +172,11 @@ function ClockCard() {
                 <p className="font-heading text-lg font-semibold">{fmtTime(today?.clocked_out_at ?? null)}</p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button disabled={busy || !!today?.clocked_in_at} onClick={handleClockIn} className="flex-1">
-                {busy ? <Spinner size={16} className="text-current" /> : <LogIn />} Clock in
-              </Button>
-              <Button disabled={busy || !today?.clocked_in_at || !!today?.clocked_out_at} variant="outline" onClick={handleClockOut} className="flex-1">
-                <LogOut /> Clock out
-              </Button>
-            </div>
+            {today?.clocked_in_at && today?.clocked_out_at ? (
+              <p className="rounded-lg border bg-muted/30 p-3 text-center text-sm text-muted-foreground">You&apos;re all done for today.</p>
+            ) : (
+              <ScanDialog onScanned={refresh} />
+            )}
           </CardContent>
         </Card>
 
@@ -189,13 +268,55 @@ function AdminRoster() {
     setDuties((d) => d.filter((x) => x.id !== id));
   }
 
+  async function handleDownloadQr() {
+    if (!token || !user?.school_id) return;
+    try {
+      const { token: qrToken } = await api.getAttendanceQrCode(token, user.school_id);
+      const dataUrl = await QRCode.toDataURL(qrToken, { width: 440, margin: 2, color: { dark: "#111827", light: "#ffffff" } });
+      const win = window.open("", "_blank");
+      if (!win) {
+        toast.error("Allow pop-ups to download the QR sheet");
+        return;
+      }
+      win.document.write(`<!doctype html>
+<html><head><title>Staff Attendance QR Code</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f8fafc; }
+  .sheet { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 56px 64px; }
+  .bar { width: 64px; height: 5px; border-radius: 999px; background: #2563eb; }
+  h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: #0f172a; }
+  p.subtitle { font-size: 18px; color: #475569; margin: 0; font-weight: 500; }
+  img { border: 14px solid #0f172a; border-radius: 20px; margin-top: 8px; }
+  p.hint { font-size: 13px; color: #94a3b8; margin-top: 8px; }
+  @media print { body { background: #fff; } }
+</style>
+</head><body>
+  <div class="sheet">
+    <div class="bar"></div>
+    <h1>Staff Attendance</h1>
+    <p class="subtitle">Scan QR Code</p>
+    <img src="${dataUrl}" width="320" height="320" />
+    <p class="hint">Open the app, then scan this code to clock in or out.</p>
+  </div>
+  <script>window.onload = () => window.print();</script>
+</body></html>`);
+      win.document.close();
+    } catch {
+      toast.error("Failed to generate the QR code");
+    }
+  }
+
   if (loading) return <PageLoader />;
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="grid gap-1.5"><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-44" /></div>
-        <div className="grid gap-1.5"><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-44" /></div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="grid gap-1.5"><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-44" /></div>
+          <div className="grid gap-1.5"><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-44" /></div>
+        </div>
+        <Button variant="outline" onClick={handleDownloadQr}><QrCode /> Download QR sheet</Button>
       </div>
 
       <Card>

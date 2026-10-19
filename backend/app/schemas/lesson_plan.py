@@ -52,6 +52,8 @@ class LessonPlanOut(BaseModel):
     class_id: int
     subject_id: int
     term: str
+    created_by: int | None
+    created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
     entry_count: int

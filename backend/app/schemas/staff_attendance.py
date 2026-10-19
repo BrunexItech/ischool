@@ -7,6 +7,14 @@ class StaffClockInRequest(BaseModel):
     note: str | None = None
 
 
+class AttendanceQrCodeOut(BaseModel):
+    token: str
+
+
+class AttendanceQrScanRequest(BaseModel):
+    token: str
+
+
 class StaffAttendanceOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,6 +29,11 @@ class StaffAttendanceOut(BaseModel):
 
 class StaffAttendanceWithNameOut(StaffAttendanceOut):
     staff_name: str
+
+
+class AttendanceQrScanResult(BaseModel):
+    action: str  # "clocked_in" or "clocked_out"
+    record: StaffAttendanceOut
 
 
 class DutyAssignmentCreate(BaseModel):

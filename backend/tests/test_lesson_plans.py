@@ -101,6 +101,19 @@ def test_unassigned_teacher_cannot_touch_a_class_they_do_not_teach(client, db_se
     assert response.status_code == 403
 
 
+def test_plan_shows_who_created_it(client, db_session, school, school_admin_token):
+    school_class, subject = _setup_scope(db_session, school, _teacher_user(db_session, school))
+    plan = client.post(
+        f"/schools/{school.id}/lesson-plans",
+        headers=auth_headers(school_admin_token),
+        json={"class_id": school_class.id, "subject_id": subject.id, "term": "Term 1 2026"},
+    ).json()
+    assert plan["created_by_name"]
+
+    listed = client.get(f"/schools/{school.id}/lesson-plans", headers=auth_headers(school_admin_token)).json()
+    assert listed[0]["created_by_name"] == plan["created_by_name"]
+
+
 def test_marking_an_entry_completed_updates_the_count(client, db_session, school, school_admin_token):
     school_class, subject = _setup_scope(db_session, school, _teacher_user(db_session, school))
     headers = auth_headers(school_admin_token)

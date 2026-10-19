@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CheckCircle2, CreditCard, FileText, PlayCircle, Smartphone, XCircle } from "lucide-react";
+import { CheckCircle2, Circle, Clock, CreditCard, ExternalLink, FileText, PlayCircle, Smartphone, Upload, XCircle } from "lucide-react";
 import {
   api,
   ApiError,
@@ -11,6 +11,7 @@ import {
   AttendanceRecord,
   ExamForStudentListItem,
   FeeInvoice,
+  HomeworkForStudent,
   MealMenuEntry,
   PaymentMethods,
   PickupDropoffLog,
@@ -42,6 +43,49 @@ const FEE_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"
   partial: "secondary",
   unpaid: "destructive",
 };
+
+const HOMEWORK_STATUS_STYLE: Record<string, { variant: "default" | "secondary" | "outline"; label: string; icon: typeof CheckCircle2 }> = {
+  not_submitted: { variant: "outline", label: "Not submitted", icon: Circle },
+  submitted: { variant: "secondary", label: "Submitted", icon: Clock },
+  reviewed: { variant: "default", label: "Reviewed", icon: CheckCircle2 },
+};
+
+function SubmitHomeworkDialog({ studentId, homework, onSubmitted }: { studentId: number; homework: HomeworkForStudent; onSubmitted: (hw: HomeworkForStudent) => void }) {
+  const { token } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    if (!token || !file) return;
+    setSubmitting(true);
+    try {
+      const updated = await api.submitChildHomework(token, studentId, homework.id, file);
+      onSubmitted(updated);
+      setOpen(false);
+      setFile(null);
+      toast.success("Homework submitted");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to submit homework");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button size="sm"><Upload /> {homework.status === "not_submitted" ? "Submit" : "Resubmit"}</Button>} />
+      <DialogContent>
+        <DialogHeader><DialogTitle>Submit: {homework.title}</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Upload a clear photo of the completed work.</p>
+        <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <Button onClick={handleSubmit} disabled={submitting || !file}>
+          {submitting ? "Uploading..." : "Submit"}
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function PayWithMpesaDialog({ studentId, invoice, onPaid }: { studentId: number; invoice: FeeInvoice; onPaid: () => void }) {
   const { token } = useAuth();
@@ -173,6 +217,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
   const [mealMenu, setMealMenu] = useState<MealMenuEntry[]>([]);
   const [awards, setAwards] = useState<Award[]>([]);
   const [exams, setExams] = useState<ExamForStudentListItem[]>([]);
+  const [homework, setHomework] = useState<HomeworkForStudent[]>([]);
   const [studentActivities, setStudentActivities] = useState<StudentActivity[]>([]);
   const [pickupDropoff, setPickupDropoff] = useState<PickupDropoffLog[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
@@ -193,6 +238,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       api.getChildMealMenu(token, studentId).then(setMealMenu).catch(() => setMealMenu([])),
       api.getChildAwards(token, studentId).then(setAwards).catch(() => setAwards([])),
       api.getChildExams(token, studentId).then(setExams).catch(() => setExams([])),
+      api.getChildHomework(token, studentId).then(setHomework).catch(() => setHomework([])),
       api.getChildActivities(token, studentId).then(setStudentActivities).catch(() => setStudentActivities([])),
       api.getChildPickupDropoff(token, studentId).then(setPickupDropoff).catch(() => setPickupDropoff([])),
       api.getChildPaymentMethods(token, studentId).then(setPaymentMethods).catch(() => setPaymentMethods(null)),
@@ -212,6 +258,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
         <TabsTrigger value="awards">Awards</TabsTrigger>
         <TabsTrigger value="activities">Activities</TabsTrigger>
         <TabsTrigger value="exams">Exams</TabsTrigger>
+        <TabsTrigger value="homework">Homework</TabsTrigger>
         <TabsTrigger value="pickup">Pickup/Drop-off</TabsTrigger>
       </TabsList>
 
@@ -450,6 +497,59 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
               ))}
               {exams.length === 0 && (
                 <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No exams available yet.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="homework" className="mt-4">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Due</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Score</TableHead>
+                {user?.role === "student" && <TableHead className="text-right">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {homework.map((hw) => {
+                const style = HOMEWORK_STATUS_STYLE[hw.status];
+                const Icon = style.icon;
+                return (
+                  <TableRow key={hw.id}>
+                    <TableCell className="font-medium">{hw.title} <span className="text-xs text-muted-foreground">({hw.subject_name})</span></TableCell>
+                    <TableCell>{new Date(hw.due_date + "T12:00:00").toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Badge variant={style.variant} className="gap-1"><Icon className="size-3" /> {style.label}</Badge>
+                    </TableCell>
+                    <TableCell>{hw.score ?? "—"}</TableCell>
+                    {user?.role === "student" && (
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {hw.file_url && (
+                            <a href={hw.file_url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary">
+                              <ExternalLink className="size-4" />
+                            </a>
+                          )}
+                          {hw.allow_digital_submission && hw.status !== "reviewed" && (
+                            <SubmitHomeworkDialog
+                              studentId={studentId}
+                              homework={hw}
+                              onSubmitted={(updated) => setHomework((h) => h.map((x) => (x.id === updated.id ? updated : x)))}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
+              {homework.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No homework posted yet.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

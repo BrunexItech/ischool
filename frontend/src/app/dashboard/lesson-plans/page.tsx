@@ -123,7 +123,7 @@ export default function LessonPlansPage() {
                 <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><BookOpen className="size-4.5" /></div>
                 <div>
                   <p className="font-medium">{subjectName(p.subject_id)} — {className(p.class_id)}</p>
-                  <p className="text-xs text-muted-foreground">{p.term}</p>
+                  <p className="text-xs text-muted-foreground">{p.term}{p.created_by_name ? ` · ${p.created_by_name}` : ""}</p>
                 </div>
               </div>
               <Badge variant="secondary">{p.completed_count}/{p.entry_count} covered</Badge>
