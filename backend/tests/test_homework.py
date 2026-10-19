@@ -166,3 +166,26 @@ def test_unassigned_teacher_cannot_post_homework_for_a_class_they_do_not_teach(c
         json={"class_id": cls.id, "subject_id": subject.id, "title": "Nope", "due_date": "2026-11-20"},
     )
     assert response.status_code == 403
+
+
+def test_teacher_can_attach_a_pdf_worksheet(client, db_session, school):
+    cls, subject, teacher, student, student_user = _setup(db_session, school)
+    teacher_headers = _login(client, teacher)
+    hw_id = client.post(
+        f"/schools/{school.id}/homework",
+        headers=teacher_headers,
+        json={"class_id": cls.id, "subject_id": subject.id, "title": "Worksheet", "due_date": "2026-11-25"},
+    ).json()["id"]
+
+    fake_pdf = io.BytesIO(b"%PDF-1.4 fake content")
+    response = client.post(
+        f"/schools/{school.id}/homework/{hw_id}/attachment",
+        headers=teacher_headers,
+        files={"file": ("worksheet.pdf", fake_pdf, "application/pdf")},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["attachment_url"]
+
+    student_headers = _login(client, student_user)
+    listing = client.get(f"/portal/students/{student.id}/homework", headers=student_headers)
+    assert listing.json()[0]["attachment_url"]

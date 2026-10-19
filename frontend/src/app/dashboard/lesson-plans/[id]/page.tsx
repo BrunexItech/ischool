@@ -21,6 +21,7 @@ function EditEntryDialog({ schoolId, planId, entry, onUpdated }: { schoolId: num
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     label: entry.label,
+    scheduled_date: entry.scheduled_date ?? "",
     topic: entry.topic,
     objectives: entry.objectives ?? "",
     resources: entry.resources ?? "",
@@ -33,7 +34,10 @@ function EditEntryDialog({ schoolId, planId, entry, onUpdated }: { schoolId: num
     if (!token) return;
     setSaving(true);
     try {
-      const updated = await api.updateLessonPlanEntry(token, schoolId, planId, entry.id, form);
+      const updated = await api.updateLessonPlanEntry(token, schoolId, planId, entry.id, {
+        ...form,
+        scheduled_date: form.scheduled_date || undefined,
+      });
       onUpdated(updated);
       setOpen(false);
       toast.success("Entry updated");
@@ -50,9 +54,15 @@ function EditEntryDialog({ schoolId, planId, entry, onUpdated }: { schoolId: num
       <DialogContent>
         <DialogHeader><DialogTitle>Edit entry</DialogTitle></DialogHeader>
         <form onSubmit={handleSave} className="flex flex-col gap-3">
-          <div className="grid gap-1.5">
-            <Label>Label</Label>
-            <Input required value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Label</Label>
+              <Input required value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Date (optional)</Label>
+              <Input type="date" value={form.scheduled_date} onChange={(e) => setForm((f) => ({ ...f, scheduled_date: e.target.value }))} />
+            </div>
           </div>
           <div className="grid gap-1.5">
             <Label>Topic</Label>
@@ -148,7 +158,7 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
   const { user, token, loading } = useAuth();
   const [plan, setPlan] = useState<LessonPlanDetail | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
-  const [addForm, setAddForm] = useState({ label: "", topic: "" });
+  const [addForm, setAddForm] = useState({ label: "", scheduled_date: "", topic: "" });
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
@@ -168,10 +178,11 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
       const entry = await api.addLessonPlanEntry(token, user.school_id, plan.id, {
         order: (plan.entries[plan.entries.length - 1]?.order ?? 0) + 1,
         label: addForm.label,
+        scheduled_date: addForm.scheduled_date || undefined,
         topic: addForm.topic,
       });
       setPlan((p) => (p ? { ...p, entries: [...p.entries, entry], entry_count: p.entry_count + 1 } : p));
-      setAddForm({ label: "", topic: "" });
+      setAddForm({ label: "", scheduled_date: "", topic: "" });
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to add entry");
     } finally {
@@ -224,6 +235,10 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
               <Label>Label</Label>
               <Input required placeholder="e.g. Week 1" value={addForm.label} onChange={(e) => setAddForm((f) => ({ ...f, label: e.target.value }))} className="w-36" />
             </div>
+            <div className="grid gap-1.5">
+              <Label>Date (optional)</Label>
+              <Input type="date" value={addForm.scheduled_date} onChange={(e) => setAddForm((f) => ({ ...f, scheduled_date: e.target.value }))} className="w-40" />
+            </div>
             <div className="grid flex-1 gap-1.5">
               <Label>Topic</Label>
               <Input required value={addForm.topic} onChange={(e) => setAddForm((f) => ({ ...f, topic: e.target.value }))} />
@@ -242,8 +257,11 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
                   {entry.status === "completed" ? <CheckCircle2 className="size-5" /> : <Circle className="size-5 text-muted-foreground" />}
                 </button>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{entry.label}</Badge>
+                    {entry.scheduled_date && (
+                      <Badge variant="secondary">{new Date(entry.scheduled_date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</Badge>
+                    )}
                     {entry.status === "completed" && <Badge>Covered</Badge>}
                   </div>
                   <p className="mt-1 font-medium">{entry.topic}</p>

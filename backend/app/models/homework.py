@@ -27,6 +27,7 @@ class Homework(Base):
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attachment_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     due_date: Mapped[date_] = mapped_column(Date, nullable=False)
     allow_digital_submission: Mapped[bool] = mapped_column(Boolean, default=True)
 

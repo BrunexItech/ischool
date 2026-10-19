@@ -51,7 +51,7 @@ from app.schemas.exam import (
 )
 from app.schemas.homework import HomeworkForStudentOut
 from app.schemas.meals import MealMenuOut
-from app.schemas.pickup_dropoff import PickupDropoffOut
+from app.schemas.pickup_dropoff import PickupDropoffOut, PortalPickupDropoffCreate
 from app.schemas.results import ReportCardOut, ResultOut
 from app.schemas.transport import StudentTransportOut
 from app.routers.fees import _invoice_out
@@ -248,6 +248,37 @@ def get_child_pickup_dropoff(student_id: int, db: Session = Depends(get_db), cur
     )
 
 
+@router.post(
+    "/students/{student_id}/pickup-dropoff",
+    response_model=PickupDropoffOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(UserRole.PARENT)), Depends(require_feature("pickup_dropoff"))],
+)
+def report_pickup_dropoff(
+    student_id: int,
+    payload: PortalPickupDropoffCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """A parent's own one-tap confirmation that they're picking up or
+    dropping off right now — this is their own self-report, distinct from
+    the staff/security log, and always shows who it came from."""
+    student = _owned_student(db, current_user, student_id)
+    log = PickupDropoffLog(
+        school_id=student.school_id,
+        student_id=student.id,
+        recorded_by=current_user.id,
+        event_type=payload.event_type,
+        person_name=current_user.full_name,
+        notes=payload.notes,
+        occurred_at=datetime.now(timezone.utc),
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+
 @router.get(
     "/students/{student_id}/exams",
     response_model=list[ExamForStudentListOut],
@@ -406,6 +437,7 @@ def list_child_homework(student_id: int, db: Session = Depends(get_db), current_
                 subject_name=hw.subject.name,
                 title=hw.title,
                 instructions=hw.instructions,
+                attachment_url=hw.attachment_url,
                 due_date=hw.due_date,
                 allow_digital_submission=hw.allow_digital_submission,
                 status=submission.status if submission else HomeworkSubmissionStatus.NOT_SUBMITTED,
@@ -457,6 +489,7 @@ def submit_homework(
         subject_name=hw.subject.name,
         title=hw.title,
         instructions=hw.instructions,
+        attachment_url=hw.attachment_url,
         due_date=hw.due_date,
         allow_digital_submission=hw.allow_digital_submission,
         status=submission.status,

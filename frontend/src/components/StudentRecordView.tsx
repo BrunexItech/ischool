@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, Clock, CreditCard, ExternalLink, FileText, PlayCircle, Smartphone, Upload, XCircle } from "lucide-react";
+import { CheckCircle2, Circle, Clock, CreditCard, ExternalLink, FileText, LogIn, LogOut, PlayCircle, Smartphone, Upload, XCircle } from "lucide-react";
 import {
   api,
   ApiError,
@@ -222,10 +222,25 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
   const [pickupDropoff, setPickupDropoff] = useState<PickupDropoffLog[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reportingEvent, setReportingEvent] = useState<"pickup" | "dropoff" | null>(null);
 
   function refreshFees() {
     if (!token) return;
     api.getChildFees(token, studentId).then(setInvoices).catch(() => setInvoices([]));
+  }
+
+  async function reportPickupDropoff(eventType: "pickup" | "dropoff") {
+    if (!token) return;
+    setReportingEvent(eventType);
+    try {
+      const created = await api.reportPickupDropoff(token, studentId, eventType);
+      setPickupDropoff((all) => [created, ...all]);
+      toast.success(eventType === "pickup" ? "Pickup confirmed" : "Drop-off confirmed");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to report");
+    } finally {
+      setReportingEvent(null);
+    }
   }
 
   useEffect(() => {
@@ -521,7 +536,14 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
                 const Icon = style.icon;
                 return (
                   <TableRow key={hw.id}>
-                    <TableCell className="font-medium">{hw.title} <span className="text-xs text-muted-foreground">({hw.subject_name})</span></TableCell>
+                    <TableCell className="font-medium">
+                      {hw.title} <span className="text-xs text-muted-foreground">({hw.subject_name})</span>
+                      {hw.attachment_url && (
+                        <a href={hw.attachment_url} target="_blank" rel="noreferrer" className="ml-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                          <FileText className="size-3" /> Worksheet
+                        </a>
+                      )}
+                    </TableCell>
                     <TableCell>{new Date(hw.due_date + "T12:00:00").toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Badge variant={style.variant} className="gap-1"><Icon className="size-3" /> {style.label}</Badge>
@@ -557,6 +579,16 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       </TabsContent>
 
       <TabsContent value="pickup" className="mt-4">
+        {user?.role === "parent" && (
+          <div className="mb-4 flex flex-wrap gap-3 rounded-xl border bg-muted/30 p-4">
+            <Button size="lg" disabled={reportingEvent !== null} onClick={() => reportPickupDropoff("pickup")} className="flex-1 gap-2 sm:flex-none">
+              {reportingEvent === "pickup" ? <Spinner size={16} className="text-current" /> : <LogOut />} I&apos;m picking up now
+            </Button>
+            <Button size="lg" variant="outline" disabled={reportingEvent !== null} onClick={() => reportPickupDropoff("dropoff")} className="flex-1 gap-2 sm:flex-none">
+              {reportingEvent === "dropoff" ? <Spinner size={16} className="text-current" /> : <LogIn />} I&apos;ve dropped off now
+            </Button>
+          </div>
+        )}
         <Card>
           <Table>
             <TableHeader>

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -8,6 +8,7 @@ from app.models.lesson_plan import LessonPlanEntryStatus
 class LessonPlanEntryCreate(BaseModel):
     order: int
     label: str
+    scheduled_date: date | None = None
     topic: str
     objectives: str | None = None
     resources: str | None = None
@@ -18,6 +19,7 @@ class LessonPlanEntryCreate(BaseModel):
 class LessonPlanEntryUpdate(BaseModel):
     order: int | None = None
     label: str | None = None
+    scheduled_date: date | None = None
     topic: str | None = None
     objectives: str | None = None
     resources: str | None = None
@@ -31,6 +33,7 @@ class LessonPlanEntryOut(BaseModel):
     id: int
     order: int
     label: str
+    scheduled_date: date | None
     topic: str
     objectives: str | None
     resources: str | None

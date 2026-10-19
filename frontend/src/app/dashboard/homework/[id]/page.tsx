@@ -3,11 +3,11 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, Clock, ExternalLink } from "lucide-react";
+import { CheckCircle2, Circle, Clock, ExternalLink, FileUp } from "lucide-react";
 import { api, ApiError, HomeworkDetail, HomeworkSubmissionRow } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
-import { PageLoader } from "@/components/Spinner";
+import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +91,50 @@ function ReviewDialog({
   );
 }
 
+function AttachmentCard({ hw, onAttached }: { hw: HomeworkDetail; onAttached: (url: string) => void }) {
+  const { token } = useAuth();
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleUpload() {
+    if (!token || !file) return;
+    setUploading(true);
+    try {
+      const updated = await api.uploadHomeworkAttachment(token, hw.school_id, hw.id, file);
+      if (updated.attachment_url) onAttached(updated.attachment_url);
+      setFile(null);
+      toast.success("Worksheet attached");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to attach worksheet");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
+        <div className="flex items-center gap-2 text-sm">
+          <FileUp className="size-4 text-muted-foreground" />
+          {hw.attachment_url ? (
+            <a href={hw.attachment_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+              Worksheet attached <ExternalLink className="size-3.5" />
+            </a>
+          ) : (
+            <span className="text-muted-foreground">No worksheet attached yet</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-9 w-56 text-xs" />
+          <Button size="sm" variant="outline" disabled={uploading || !file} onClick={handleUpload}>
+            {uploading ? <Spinner size={14} className="text-current" /> : <FileUp />} {hw.attachment_url ? "Replace" : "Attach PDF"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function HomeworkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -132,6 +176,8 @@ export default function HomeworkDetailPage({ params }: { params: Promise<{ id: s
       {hw.instructions && (
         <Card><CardContent className="pt-6 text-sm text-muted-foreground">{hw.instructions}</CardContent></Card>
       )}
+
+      <AttachmentCard hw={hw} onAttached={(url) => setHw((h) => (h ? { ...h, attachment_url: url } : h))} />
 
       <Card>
         <Table>

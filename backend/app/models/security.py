@@ -18,6 +18,12 @@ class IncidentSeverity(str, enum.Enum):
     HIGH = "high"
 
 
+class VehicleReleaseStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class SecurityIncidentStatus(str, enum.Enum):
     OPEN = "open"
     CLOSED = "closed"
@@ -54,6 +60,30 @@ class VehicleLog(Base):
     driver_name: Mapped[str] = mapped_column(String(255), nullable=False)
     purpose: Mapped[str] = mapped_column(String(255), nullable=False)
     logged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    school: Mapped["School"] = relationship("School")
+
+
+class VehicleReleaseRequest(Base):
+    """Security can't just wave a vehicle out — they raise a request, an
+    admin approves or rejects it, and only an approval actually creates the
+    OUT entry in the vehicle log. Entering is unrestricted; leaving isn't."""
+
+    __tablename__ = "vehicle_release_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    school_id: Mapped[int] = mapped_column(ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
+
+    registration: Mapped[str] = mapped_column(String(20), nullable=False)
+    driver_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[VehicleReleaseStatus] = mapped_column(Enum(VehicleReleaseStatus), default=VehicleReleaseStatus.PENDING)
+    decision_note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    requested_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     school: Mapped["School"] = relationship("School")
 

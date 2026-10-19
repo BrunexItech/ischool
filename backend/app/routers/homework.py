@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.teaching import ensure_can_grade
+from app.core.uploads import save_document
 from app.models.academics import SchoolClass, Student
 from app.models.homework import Homework, HomeworkSubmission, HomeworkSubmissionStatus
 from app.models.user import User, UserRole
@@ -92,6 +94,32 @@ def create_homework(
 
     hw = Homework(school_id=school_id, created_by=current_user.id, **payload.model_dump())
     db.add(hw)
+    db.commit()
+    db.refresh(hw)
+    return _list_item_out(db, hw)
+
+
+@router.post(
+    "/{homework_id}/attachment",
+    response_model=HomeworkListItemOut,
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("homework"))],
+)
+def upload_homework_attachment(
+    school_id: int,
+    homework_id: int,
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """The actual worksheet/assignment sheet as a PDF — the teacher's side
+    of attaching material, separate from a student's own photo upload of
+    their completed work."""
+    ensure_school_access(db, current_user, school_id)
+    hw = _get_homework(db, school_id, homework_id)
+    ensure_can_grade(db, current_user, hw.class_id, hw.subject_id)
+
+    relative_path = save_document(file, subdir=f"schools/{school_id}/homework", base_name=f"homework-{hw.id}")
+    hw.attachment_url = f"{settings.backend_url}/uploads/{relative_path}"
     db.commit()
     db.refresh(hw)
     return _list_item_out(db, hw)

@@ -1,7 +1,7 @@
 import enum
-from datetime import datetime
+from datetime import date as date_, datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -49,7 +49,9 @@ class LessonPlan(Base):
 class LessonPlanEntry(Base):
     """One slot in the plan — usually a week, but the label is free text
     ("Week 1", "Revision week", "CAT 1") so the structure never forces a
-    rigid week-by-week grid onto a term that doesn't actually run that way."""
+    rigid week-by-week grid onto a term that doesn't actually run that way.
+    An optional scheduled_date pins it to an actual calendar day, for a
+    teacher who plans lesson-by-lesson rather than week-by-week."""
 
     __tablename__ = "lesson_plan_entries"
 
@@ -58,6 +60,7 @@ class LessonPlanEntry(Base):
     order: Mapped[int] = mapped_column(Integer, nullable=False)
 
     label: Mapped[str] = mapped_column(String(100), nullable=False)
+    scheduled_date: Mapped[date_ | None] = mapped_column(Date, nullable=True)
     topic: Mapped[str] = mapped_column(String(255), nullable=False)
     objectives: Mapped[str | None] = mapped_column(Text, nullable=True)
     resources: Mapped[str | None] = mapped_column(Text, nullable=True)

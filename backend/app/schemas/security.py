@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.models.security import IncidentSeverity, SecurityIncidentStatus, VehicleDirection
+from app.models.security import IncidentSeverity, SecurityIncidentStatus, VehicleDirection, VehicleReleaseStatus
 
 
 class VisitorSignIn(BaseModel):
@@ -45,6 +45,31 @@ class VehicleLogOut(BaseModel):
     logged_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class VehicleReleaseRequestCreate(BaseModel):
+    registration: str
+    driver_name: str
+    purpose: str
+
+
+class VehicleReleaseRequestOut(BaseModel):
+    id: int
+    registration: str
+    driver_name: str
+    purpose: str
+    status: VehicleReleaseStatus
+    decision_note: str | None
+    requested_by: int | None
+    requested_at: datetime
+    decided_by: int | None
+    decided_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+class VehicleReleaseDecision(BaseModel):
+    note: str | None = None
 
 
 class EarlyPickupCreate(BaseModel):

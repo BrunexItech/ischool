@@ -131,3 +131,26 @@ def test_marking_an_entry_completed_updates_the_count(client, db_session, school
     )
     refreshed = client.get(f"/schools/{school.id}/lesson-plans/{plan['id']}", headers=headers).json()
     assert refreshed["completed_count"] == 1
+
+
+def test_an_entry_can_be_pinned_to_an_actual_calendar_date(client, db_session, school, school_admin_token):
+    school_class, subject = _setup_scope(db_session, school, _teacher_user(db_session, school))
+    headers = auth_headers(school_admin_token)
+    plan = client.post(
+        f"/schools/{school.id}/lesson-plans",
+        headers=headers,
+        json={"class_id": school_class.id, "subject_id": subject.id, "term": "Term 1 2026"},
+    ).json()
+    entry = client.post(
+        f"/schools/{school.id}/lesson-plans/{plan['id']}/entries",
+        headers=headers,
+        json={"order": 1, "label": "Monday lesson", "scheduled_date": "2026-11-02", "topic": "Fractions"},
+    ).json()
+    assert entry["scheduled_date"] == "2026-11-02"
+
+    updated = client.patch(
+        f"/schools/{school.id}/lesson-plans/{plan['id']}/entries/{entry['id']}",
+        headers=headers,
+        json={"scheduled_date": "2026-11-03"},
+    ).json()
+    assert updated["scheduled_date"] == "2026-11-03"

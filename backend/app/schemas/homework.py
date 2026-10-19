@@ -23,6 +23,7 @@ class HomeworkOut(BaseModel):
     subject_id: int
     title: str
     instructions: str | None
+    attachment_url: str | None
     due_date: date
     allow_digital_submission: bool
     created_by: int | None
@@ -64,6 +65,7 @@ class HomeworkForStudentOut(BaseModel):
     subject_name: str
     title: str
     instructions: str | None
+    attachment_url: str | None
     due_date: date
     allow_digital_submission: bool
     status: HomeworkSubmissionStatus

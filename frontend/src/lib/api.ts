@@ -751,6 +751,21 @@ export interface VehicleLogEntry {
   logged_at: string;
 }
 
+export type VehicleReleaseStatus = "pending" | "approved" | "rejected";
+
+export interface VehicleReleaseRequest {
+  id: number;
+  registration: string;
+  driver_name: string;
+  purpose: string;
+  status: VehicleReleaseStatus;
+  decision_note: string | null;
+  requested_by: number | null;
+  requested_at: string;
+  decided_by: number | null;
+  decided_at: string | null;
+}
+
 export interface EarlyPickup {
   id: number;
   student_id: number;
@@ -1075,6 +1090,7 @@ export interface LessonPlanEntry {
   id: number;
   order: number;
   label: string;
+  scheduled_date: string | null;
   topic: string;
   objectives: string | null;
   resources: string | null;
@@ -1109,6 +1125,7 @@ export interface Homework {
   subject_id: number;
   title: string;
   instructions: string | null;
+  attachment_url: string | null;
   due_date: string;
   allow_digital_submission: boolean;
   created_by: number | null;
@@ -1142,6 +1159,7 @@ export interface HomeworkForStudent {
   subject_name: string;
   title: string;
   instructions: string | null;
+  attachment_url: string | null;
   due_date: string;
   allow_digital_submission: boolean;
   status: HomeworkSubmissionStatus;
@@ -1590,6 +1608,13 @@ export const api = {
 
   getChildPickupDropoff: (token: string, studentId: number) =>
     request<PickupDropoffLog[]>(`/portal/students/${studentId}/pickup-dropoff`, {}, token),
+
+  reportPickupDropoff: (token: string, studentId: number, eventType: "pickup" | "dropoff", notes?: string) =>
+    request<PickupDropoffLog>(
+      `/portal/students/${studentId}/pickup-dropoff`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event_type: eventType, notes }) },
+      token
+    ),
 
   // --- Finance ---
 
@@ -2287,6 +2312,12 @@ export const api = {
   getHomework: (token: string, schoolId: number, homeworkId: number) =>
     request<HomeworkDetail>(`/schools/${schoolId}/homework/${homeworkId}`, {}, token),
 
+  uploadHomeworkAttachment: (token: string, schoolId: number, homeworkId: number, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<HomeworkListItem>(`/schools/${schoolId}/homework/${homeworkId}/attachment`, { method: "POST", body: form }, token);
+  },
+
   reviewHomeworkSubmission: (
     token: string,
     schoolId: number,
@@ -2316,7 +2347,7 @@ export const api = {
     token: string,
     schoolId: number,
     planId: number,
-    payload: { order: number; label: string; topic: string; objectives?: string; resources?: string; notes?: string }
+    payload: { order: number; label: string; scheduled_date?: string; topic: string; objectives?: string; resources?: string; notes?: string }
   ) =>
     request<LessonPlanEntry>(
       `/schools/${schoolId}/lesson-plans/${planId}/entries`,
@@ -2328,7 +2359,7 @@ export const api = {
     token: string,
     schoolId: number,
     planId: number,
-    entries: { order: number; label: string; topic: string; objectives?: string; resources?: string; notes?: string }[]
+    entries: { order: number; label: string; scheduled_date?: string; topic: string; objectives?: string; resources?: string; notes?: string }[]
   ) =>
     request<LessonPlanDetail>(
       `/schools/${schoolId}/lesson-plans/${planId}/entries`,
@@ -2341,7 +2372,7 @@ export const api = {
     schoolId: number,
     planId: number,
     entryId: number,
-    payload: Partial<{ order: number; label: string; topic: string; objectives: string; resources: string; notes: string; status: LessonPlanEntryStatus }>
+    payload: Partial<{ order: number; label: string; scheduled_date: string; topic: string; objectives: string; resources: string; notes: string; status: LessonPlanEntryStatus }>
   ) =>
     request<LessonPlanEntry>(
       `/schools/${schoolId}/lesson-plans/${planId}/entries/${entryId}`,
@@ -2495,6 +2526,34 @@ export const api = {
     request<VehicleLogEntry>(
       `/schools/${schoolId}/security/vehicles`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listVehicleReleaseRequests: (token: string, schoolId: number, statusFilter?: VehicleReleaseStatus) =>
+    request<VehicleReleaseRequest[]>(
+      `/schools/${schoolId}/security/vehicles/release-requests${statusFilter ? `?status=${statusFilter}` : ""}`,
+      {},
+      token
+    ),
+
+  createVehicleReleaseRequest: (token: string, schoolId: number, payload: { registration: string; driver_name: string; purpose: string }) =>
+    request<VehicleReleaseRequest>(
+      `/schools/${schoolId}/security/vehicles/release-requests`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  approveVehicleReleaseRequest: (token: string, schoolId: number, requestId: number, note?: string) =>
+    request<VehicleReleaseRequest>(
+      `/schools/${schoolId}/security/vehicles/release-requests/${requestId}/approve`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) },
+      token
+    ),
+
+  rejectVehicleReleaseRequest: (token: string, schoolId: number, requestId: number, note?: string) =>
+    request<VehicleReleaseRequest>(
+      `/schools/${schoolId}/security/vehicles/release-requests/${requestId}/reject`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) },
       token
     ),
 

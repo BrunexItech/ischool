@@ -40,15 +40,99 @@ def test_duplicate_visitor_sign_in_rejected(client, school_admin_token, school):
 
 
 def test_vehicle_log_rejects_same_direction_twice(client, school_admin_token, school):
-    payload = {"registration": "KDG 340L", "direction": "out", "driver_name": "Peter Rono", "purpose": "Airport run"}
+    payload = {"registration": "KDG 340L", "direction": "in", "driver_name": "Peter Rono", "purpose": "Airport run"}
     first = client.post(f"/schools/{school.id}/security/vehicles", headers=auth_headers(school_admin_token), json=payload)
     assert first.status_code == 201
     second = client.post(f"/schools/{school.id}/security/vehicles", headers=auth_headers(school_admin_token), json=payload)
     assert second.status_code == 400
 
-    payload_in = {**payload, "direction": "in"}
-    back = client.post(f"/schools/{school.id}/security/vehicles", headers=auth_headers(school_admin_token), json=payload_in)
-    assert back.status_code == 201
+
+def test_vehicle_cannot_be_logged_out_directly(client, school_admin_token, school):
+    """Leaving always goes through a release request now — this endpoint
+    only ever accepts 'in'."""
+    payload = {"registration": "KDG 999Z", "direction": "out", "driver_name": "Someone", "purpose": "Leaving"}
+    response = client.post(f"/schools/{school.id}/security/vehicles", headers=auth_headers(school_admin_token), json=payload)
+    assert response.status_code == 400
+
+
+def test_release_request_needs_the_vehicle_logged_in_first(client, security_token, school):
+    response = client.post(
+        f"/schools/{school.id}/security/vehicles/release-requests",
+        headers=auth_headers(security_token),
+        json={"registration": "KCX 111A", "driver_name": "Jane", "purpose": "Delivery"},
+    )
+    assert response.status_code == 400
+
+
+def test_full_release_request_approval_flow(client, security_token, school_admin_token, school):
+    reg = "KCX 222B"
+    client.post(
+        f"/schools/{school.id}/security/vehicles",
+        headers=auth_headers(security_token),
+        json={"registration": reg, "direction": "in", "driver_name": "Driver One", "purpose": "Supplies delivery"},
+    )
+
+    request_response = client.post(
+        f"/schools/{school.id}/security/vehicles/release-requests",
+        headers=auth_headers(security_token),
+        json={"registration": reg, "driver_name": "Driver One", "purpose": "Leaving after delivery"},
+    )
+    assert request_response.status_code == 201
+    request_id = request_response.json()["id"]
+    assert request_response.json()["status"] == "pending"
+
+    # security cannot approve its own request
+    denied = client.post(
+        f"/schools/{school.id}/security/vehicles/release-requests/{request_id}/approve",
+        headers=auth_headers(security_token),
+        json={},
+    )
+    assert denied.status_code == 403
+
+    approved = client.post(
+        f"/schools/{school.id}/security/vehicles/release-requests/{request_id}/approve",
+        headers=auth_headers(school_admin_token),
+        json={"note": "Confirmed with supplier"},
+    )
+    assert approved.status_code == 200
+    assert approved.json()["status"] == "approved"
+
+    logs = client.get(f"/schools/{school.id}/security/vehicles", headers=auth_headers(school_admin_token)).json()
+    assert any(l["registration"] == reg and l["direction"] == "out" for l in logs)
+
+    # already decided, can't approve twice
+    again = client.post(
+        f"/schools/{school.id}/security/vehicles/release-requests/{request_id}/approve",
+        headers=auth_headers(school_admin_token),
+        json={},
+    )
+    assert again.status_code == 400
+
+
+def test_release_request_can_be_rejected(client, security_token, school_admin_token, school):
+    reg = "KCX 333C"
+    client.post(
+        f"/schools/{school.id}/security/vehicles",
+        headers=auth_headers(security_token),
+        json={"registration": reg, "direction": "in", "driver_name": "Driver Two", "purpose": "Delivery"},
+    )
+    request_response = client.post(
+        f"/schools/{school.id}/security/vehicles/release-requests",
+        headers=auth_headers(security_token),
+        json={"registration": reg, "driver_name": "Driver Two", "purpose": "Leaving"},
+    )
+    request_id = request_response.json()["id"]
+
+    rejected = client.post(
+        f"/schools/{school.id}/security/vehicles/release-requests/{request_id}/reject",
+        headers=auth_headers(school_admin_token),
+        json={"note": "Wait for manager confirmation"},
+    )
+    assert rejected.status_code == 200
+    assert rejected.json()["status"] == "rejected"
+
+    logs = client.get(f"/schools/{school.id}/security/vehicles", headers=auth_headers(school_admin_token)).json()
+    assert not any(l["registration"] == reg and l["direction"] == "out" for l in logs)
 
 
 def test_early_pickup_log(client, school_admin_token, school, db_session):

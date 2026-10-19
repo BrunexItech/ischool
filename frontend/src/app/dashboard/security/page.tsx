@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Bell, Plus, LogOut as SignOutIcon, ShieldAlert, Search, Siren } from "lucide-react";
+import { Bell, CheckCircle2, Plus, LogOut as SignOutIcon, ShieldAlert, Search, Siren, XCircle } from "lucide-react";
 import {
   api,
   ApiError,
@@ -13,8 +13,8 @@ import {
   SecurityAlert,
   SecurityIncident,
   Student,
-  VehicleDirection,
   VehicleLogEntry,
+  VehicleReleaseRequest,
   Visitor,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -461,17 +461,115 @@ function PassesTab() {
   );
 }
 
+function RequestReleaseDialog({ log, onRequested }: { log: VehicleLogEntry; onRequested: () => void }) {
+  const { token, user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [purpose, setPurpose] = useState(log.purpose);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !user?.school_id) return;
+    setSubmitting(true);
+    try {
+      await api.createVehicleReleaseRequest(token, user.school_id, {
+        registration: log.registration,
+        driver_name: log.driver_name,
+        purpose,
+      });
+      toast.success(`Release requested for ${log.registration} — waiting on admin approval`);
+      setOpen(false);
+      onRequested();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to request release");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button size="sm" variant="outline"><SignOutIcon /> Request release</Button>} />
+      <DialogContent>
+        <DialogHeader><DialogTitle>Request release — {log.registration}</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <div className="grid gap-1.5">
+            <Label>Purpose for leaving</Label>
+            <Input required value={purpose} onChange={(e) => setPurpose(e.target.value)} />
+          </div>
+          <p className="text-xs text-muted-foreground">An admin or supervisor needs to approve this before the gate log shows it as out.</p>
+          <Button disabled={submitting} type="submit">
+            {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Sending..." : "Send for approval"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ReleaseRequestsCard({ requests, canDecide, onDecided }: { requests: VehicleReleaseRequest[]; canDecide: boolean; onDecided: () => void }) {
+  const { token, user } = useAuth();
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  async function decide(requestId: number, action: "approve" | "reject") {
+    if (!token || !user?.school_id) return;
+    setBusyId(requestId);
+    try {
+      if (action === "approve") await api.approveVehicleReleaseRequest(token, user.school_id, requestId);
+      else await api.rejectVehicleReleaseRequest(token, user.school_id, requestId);
+      toast.success(action === "approve" ? "Release approved" : "Release rejected");
+      onDecided();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to record decision");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (requests.length === 0) return null;
+
+  return (
+    <Card className="border-amber-300/60 bg-amber-50/50 dark:bg-amber-950/10">
+      <CardContent className="flex flex-col gap-3 pt-4">
+        <p className="text-sm font-semibold">Pending vehicle releases</p>
+        {requests.map((r) => (
+          <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3">
+            <div>
+              <p className="text-sm font-medium font-mono">{r.registration}</p>
+              <p className="text-xs text-muted-foreground">{r.driver_name} · {r.purpose} · requested {new Date(r.requested_at).toLocaleString()}</p>
+            </div>
+            {canDecide ? (
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" disabled={busyId === r.id} onClick={() => decide(r.id, "reject")}><XCircle /> Reject</Button>
+                <Button size="sm" disabled={busyId === r.id} onClick={() => decide(r.id, "approve")}><CheckCircle2 /> Approve</Button>
+              </div>
+            ) : (
+              <Badge variant="secondary">Awaiting admin</Badge>
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function VehiclesTab() {
   const { token, user } = useAuth();
   const [logs, setLogs] = useState<VehicleLogEntry[]>([]);
+  const [releaseRequests, setReleaseRequests] = useState<VehicleReleaseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ registration: "", direction: "in" as VehicleDirection, driver_name: "", purpose: "" });
+  const [form, setForm] = useState({ registration: "", driver_name: "", purpose: "" });
+
+  const canDecide = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
 
   const reload = () => {
     if (!token || !user?.school_id) return;
-    api.listVehicleLogs(token, user.school_id).then(setLogs).finally(() => setLoading(false));
+    Promise.all([
+      api.listVehicleLogs(token, user.school_id).then(setLogs),
+      api.listVehicleReleaseRequests(token, user.school_id, "pending").then(setReleaseRequests),
+    ]).finally(() => setLoading(false));
   };
   useEffect(reload, [token, user?.school_id]);
 
@@ -480,10 +578,10 @@ function VehiclesTab() {
     if (!token || !user?.school_id) return;
     setSubmitting(true);
     try {
-      await api.logVehicle(token, user.school_id, { ...form, registration: form.registration.toUpperCase() });
-      toast.success(`${form.registration.toUpperCase()} logged ${form.direction}`);
+      await api.logVehicle(token, user.school_id, { ...form, direction: "in", registration: form.registration.toUpperCase() });
+      toast.success(`${form.registration.toUpperCase()} logged in`);
       setOpen(false);
-      setForm({ registration: "", direction: "in", driver_name: "", purpose: "" });
+      setForm({ registration: "", driver_name: "", purpose: "" });
       reload();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to log vehicle");
@@ -494,55 +592,64 @@ function VehiclesTab() {
 
   if (loading) return <PageLoader />;
 
+  // Latest entry per registration tells us who's currently on the premises.
+  const latestByRegistration = new Map<string, VehicleLogEntry>();
+  for (const l of logs) {
+    const existing = latestByRegistration.get(l.registration);
+    if (!existing || new Date(l.logged_at) > new Date(existing.logged_at)) latestByRegistration.set(l.registration, l);
+  }
+  const pendingRegistrations = new Set(releaseRequests.map((r) => r.registration));
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button><Plus />Log vehicle</Button>} />
+          <DialogTrigger render={<Button><Plus />Log vehicle in</Button>} />
           <DialogContent>
-            <DialogHeader><DialogTitle>Log vehicle</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Log vehicle in</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label>Registration</Label>
                 <Input required className="uppercase" value={form.registration} onChange={(e) => setForm((f) => ({ ...f, registration: e.target.value }))} />
               </div>
               <div className="grid gap-1.5">
-                <Label>Direction</Label>
-                <Select value={form.direction} onValueChange={(v) => v && setForm((f) => ({ ...f, direction: v as VehicleDirection }))}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="in">In</SelectItem>
-                    <SelectItem value="out">Out</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
                 <Label>Driver</Label>
                 <Input required value={form.driver_name} onChange={(e) => setForm((f) => ({ ...f, driver_name: e.target.value }))} />
               </div>
-              <div className="grid gap-1.5">
+              <div className="col-span-2 grid gap-1.5">
                 <Label>Purpose</Label>
                 <Input required value={form.purpose} onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))} />
               </div>
               <Button disabled={submitting} type="submit" className="col-span-2">
-                {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Logging..." : "Log"}
+                {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Logging..." : "Log in"}
               </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
+
+      <ReleaseRequestsCard requests={releaseRequests} canDecide={canDecide} onDecided={reload} />
+
       <div className="flex flex-col gap-2">
-        {logs.map((l) => (
-          <Card key={l.id}>
-            <CardContent className="flex items-center justify-between gap-3 pt-4">
-              <div>
-                <p className="text-sm font-medium font-mono">{l.registration}</p>
-                <p className="text-xs text-muted-foreground">{l.driver_name} · {l.purpose} · {new Date(l.logged_at).toLocaleString()}</p>
-              </div>
-              <Badge variant={l.direction === "in" ? "secondary" : "outline"} className="capitalize">{l.direction}</Badge>
-            </CardContent>
-          </Card>
-        ))}
+        {logs.map((l) => {
+          const isCurrentlyIn = l.direction === "in" && latestByRegistration.get(l.registration)?.id === l.id;
+          const hasPendingRelease = pendingRegistrations.has(l.registration);
+          return (
+            <Card key={l.id}>
+              <CardContent className="flex items-center justify-between gap-3 pt-4">
+                <div>
+                  <p className="text-sm font-medium font-mono">{l.registration}</p>
+                  <p className="text-xs text-muted-foreground">{l.driver_name} · {l.purpose} · {new Date(l.logged_at).toLocaleString()}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isCurrentlyIn && !hasPendingRelease && <RequestReleaseDialog log={l} onRequested={reload} />}
+                  {isCurrentlyIn && hasPendingRelease && <Badge variant="secondary">Release pending</Badge>}
+                  <Badge variant={l.direction === "in" ? "secondary" : "outline"} className="capitalize">{l.direction}</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
         {logs.length === 0 && <p className="text-sm text-muted-foreground">No vehicle movements logged.</p>}
       </div>
     </div>

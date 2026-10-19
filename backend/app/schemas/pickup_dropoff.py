@@ -12,6 +12,14 @@ class PickupDropoffCreate(BaseModel):
     occurred_at: datetime | None = None  # defaults to now if omitted
 
 
+class PortalPickupDropoffCreate(BaseModel):
+    """A parent's own one-tap report — who they are and when is set by the
+    server, never typed in, so the record can't be backdated or misattributed."""
+
+    event_type: PickupDropoffType
+    notes: str | None = None
+
+
 class PickupDropoffOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

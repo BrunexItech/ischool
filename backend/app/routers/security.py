@@ -12,7 +12,10 @@ from app.models.security import (
     SecurityAlert,
     SecurityIncident,
     SecurityIncidentStatus,
+    VehicleDirection,
     VehicleLog,
+    VehicleReleaseRequest,
+    VehicleReleaseStatus,
     VisitorLog,
 )
 from app.models.user import User, UserRole
@@ -27,6 +30,9 @@ from app.schemas.security import (
     SecurityIncidentOut,
     VehicleLogCreate,
     VehicleLogOut,
+    VehicleReleaseDecision,
+    VehicleReleaseRequestCreate,
+    VehicleReleaseRequestOut,
     VisitorOut,
     VisitorSignIn,
 )
@@ -34,6 +40,7 @@ from app.schemas.security import (
 router = APIRouter(prefix="/schools/{school_id}/security", tags=["security"])
 
 STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.STAFF, UserRole.SECURITY)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
 
 
 def _student_or_404(db: Session, school_id: int, student_id: int) -> Student:
@@ -149,7 +156,16 @@ def list_vehicle_logs(school_id: int, db: Session = Depends(get_db), current_use
 def log_vehicle(
     school_id: int, payload: VehicleLogCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
+    """Entering is unrestricted — a vehicle arriving poses no risk, so
+    security logs it straight away. Leaving is a different story: that
+    direction only ever gets written by approving a release request, never
+    through this endpoint."""
     ensure_school_access(db, current_user, school_id)
+    if payload.direction == VehicleDirection.OUT:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "A vehicle can't be logged out directly — raise a release request for admin approval first",
+        )
     last = (
         db.query(VehicleLog)
         .filter_by(school_id=school_id, registration=payload.registration)
@@ -164,6 +180,129 @@ def log_vehicle(
     db.commit()
     db.refresh(entry)
     return entry
+
+
+# --- Vehicle release requests (security asks, admin approves, only then does the vehicle actually leave) ---
+
+
+@router.get(
+    "/vehicles/release-requests",
+    response_model=list[VehicleReleaseRequestOut],
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def list_release_requests(
+    school_id: int,
+    status_filter: VehicleReleaseStatus | None = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(db, current_user, school_id)
+    query = db.query(VehicleReleaseRequest).filter_by(school_id=school_id)
+    if status_filter is not None:
+        query = query.filter_by(status=status_filter)
+    return query.order_by(VehicleReleaseRequest.requested_at.desc()).all()
+
+
+@router.post(
+    "/vehicles/release-requests",
+    response_model=VehicleReleaseRequestOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("security"))],
+)
+def create_release_request(
+    school_id: int,
+    payload: VehicleReleaseRequestCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(db, current_user, school_id)
+    last = (
+        db.query(VehicleLog)
+        .filter_by(school_id=school_id, registration=payload.registration)
+        .order_by(VehicleLog.logged_at.desc())
+        .first()
+    )
+    if last is None or last.direction != VehicleDirection.IN:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{payload.registration} isn't currently logged in on the premises")
+    pending = (
+        db.query(VehicleReleaseRequest)
+        .filter_by(school_id=school_id, registration=payload.registration, status=VehicleReleaseStatus.PENDING)
+        .first()
+    )
+    if pending is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"A release request for {payload.registration} is already pending")
+
+    request_row = VehicleReleaseRequest(school_id=school_id, requested_by=current_user.id, **payload.model_dump())
+    db.add(request_row)
+    db.commit()
+    db.refresh(request_row)
+    return request_row
+
+
+@router.post(
+    "/vehicles/release-requests/{request_id}/approve",
+    response_model=VehicleReleaseRequestOut,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("security"))],
+)
+def approve_release_request(
+    school_id: int,
+    request_id: int,
+    payload: VehicleReleaseDecision,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(db, current_user, school_id)
+    request_row = db.query(VehicleReleaseRequest).filter_by(school_id=school_id, id=request_id).first()
+    if request_row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Release request not found")
+    if request_row.status != VehicleReleaseStatus.PENDING:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This request has already been decided")
+
+    request_row.status = VehicleReleaseStatus.APPROVED
+    request_row.decision_note = payload.note
+    request_row.decided_by = current_user.id
+    request_row.decided_at = datetime.now(timezone.utc)
+
+    db.add(
+        VehicleLog(
+            school_id=school_id,
+            registration=request_row.registration,
+            direction=VehicleDirection.OUT,
+            driver_name=request_row.driver_name,
+            purpose=request_row.purpose,
+        )
+    )
+    db.commit()
+    db.refresh(request_row)
+    return request_row
+
+
+@router.post(
+    "/vehicles/release-requests/{request_id}/reject",
+    response_model=VehicleReleaseRequestOut,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("security"))],
+)
+def reject_release_request(
+    school_id: int,
+    request_id: int,
+    payload: VehicleReleaseDecision,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(db, current_user, school_id)
+    request_row = db.query(VehicleReleaseRequest).filter_by(school_id=school_id, id=request_id).first()
+    if request_row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Release request not found")
+    if request_row.status != VehicleReleaseStatus.PENDING:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This request has already been decided")
+
+    request_row.status = VehicleReleaseStatus.REJECTED
+    request_row.decision_note = payload.note
+    request_row.decided_by = current_user.id
+    request_row.decided_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(request_row)
+    return request_row
 
 
 # --- Early pick-ups ---
