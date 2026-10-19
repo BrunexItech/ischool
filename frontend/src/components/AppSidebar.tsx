@@ -60,6 +60,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -173,7 +174,12 @@ export function AppSidebar() {
   const { user, token, logout, schoolOptions, viewingSchoolId, switchSchool } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [brand, setBrand] = useState<{ name: string; logo_url: string | null } | null>(null);
+
+  function closeOnMobile() {
+    if (isMobile) setOpenMobile(false);
+  }
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
@@ -258,7 +264,7 @@ export function AppSidebar() {
                         isActive={active}
                         tooltip={item.label}
                         render={
-                          <Link href={item.href}>
+                          <Link href={item.href} onClick={closeOnMobile}>
                             <item.icon />
                             <span>{item.label}</span>
                           </Link>
