@@ -47,6 +47,7 @@ import {
   ChevronsUpDown,
   Check,
   LogOut,
+  MessageSquareWarning,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -135,6 +136,7 @@ const NAV_SECTIONS = [
     label: "Communication",
     items: [
       { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["school_admin", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "supervisor"] },
+      { href: "/dashboard/complaints", label: "Complaints", icon: MessageSquareWarning, roles: ["school_admin", "teacher", "student", "parent", "super_admin", "supervisor"] },
       { href: "/dashboard/communication-settings", label: "Communication Settings", icon: MessageSquare, roles: ["school_admin", "supervisor"] },
     ],
   },

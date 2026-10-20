@@ -25,6 +25,7 @@ import {
   Eye,
   GraduationCap,
   UserCheck,
+  MessageSquareWarning,
 } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
 import { api, DashboardSummary, GroupSummary, MyClass, SupervisorOverview as SupervisorOverviewData } from "@/lib/api";
@@ -308,6 +309,7 @@ const QUICK_LINKS = [
   { href: "/dashboard/calendar", label: "Calendar", description: "Meetings, exams, and school events", icon: CalendarDays, roles: ["teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar"] },
   { href: "/dashboard/live-classes", label: "Live Classes", description: "Schedule and host video lessons", icon: Video, roles: ["teacher", "staff"] },
   { href: "/dashboard/announcements", label: "Announcements", description: "Share updates with your school", icon: Megaphone, roles: ["teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar"] },
+  { href: "/dashboard/complaints", label: "Complaints", description: "Raise a concern with the class teacher or principal", icon: MessageSquareWarning, roles: ["teacher", "student", "parent"] },
   { href: "/dashboard/children", label: "My Children", description: "View attendance, results, and fees", icon: HeartHandshake, roles: ["parent"] },
   { href: "/dashboard/my-records", label: "My Records", description: "Your attendance, results, and fees", icon: Award, roles: ["student"] },
   { href: "/dashboard/security", label: "Security", description: "Visitor log, vehicles, and gate incidents", icon: ShieldCheck, roles: ["security"] },

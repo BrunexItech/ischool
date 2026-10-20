@@ -1023,6 +1023,23 @@ export interface Supplier {
 
 export type TripStatus = "requested" | "approved" | "in_progress" | "completed" | "declined" | "cancelled";
 
+export interface Complaint {
+  id: number;
+  school_id: number;
+  raised_by: number;
+  raised_by_name: string;
+  raised_by_role: string;
+  audience: "class_teacher" | "principal";
+  class_id: number | null;
+  subject: string;
+  message: string;
+  status: "open" | "resolved";
+  response: string | null;
+  responded_by: number | null;
+  responded_at: string | null;
+  created_at: string;
+}
+
 export interface Trip {
   id: number;
   reference: string;
@@ -2017,6 +2034,26 @@ export const api = {
 
   getChildLiveClassJoinToken: (token: string, studentId: number, liveClassId: number) =>
     request<JoinToken>(`/portal/students/${studentId}/live-classes/${liveClassId}/join-token`, { method: "POST" }, token),
+
+  listComplaints: (token: string, schoolId: number) => request<Complaint[]>(`/schools/${schoolId}/complaints`, {}, token),
+
+  raiseComplaint: (
+    token: string,
+    schoolId: number,
+    payload: { audience: "class_teacher" | "principal"; subject: string; message: string; student_id?: number }
+  ) =>
+    request<Complaint>(
+      `/schools/${schoolId}/complaints`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  respondToComplaint: (token: string, schoolId: number, complaintId: number, response: string) =>
+    request<Complaint>(
+      `/schools/${schoolId}/complaints/${complaintId}/respond`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ response }) },
+      token
+    ),
 
   // --- Meals ---
 
