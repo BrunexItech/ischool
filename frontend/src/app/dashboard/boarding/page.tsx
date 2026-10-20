@@ -11,10 +11,12 @@ import {
   BoardingIncident,
   Exeat,
   RollSession,
+  SchoolClass,
   SickBayVisit,
   Student,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { ClassStudentPicker } from "@/components/ClassStudentPicker";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +46,7 @@ function useBoardingData() {
   const { token, user } = useAuth();
   const [houses, setHouses] = useState<BoardingHouse[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [assignments, setAssignments] = useState<BoardingAssignment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,11 +55,13 @@ function useBoardingData() {
     Promise.all([
       api.listBoardingHouses(token, user.school_id),
       api.listStudents(token, user.school_id),
+      api.listClasses(token, user.school_id),
       api.listBoardingAssignments(token, user.school_id),
     ])
-      .then(([h, s, a]) => {
+      .then(([h, s, c, a]) => {
         setHouses(h);
         setStudents(s);
+        setClasses(c);
         setAssignments(a);
       })
       .finally(() => setLoading(false));
@@ -64,7 +69,7 @@ function useBoardingData() {
 
   useEffect(reload, [token, user?.school_id]);
 
-  return { houses, students, assignments, loading, reload };
+  return { houses, students, classes, assignments, loading, reload };
 }
 
 function NewHouseDialog({ onCreated }: { onCreated: () => void }) {
@@ -123,7 +128,17 @@ function NewHouseDialog({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-function AssignBedDialog({ houses, unassigned, onAssigned }: { houses: BoardingHouse[]; unassigned: Student[]; onAssigned: () => void }) {
+function AssignBedDialog({
+  houses,
+  unassigned,
+  classes,
+  onAssigned,
+}: {
+  houses: BoardingHouse[];
+  unassigned: Student[];
+  classes: SchoolClass[];
+  onAssigned: () => void;
+}) {
   const { token, user } = useAuth();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ student_id: "", house_id: "", bed_number: "" });
@@ -152,14 +167,15 @@ function AssignBedDialog({ houses, unassigned, onAssigned }: { houses: BoardingH
       <DialogContent>
         <DialogHeader><DialogTitle>Assign a boarder to a bed</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 grid gap-1.5">
-            <Label>Learner</Label>
-            <Select value={form.student_id} onValueChange={(v) => v && setForm((f) => ({ ...f, student_id: v }))}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Select a learner" /></SelectTrigger>
-              <SelectContent>
-                {unassigned.map((s) => <SelectItem key={s.id} value={String(s.id)}>{studentName(s)} · {s.admission_number}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="col-span-2 grid gap-3 sm:grid-cols-2">
+            <ClassStudentPicker
+              classes={classes}
+              students={unassigned}
+              value={form.student_id}
+              onChange={(v) => setForm((f) => ({ ...f, student_id: v }))}
+              classLabel="Class"
+              studentLabel="Learner"
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>House</Label>
@@ -184,7 +200,7 @@ function AssignBedDialog({ houses, unassigned, onAssigned }: { houses: BoardingH
 }
 
 function HousesTab({ canEdit }: { canEdit: boolean }) {
-  const { houses, students, assignments, loading, reload } = useBoardingData();
+  const { houses, students, classes, assignments, loading, reload } = useBoardingData();
   const studentById = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
   const unassigned = useMemo(() => {
     const taken = new Set(assignments.map((a) => a.student_id));
@@ -196,7 +212,7 @@ function HousesTab({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end gap-2">
-        {canEdit && <AssignBedDialog houses={houses} unassigned={unassigned} onAssigned={reload} />}
+        {canEdit && <AssignBedDialog houses={houses} unassigned={unassigned} classes={classes} onAssigned={reload} />}
         {canEdit && <NewHouseDialog onCreated={reload} />}
       </div>
       <div className="grid gap-4 md:grid-cols-2">

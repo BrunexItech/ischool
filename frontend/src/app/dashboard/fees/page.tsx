@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api, AcademicTerm, ApiError, FeeInvoice, FeeInvoiceDetail, Student } from "@/lib/api";
+import { api, AcademicTerm, ApiError, FeeInvoice, FeeInvoiceDetail, SchoolClass, Student } from "@/lib/api";
+import { ClassStudentPicker } from "@/components/ClassStudentPicker";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
@@ -127,6 +128,7 @@ export default function FeesPage() {
   const { user, token } = useAuth();
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
   const [form, setForm] = useState({ student_id: "", term: "", category: "tuition", amount_due: "" });
   const [search, setSearch] = useState("");
@@ -138,6 +140,7 @@ export default function FeesPage() {
     Promise.all([
       api.listInvoices(token, user.school_id).then(setInvoices),
       api.listStudents(token, user.school_id).then(setStudents),
+      api.listClasses(token, user.school_id).then(setClasses),
       api.listAcademicTerms(token, user.school_id).then((ts) => {
         setTerms(ts);
         const current = ts.find((t) => t.is_current) ?? ts[0];
@@ -199,17 +202,12 @@ export default function FeesPage() {
       <Card>
         <CardContent className="pt-6">
           <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-3">
-            <div className="grid gap-1.5">
-              <Label>Student</Label>
-              <Select required value={form.student_id} onValueChange={(v) => setForm((f) => ({ ...f, student_id: v ?? "" }))}>
-                <SelectTrigger className="w-64"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  {students.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.first_name} {s.last_name} ({s.admission_number})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <ClassStudentPicker
+              classes={classes}
+              students={students}
+              value={form.student_id}
+              onChange={(v) => setForm((f) => ({ ...f, student_id: v }))}
+            />
             <div className="grid gap-1.5">
               <Label>Term</Label>
               {terms.length > 0 ? (

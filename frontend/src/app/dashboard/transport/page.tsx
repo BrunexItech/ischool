@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Bus, MapPin, UserCog } from "lucide-react";
-import { api, ApiError, Student, TransportRoute, Vehicle } from "@/lib/api";
+import { api, ApiError, SchoolClass, Student, TransportRoute, Vehicle } from "@/lib/api";
+import { ClassStudentPicker } from "@/components/ClassStudentPicker";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -60,6 +60,7 @@ export default function TransportPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [routes, setRoutes] = useState<TransportRoute[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   const [vehicleForm, setVehicleForm] = useState({ registration_number: "", capacity: "", driver_name: "", driver_phone: "" });
@@ -79,6 +80,7 @@ export default function TransportPage() {
       api.listVehicles(token, user.school_id).then(setVehicles),
       api.listTransportRoutes(token, user.school_id).then(setRoutes),
       api.listStudents(token, user.school_id).then(setStudents),
+      api.listClasses(token, user.school_id).then(setClasses),
     ]).finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
 
@@ -216,6 +218,14 @@ export default function TransportPage() {
                   ))}
                   {route.stops.length === 0 && <span className="text-xs text-muted-foreground">No stops yet.</span>}
                 </div>
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {students.filter((s) => s.transport_route_id === route.id).map((s) => (
+                    <Badge key={s.id} variant="secondary">{s.first_name} {s.last_name}</Badge>
+                  ))}
+                  {students.filter((s) => s.transport_route_id === route.id).length === 0 && (
+                    <span className="text-xs text-muted-foreground">No learners assigned yet.</span>
+                  )}
+                </div>
                 <AddStopForm routeId={route.id} onAdded={handleStopAdded} />
               </div>
             ))}
@@ -230,12 +240,12 @@ export default function TransportPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAssign} className="flex flex-wrap items-end gap-3">
-            <Select value={assignForm.student_id} onValueChange={(v) => v && setAssignForm((f) => ({ ...f, student_id: v }))}>
-              <SelectTrigger className="w-56"><SelectValue placeholder="Student" /></SelectTrigger>
-              <SelectContent>
-                {students.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.first_name} {s.last_name} ({s.admission_number})</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <ClassStudentPicker
+              classes={classes}
+              students={students}
+              value={assignForm.student_id}
+              onChange={(v) => setAssignForm((f) => ({ ...f, student_id: v }))}
+            />
             <Select value={assignForm.route_id} onValueChange={(v) => v && setAssignForm((f) => ({ ...f, route_id: v, stop_id: UNASSIGN }))}>
               <SelectTrigger className="w-48"><SelectValue placeholder="Route" /></SelectTrigger>
               <SelectContent>

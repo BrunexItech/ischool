@@ -93,6 +93,7 @@ export interface Student {
   has_guardian_account: boolean;
   user_id: number | null;
   guardian_user_id: number | null;
+  transport_route_id: number | null;
 }
 
 export interface Staff {
