@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.core.notify import notify
 from app.models.academics import Student
 from app.models.security import (
     EarlyPickup,
@@ -234,6 +235,19 @@ def create_release_request(
 
     request_row = VehicleReleaseRequest(school_id=school_id, requested_by=current_user.id, **payload.model_dump())
     db.add(request_row)
+    db.flush()
+
+    admins = db.query(User).filter(User.school_id == school_id, User.role.in_(ADMIN_ROLES)).all()
+    for admin in admins:
+        notify(
+            db,
+            school_id=school_id,
+            user_id=admin.id,
+            title="Vehicle release request",
+            body=f"{current_user.full_name} wants {payload.registration} released",
+            link="/dashboard/security",
+        )
+
     db.commit()
     db.refresh(request_row)
     return request_row
@@ -272,6 +286,14 @@ def approve_release_request(
             purpose=request_row.purpose,
         )
     )
+    notify(
+        db,
+        school_id=school_id,
+        user_id=request_row.requested_by,
+        title="Vehicle release approved",
+        body=f"{request_row.registration} has been approved for release",
+        link="/dashboard/security",
+    )
     db.commit()
     db.refresh(request_row)
     return request_row
@@ -300,6 +322,15 @@ def reject_release_request(
     request_row.decision_note = payload.note
     request_row.decided_by = current_user.id
     request_row.decided_at = datetime.now(timezone.utc)
+    notify(
+        db,
+        school_id=school_id,
+        user_id=request_row.requested_by,
+        title="Vehicle release rejected",
+        body=f"{request_row.registration} was not approved for release"
+        + (f": {payload.note}" if payload.note else ""),
+        link="/dashboard/security",
+    )
     db.commit()
     db.refresh(request_row)
     return request_row
