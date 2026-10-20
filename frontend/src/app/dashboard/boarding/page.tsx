@@ -368,7 +368,7 @@ function RollCallTab() {
   );
 }
 
-function NewExeatDialog({ students, onCreated }: { students: Student[]; onCreated: () => void }) {
+function NewExeatDialog({ students, classes, onCreated }: { students: Student[]; classes: SchoolClass[]; onCreated: () => void }) {
   const { token, user } = useAuth();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -405,12 +405,14 @@ function NewExeatDialog({ students, onCreated }: { students: Student[]; onCreate
       <DialogContent>
         <DialogHeader><DialogTitle>Request a leave-out</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 grid gap-1.5">
-            <Label>Learner</Label>
-            <Select value={form.student_id} onValueChange={(v) => v && setForm((f) => ({ ...f, student_id: v }))}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Select a learner" /></SelectTrigger>
-              <SelectContent>{students.map((s) => <SelectItem key={s.id} value={String(s.id)}>{studentName(s)}</SelectItem>)}</SelectContent>
-            </Select>
+          <div className="col-span-2 grid gap-3 sm:grid-cols-2">
+            <ClassStudentPicker
+              classes={classes}
+              students={students}
+              value={form.student_id}
+              onChange={(v) => setForm((f) => ({ ...f, student_id: v }))}
+              studentLabel="Learner"
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>From</Label>
@@ -447,7 +449,7 @@ function NewExeatDialog({ students, onCreated }: { students: Student[]; onCreate
 
 function ExeatsTab({ canApprove }: { canApprove: boolean }) {
   const { token, user } = useAuth();
-  const { students, loading: studentsLoading } = useBoardingData();
+  const { students, classes, loading: studentsLoading } = useBoardingData();
   const [exeats, setExeats] = useState<Exeat[]>([]);
   const [loading, setLoading] = useState(true);
   const studentById = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
@@ -473,7 +475,7 @@ function ExeatsTab({ canApprove }: { canApprove: boolean }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end"><NewExeatDialog students={students.filter((s) => s.is_active)} onCreated={reload} /></div>
+      <div className="flex justify-end"><NewExeatDialog students={students.filter((s) => s.is_active)} classes={classes} onCreated={reload} /></div>
       <div className="flex flex-col gap-2">
         {exeats.map((e) => (
           <Card key={e.id}>
@@ -511,7 +513,7 @@ function ExeatsTab({ canApprove }: { canApprove: boolean }) {
 
 function SickBayTab() {
   const { token, user } = useAuth();
-  const { students, loading: studentsLoading } = useBoardingData();
+  const { students, classes, loading: studentsLoading } = useBoardingData();
   const [visits, setVisits] = useState<SickBayVisit[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -557,12 +559,14 @@ function SickBayTab() {
           <DialogContent>
             <DialogHeader><DialogTitle>Log a sick bay visit</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-              <div className="col-span-2 grid gap-1.5">
-                <Label>Learner</Label>
-                <Select value={form.student_id} onValueChange={(v) => v && setForm((f) => ({ ...f, student_id: v }))}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select a learner" /></SelectTrigger>
-                  <SelectContent>{students.map((s) => <SelectItem key={s.id} value={String(s.id)}>{studentName(s)}</SelectItem>)}</SelectContent>
-                </Select>
+              <div className="col-span-2 grid gap-3 sm:grid-cols-2">
+                <ClassStudentPicker
+                  classes={classes}
+                  students={students}
+                  value={form.student_id}
+                  onChange={(v) => setForm((f) => ({ ...f, student_id: v }))}
+                  studentLabel="Learner"
+                />
               </div>
               <div className="col-span-2 grid gap-1.5">
                 <Label>Complaint</Label>

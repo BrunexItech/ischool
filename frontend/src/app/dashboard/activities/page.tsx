@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, Trophy, Users } from "lucide-react";
-import { api, ApiError, Activity, ActivityDetail, Student } from "@/lib/api";
+import { api, ApiError, Activity, ActivityDetail, SchoolClass, Student } from "@/lib/api";
+import { ClassStudentPicker } from "@/components/ClassStudentPicker";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
@@ -13,10 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-function ManageParticipantsDialog({ activity, students, onChanged }: { activity: Activity; students: Student[]; onChanged: () => void }) {
+function ManageParticipantsDialog({ activity, students, classes, onChanged }: { activity: Activity; students: Student[]; classes: SchoolClass[]; onChanged: () => void }) {
   const { token, user } = useAuth();
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<ActivityDetail | null>(null);
@@ -66,12 +66,7 @@ function ManageParticipantsDialog({ activity, students, onChanged }: { activity:
           <DialogTitle>{activity.name} — participants</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-2">
-          <Select value={studentId} onValueChange={(v) => v && setStudentId(v)}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Student" /></SelectTrigger>
-            <SelectContent>
-              {students.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.first_name} {s.last_name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <ClassStudentPicker classes={classes} students={students} value={studentId} onChange={setStudentId} />
           <Input placeholder="Role (optional)" value={role} onChange={(e) => setRole(e.target.value)} className="w-40" />
           <Button size="sm" type="submit" disabled={submitting || !studentId}>{submitting ? "Adding..." : "Add"}</Button>
         </form>
@@ -94,6 +89,7 @@ export default function ActivitiesPage() {
   const { user, token, loading } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", category: "", date: "", description: "" });
@@ -109,9 +105,11 @@ export default function ActivitiesPage() {
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    Promise.all([api.listActivities(token, user.school_id).then(setActivities), api.listStudents(token, user.school_id).then(setStudents)]).finally(() =>
-      setDataLoading(false)
-    );
+    Promise.all([
+      api.listActivities(token, user.school_id).then(setActivities),
+      api.listStudents(token, user.school_id).then(setStudents),
+      api.listClasses(token, user.school_id).then(setClasses),
+    ]).finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -204,7 +202,7 @@ export default function ActivitiesPage() {
                 {a.description && <p className="mt-1 text-sm text-muted-foreground">{a.description}</p>}
               </div>
               <div className="flex items-center gap-2">
-                <ManageParticipantsDialog activity={a} students={students} onChanged={refresh} />
+                <ManageParticipantsDialog activity={a} students={students} classes={classes} onChanged={refresh} />
                 {(user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor") && (
                   <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(a.id)}><Trash2 /></Button>
                 )}

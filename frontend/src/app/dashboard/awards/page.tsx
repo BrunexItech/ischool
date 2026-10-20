@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Award as AwardIcon, Plus, Trash2 } from "lucide-react";
-import { api, ApiError, Award, Staff, Student } from "@/lib/api";
+import { api, ApiError, Award, SchoolClass, Staff, Student } from "@/lib/api";
+import { ClassStudentPicker } from "@/components/ClassStudentPicker";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
@@ -23,6 +24,7 @@ export default function AwardsPage() {
   const { user, token, loading } = useAuth();
   const [awards, setAwards] = useState<Award[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +49,7 @@ export default function AwardsPage() {
     Promise.all([
       api.listAwards(token, user.school_id).then(setAwards),
       api.listStudents(token, user.school_id).then(setStudents),
+      api.listClasses(token, user.school_id).then(setClasses),
       canAwardStaff ? api.listStaff(token, user.school_id).then(setStaff) : Promise.resolve(),
     ]).finally(() => setDataLoading(false));
   }, [token, user?.school_id, canAwardStaff]);
@@ -117,17 +120,24 @@ export default function AwardsPage() {
                 </Select>
               </div>
             )}
-            <div className="grid gap-1.5">
-              <Label>{canAwardStaff ? "Recipient" : "Student"}</Label>
-              <Select value={form.recipientId} onValueChange={(v) => v && setForm((f) => ({ ...f, recipientId: v }))}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Choose..." /></SelectTrigger>
-                <SelectContent>
-                  {form.recipientKind === "student"
-                    ? students.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.first_name} {s.last_name} ({s.admission_number})</SelectItem>)
-                    : staff.map((s) => <SelectItem key={s.user_id} value={String(s.user_id)}>{s.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {form.recipientKind === "student" ? (
+              <ClassStudentPicker
+                classes={classes}
+                students={students}
+                value={form.recipientId}
+                onChange={(v) => setForm((f) => ({ ...f, recipientId: v }))}
+              />
+            ) : (
+              <div className="grid gap-1.5">
+                <Label>Recipient</Label>
+                <Select value={form.recipientId} onValueChange={(v) => v && setForm((f) => ({ ...f, recipientId: v }))}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Choose..." /></SelectTrigger>
+                  <SelectContent>
+                    {staff.map((s) => <SelectItem key={s.user_id} value={String(s.user_id)}>{s.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-1.5">
               <Label>Award title</Label>
               <Input required placeholder="e.g. Most Improved Student" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />

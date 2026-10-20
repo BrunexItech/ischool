@@ -10,6 +10,7 @@ import {
   Exeat,
   IncidentSeverity,
   PatrolLogEntry,
+  SchoolClass,
   SecurityAlert,
   SecurityIncident,
   Student,
@@ -18,6 +19,7 @@ import {
   Visitor,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { ClassStudentPicker } from "@/components/ClassStudentPicker";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -341,6 +343,7 @@ function PassesTab() {
   const [exeats, setExeats] = useState<Exeat[]>([]);
   const [pickups, setPickups] = useState<EarlyPickup[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickupOpen, setPickupOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -349,11 +352,17 @@ function PassesTab() {
 
   const reload = () => {
     if (!token || !user?.school_id) return;
-    Promise.all([api.listExeats(token, user.school_id), api.listEarlyPickups(token, user.school_id), api.listStudents(token, user.school_id)])
-      .then(([e, p, s]) => {
+    Promise.all([
+      api.listExeats(token, user.school_id),
+      api.listEarlyPickups(token, user.school_id),
+      api.listStudents(token, user.school_id),
+      api.listClasses(token, user.school_id),
+    ])
+      .then(([e, p, s, c]) => {
         setExeats(e.filter((x) => ["approved", "out", "returned", "returned_late"].includes(x.status)));
         setPickups(p);
         setStudents(s);
+        setClasses(c);
       })
       .finally(() => setLoading(false));
   };
@@ -386,12 +395,14 @@ function PassesTab() {
           <DialogContent>
             <DialogHeader><DialogTitle>Day scholar early pick-up</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-              <div className="col-span-2 grid gap-1.5">
-                <Label>Learner</Label>
-                <Select value={form.student_id} onValueChange={(v) => v && setForm((f) => ({ ...f, student_id: v }))}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select a learner" /></SelectTrigger>
-                  <SelectContent>{students.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.first_name} {s.last_name}</SelectItem>)}</SelectContent>
-                </Select>
+              <div className="col-span-2 grid gap-3 sm:grid-cols-2">
+                <ClassStudentPicker
+                  classes={classes}
+                  students={students}
+                  value={form.student_id}
+                  onChange={(v) => setForm((f) => ({ ...f, student_id: v }))}
+                  studentLabel="Learner"
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label>Collected by</Label>
