@@ -22,6 +22,7 @@ import {
   StudentActivity,
   StudentTransport,
   TimetableSlot,
+  Trip,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -229,6 +230,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
   const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [reportingEvent, setReportingEvent] = useState<"pickup" | "dropoff" | null>(null);
 
@@ -267,6 +269,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       api.getChildPaymentMethods(token, studentId).then(setPaymentMethods).catch(() => setPaymentMethods(null)),
       api.getChildTimetable(token, studentId).then(setTimetable).catch(() => setTimetable([])),
       api.getChildLiveClasses(token, studentId).then(setLiveClasses).catch(() => setLiveClasses([])),
+      api.getChildTrips(token, studentId).then(setTrips).catch(() => setTrips([])),
     ]).finally(() => setLoading(false));
   }, [token, studentId]);
 
@@ -278,6 +281,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
         <TabsTrigger value="attendance">Attendance</TabsTrigger>
         <TabsTrigger value="timetable">Timetable</TabsTrigger>
         <TabsTrigger value="live-classes">Live Classes</TabsTrigger>
+        <TabsTrigger value="trips">Trips</TabsTrigger>
         <TabsTrigger value="results">Results</TabsTrigger>
         <TabsTrigger value="fees">Fees</TabsTrigger>
         <TabsTrigger value="transport">Transport</TabsTrigger>
@@ -367,6 +371,29 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
                         </Button>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="trips" className="mt-4">
+        <Card>
+          <CardContent className="pt-6">
+            {trips.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No trips involving this learner yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {trips.map((t) => (
+                  <div key={t.id} className="rounded-lg border p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium">{t.title}</p>
+                      <Badge variant={t.status === "cancelled" || t.status === "declined" ? "destructive" : "secondary"} className="capitalize">{t.status.replace("_", " ")}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t.destination} · {new Date(t.start_date + "T12:00:00").toLocaleDateString()} – {new Date(t.end_date + "T12:00:00").toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground">{t.purpose}</p>
                   </div>
                 ))}
               </div>

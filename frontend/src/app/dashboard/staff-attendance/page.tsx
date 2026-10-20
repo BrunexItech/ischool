@@ -137,6 +137,7 @@ function ClockCard() {
   const { token, user } = useAuth();
   const [today, setToday] = useState<StaffAttendanceRecord | null>(null);
   const [history, setHistory] = useState<StaffAttendanceRecord[]>([]);
+  const [historyDate, setHistoryDate] = useState("");
   const [duties, setDuties] = useState<DutyAssignment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -197,20 +198,26 @@ function ClockCard() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Your attendance history</CardTitle></CardHeader>
+        <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base">Your attendance history</CardTitle>
+          <div className="flex items-center gap-2">
+            <Input type="date" value={historyDate} onChange={(e) => setHistoryDate(e.target.value)} className="w-40" />
+            {historyDate && <Button variant="ghost" size="sm" onClick={() => setHistoryDate("")}>Clear</Button>}
+          </div>
+        </CardHeader>
         <Table>
           <TableHeader>
             <TableRow><TableHead>Date</TableHead><TableHead>Clock in</TableHead><TableHead>Clock out</TableHead></TableRow>
           </TableHeader>
           <TableBody>
-            {history.map((h) => (
+            {history.filter((h) => !historyDate || h.date === historyDate).map((h) => (
               <TableRow key={h.id}>
                 <TableCell>{new Date(h.date + "T12:00:00").toLocaleDateString()}</TableCell>
                 <TableCell>{fmtTime(h.clocked_in_at)}</TableCell>
                 <TableCell>{fmtTime(h.clocked_out_at)}</TableCell>
               </TableRow>
             ))}
-            {history.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted-foreground">No records yet.</TableCell></TableRow>}
+            {history.filter((h) => !historyDate || h.date === historyDate).length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted-foreground">No records for that filter.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Card>

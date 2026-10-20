@@ -18,6 +18,7 @@ from app.core.uploads import save_image
 from app.models.academics import Student
 from app.models.live_classes import LiveClass
 from app.models.timetable import TimetableSlot
+from app.models.trip import Trip
 from app.models.activity import Activity, ActivityParticipant
 from app.models.attendance import AttendanceRecord
 from app.models.award import Award
@@ -59,6 +60,7 @@ from app.schemas.pickup_dropoff import PickupDropoffOut, PortalPickupDropoffCrea
 from app.schemas.results import ReportCardOut, ResultOut
 from app.schemas.timetable import TimetableSlotDetailOut, TimetableSlotOut
 from app.schemas.transport import StudentTransportOut
+from app.schemas.trip import TripOut
 from app.routers.fees import _invoice_out
 
 router = APIRouter(prefix="/portal", tags=["portal"])
@@ -836,3 +838,19 @@ def get_child_live_class_join_token(
         can_publish=False,
     )
     return JoinTokenOut(token=token, url=settings.livekit_url, room_name=live_class.room_name, class_title=live_class.title)
+
+
+@router.get(
+    "/students/{student_id}/trips",
+    response_model=list[TripOut],
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT))],
+)
+def get_child_trips(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Trips naming this child's class or the child themself specifically —
+    not every school trip, just the ones that actually involve them."""
+    student = _owned_student(db, current_user, student_id)
+    trips = db.query(Trip).filter_by(school_id=student.school_id).order_by(Trip.start_date.desc()).all()
+    return [
+        t for t in trips
+        if (student.class_id is not None and student.class_id in t.class_ids) or student.id in t.student_ids
+    ]

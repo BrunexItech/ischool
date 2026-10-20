@@ -2012,6 +2012,9 @@ export const api = {
   getChildLiveClasses: (token: string, studentId: number) =>
     request<LiveClass[]>(`/portal/students/${studentId}/live-classes`, {}, token),
 
+  getChildTrips: (token: string, studentId: number) =>
+    request<Trip[]>(`/portal/students/${studentId}/trips`, {}, token),
+
   getChildLiveClassJoinToken: (token: string, studentId: number, liveClassId: number) =>
     request<JoinToken>(`/portal/students/${studentId}/live-classes/${liveClassId}/join-token`, { method: "POST" }, token),
 
