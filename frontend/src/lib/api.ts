@@ -2005,6 +2005,15 @@ export const api = {
   getChildTransport: (token: string, studentId: number) =>
     request<StudentTransport>(`/portal/students/${studentId}/transport`, {}, token),
 
+  getChildTimetable: (token: string, studentId: number) =>
+    request<TimetableSlot[]>(`/portal/students/${studentId}/timetable`, {}, token),
+
+  getChildLiveClasses: (token: string, studentId: number) =>
+    request<LiveClass[]>(`/portal/students/${studentId}/live-classes`, {}, token),
+
+  getChildLiveClassJoinToken: (token: string, studentId: number, liveClassId: number) =>
+    request<JoinToken>(`/portal/students/${studentId}/live-classes/${liveClassId}/join-token`, { method: "POST" }, token),
+
   // --- Meals ---
 
   listMealMenu: (token: string, schoolId: number, dateFrom?: string, dateTo?: string) => {

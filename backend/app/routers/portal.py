@@ -11,10 +11,13 @@ from app.core.exam_grading import finalize_submission, upsert_answer
 from app.core.mpesa import MpesaError, initiate_stk_push, query_stk_status
 from app.core.payments import apply_payment
 from app.core.pesapal import PesapalError, get_transaction_status, submit_order
+from app.core.livekit import generate_room_token
 from app.core.phone import normalize_kenyan_phone
 from app.core.report_card import build_report_card
 from app.core.uploads import save_image
 from app.models.academics import Student
+from app.models.live_classes import LiveClass
+from app.models.timetable import TimetableSlot
 from app.models.activity import Activity, ActivityParticipant
 from app.models.attendance import AttendanceRecord
 from app.models.award import Award
@@ -50,9 +53,11 @@ from app.schemas.exam import (
     ExamSubmissionOut,
 )
 from app.schemas.homework import HomeworkForStudentOut
+from app.schemas.live_classes import JoinTokenOut, LiveClassOut
 from app.schemas.meals import MealMenuOut
 from app.schemas.pickup_dropoff import PickupDropoffOut, PortalPickupDropoffCreate
 from app.schemas.results import ReportCardOut, ResultOut
+from app.schemas.timetable import TimetableSlotDetailOut, TimetableSlotOut
 from app.schemas.transport import StudentTransportOut
 from app.routers.fees import _invoice_out
 
@@ -759,3 +764,75 @@ def check_card_payment_status(
         db.refresh(transaction)
 
     return transaction
+
+
+@router.get(
+    "/students/{student_id}/timetable",
+    response_model=list[TimetableSlotDetailOut],
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("timetable"))],
+)
+def get_child_timetable(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    student = _owned_student(db, current_user, student_id)
+    if student.class_id is None:
+        return []
+    slots = (
+        db.query(TimetableSlot)
+        .filter_by(school_id=student.school_id, class_id=student.class_id)
+        .order_by(TimetableSlot.day_of_week, TimetableSlot.start_time)
+        .all()
+    )
+    return [
+        TimetableSlotDetailOut(
+            **TimetableSlotOut.model_validate(s).model_dump(),
+            class_name=s.school_class.name,
+            subject_name=s.subject.name,
+            teacher_name=s.teacher.full_name if s.teacher else None,
+        )
+        for s in slots
+    ]
+
+
+@router.get(
+    "/students/{student_id}/live-classes",
+    response_model=list[LiveClassOut],
+    dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT)), Depends(require_feature("live_classes"))],
+)
+def get_child_live_classes(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    student = _owned_student(db, current_user, student_id)
+    if student.class_id is None:
+        return []
+    return (
+        db.query(LiveClass)
+        .filter_by(school_id=student.school_id, class_id=student.class_id)
+        .order_by(LiveClass.scheduled_start.desc())
+        .all()
+    )
+
+
+@router.post(
+    "/students/{student_id}/live-classes/{live_class_id}/join-token",
+    response_model=JoinTokenOut,
+    dependencies=[Depends(require_roles(UserRole.STUDENT)), Depends(require_feature("live_classes"))],
+)
+def get_child_live_class_join_token(
+    student_id: int, live_class_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    """A student may only join a class scheduled for their own class — they
+    join to watch and participate, not to host, so they never get publish
+    rights over the whole room the way a teacher/admin host-token does."""
+    student = _owned_student(db, current_user, student_id)
+    live_class = (
+        db.query(LiveClass)
+        .filter_by(id=live_class_id, school_id=student.school_id, class_id=student.class_id)
+        .first()
+    )
+    if live_class is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Live class not found")
+
+    token = generate_room_token(
+        room=live_class.room_name,
+        identity=f"student-{current_user.id}",
+        name=current_user.full_name,
+        can_publish=False,
+    )
+    return JoinTokenOut(token=token, url=settings.livekit_url, room_name=live_class.room_name, class_title=live_class.title)

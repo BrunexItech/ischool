@@ -21,11 +21,19 @@ export default function HostRoomPage({ params }: { params: Promise<{ id: string 
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
+    if (user.role === "student") {
+      api
+        .getMyStudentRecord(token)
+        .then((student) => api.getChildLiveClassJoinToken(token, student.id, Number(id)))
+        .then(setJoinToken)
+        .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to join class"));
+      return;
+    }
     api
       .getHostToken(token, user.school_id, Number(id))
       .then(setJoinToken)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to join class"));
-  }, [token, user?.school_id, id]);
+  }, [token, user?.school_id, user?.role, id]);
 
   if (loading || !user) return null;
 
@@ -52,8 +60,8 @@ export default function HostRoomPage({ params }: { params: Promise<{ id: string 
         token={joinToken.token}
         serverUrl={joinToken.url}
         connect
-        video
-        audio
+        video={user?.role !== "student"}
+        audio={user?.role !== "student"}
         data-lk-theme="default"
         style={{ height: "100%" }}
         onDisconnected={() => router.push("/dashboard/live-classes")}

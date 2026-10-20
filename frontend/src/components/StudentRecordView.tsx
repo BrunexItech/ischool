@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, Clock, CreditCard, ExternalLink, FileText, LogIn, LogOut, PlayCircle, Smartphone, Upload, XCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, Circle, Clock, CreditCard, ExternalLink, FileText, LogIn, LogOut, PlayCircle, Smartphone, Upload, Video, XCircle } from "lucide-react";
 import {
   api,
   ApiError,
@@ -12,6 +13,7 @@ import {
   ExamForStudentListItem,
   FeeInvoice,
   HomeworkForStudent,
+  LiveClass,
   MealMenuEntry,
   PaymentMethods,
   PickupDropoffLog,
@@ -19,6 +21,7 @@ import {
   Result,
   StudentActivity,
   StudentTransport,
+  TimetableSlot,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,6 +40,8 @@ const ATTENDANCE_STYLE: Record<string, string> = {
   late: "text-amber-600",
   excused: "text-sky-600",
 };
+
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const FEE_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"> = {
   paid: "default",
@@ -210,6 +215,7 @@ function PayWithCardButton({ studentId, invoice }: { studentId: number; invoice:
 
 export function StudentRecordView({ studentId }: { studentId: number }) {
   const { token, user } = useAuth();
+  const router = useRouter();
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
@@ -221,6 +227,8 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
   const [studentActivities, setStudentActivities] = useState<StudentActivity[]>([]);
   const [pickupDropoff, setPickupDropoff] = useState<PickupDropoffLog[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
+  const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
+  const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [reportingEvent, setReportingEvent] = useState<"pickup" | "dropoff" | null>(null);
 
@@ -257,6 +265,8 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       api.getChildActivities(token, studentId).then(setStudentActivities).catch(() => setStudentActivities([])),
       api.getChildPickupDropoff(token, studentId).then(setPickupDropoff).catch(() => setPickupDropoff([])),
       api.getChildPaymentMethods(token, studentId).then(setPaymentMethods).catch(() => setPaymentMethods(null)),
+      api.getChildTimetable(token, studentId).then(setTimetable).catch(() => setTimetable([])),
+      api.getChildLiveClasses(token, studentId).then(setLiveClasses).catch(() => setLiveClasses([])),
     ]).finally(() => setLoading(false));
   }, [token, studentId]);
 
@@ -266,6 +276,8 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
     <Tabs defaultValue="attendance">
       <TabsList>
         <TabsTrigger value="attendance">Attendance</TabsTrigger>
+        <TabsTrigger value="timetable">Timetable</TabsTrigger>
+        <TabsTrigger value="live-classes">Live Classes</TabsTrigger>
         <TabsTrigger value="results">Results</TabsTrigger>
         <TabsTrigger value="fees">Fees</TabsTrigger>
         <TabsTrigger value="transport">Transport</TabsTrigger>
@@ -298,6 +310,68 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
               )}
             </TableBody>
           </Table>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="timetable" className="mt-4">
+        <Card>
+          <CardContent className="pt-6">
+            {timetable.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No timetable published for this class yet.</p>
+            ) : (
+              <div className="space-y-5">
+                {DAYS.map((day, i) => {
+                  const slots = timetable.filter((s) => s.day_of_week === i).sort((a, b) => a.start_time.localeCompare(b.start_time));
+                  if (slots.length === 0) return null;
+                  return (
+                    <div key={day}>
+                      <p className="mb-2 text-sm font-semibold">{day}</p>
+                      <div className="space-y-1.5">
+                        {slots.map((s) => (
+                          <div key={s.id} className="flex items-center justify-between rounded-lg border p-2.5 text-sm">
+                            <div>
+                              <p className="font-medium">{s.subject_name}</p>
+                              <p className="text-xs text-muted-foreground">{s.teacher_name ?? "—"}{s.room ? ` · ${s.room}` : ""}</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="live-classes" className="mt-4">
+        <Card>
+          <CardContent className="pt-6">
+            {liveClasses.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No online classes scheduled yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {liveClasses.map((lc) => (
+                  <div key={lc.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                    <div>
+                      <p className="font-medium">{lc.title}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(lc.scheduled_start).toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={lc.status === "live" ? "default" : "secondary"}>{lc.status}</Badge>
+                      {user?.role === "student" && lc.status !== "ended" && (
+                        <Button size="sm" onClick={() => router.push(`/live-classes/${lc.id}/room`)}>
+                          <Video /> Join
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
         </Card>
       </TabsContent>
 
