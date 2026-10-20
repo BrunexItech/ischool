@@ -260,12 +260,14 @@ function TrialBalanceTab() {
 function IncomeStatementTab() {
   const { token, user } = useAuth();
   const [data, setData] = useState<IncomeStatement | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.getIncomeStatement(token, user.school_id).then(setData);
+    api.getIncomeStatement(token, user.school_id).then(setData).catch(() => { toast.error("Failed to load the income statement"); setFailed(true); });
   }, [token, user?.school_id]);
 
+  if (failed) return <p className="text-sm text-muted-foreground">Couldn&apos;t load the income statement.</p>;
   if (!data) return <PageLoader />;
 
   return (
@@ -302,12 +304,14 @@ function IncomeStatementTab() {
 function BalanceSheetTab() {
   const { token, user } = useAuth();
   const [data, setData] = useState<BalanceSheet | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.getBalanceSheet(token, user.school_id).then(setData);
+    api.getBalanceSheet(token, user.school_id).then(setData).catch(() => { toast.error("Failed to load the balance sheet"); setFailed(true); });
   }, [token, user?.school_id]);
 
+  if (failed) return <p className="text-sm text-muted-foreground">Couldn&apos;t load the balance sheet.</p>;
   if (!data) return <PageLoader />;
 
   return (

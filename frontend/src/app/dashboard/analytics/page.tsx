@@ -55,6 +55,7 @@ export default function AnalyticsPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
   const canSeeFinance = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "bursar" || user?.role === "supervisor";
+  const financeOnly = user?.role === "bursar";
 
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
   const [selectedTerm, setSelectedTerm] = useState(ALL_TERMS);
@@ -95,8 +96,12 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Analytics" description="Real numbers from your own data — results, attendance, and finance trends." />
+      <PageHeader
+        title="Analytics"
+        description={financeOnly ? "Real numbers from your own data — income and expense trends." : "Real numbers from your own data — results, attendance, and finance trends."}
+      />
 
+      {!financeOnly && (
       <div className="flex items-center gap-3">
         <Select value={selectedTerm} onValueChange={(v) => v && setSelectedTerm(v)}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -106,7 +111,10 @@ export default function AnalyticsPage() {
           </SelectContent>
         </Select>
       </div>
+      )}
 
+      {!financeOnly && (
+      <>
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-3 pt-6">
@@ -188,8 +196,11 @@ export default function AnalyticsPage() {
           </ResponsiveContainer>
         </ChartCard>
       </div>
+      </>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {!financeOnly && (
         <ChartCard title="Attendance" description="Share of learners present or late, last 7 days" empty={!attendanceData.length}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={attendanceData} margin={{ left: -20, right: 8 }}>
@@ -207,6 +218,7 @@ export default function AnalyticsPage() {
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
+        )}
 
         {canSeeFinance && (
           <ChartCard title="Income vs. expenses" description="By month, from recorded fees and approved expenses" empty={!financeData.length}>
@@ -225,6 +237,7 @@ export default function AnalyticsPage() {
         )}
       </div>
 
+      {!financeOnly && (
       <Card>
         <CardHeader><CardTitle className="text-base">Top performers</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-2">
@@ -237,6 +250,7 @@ export default function AnalyticsPage() {
           {(!results || results.top_students.length === 0) && <p className="text-sm text-muted-foreground">No results yet.</p>}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
