@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LogIn, LogOut, Trash2, UserCheck } from "lucide-react";
-import { api, ApiError, PickupDropoffLog, Student } from "@/lib/api";
+import { api, ApiError, PickupDropoffLog, SchoolClass, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
@@ -20,6 +20,8 @@ export default function PickupDropoffPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [classId, setClassId] = useState("");
   const [studentId, setStudentId] = useState("");
   const [eventType, setEventType] = useState<"pickup" | "dropoff">("dropoff");
   const [personName, setPersonName] = useState("");
@@ -34,8 +36,13 @@ export default function PickupDropoffPage() {
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listStudents(token, user.school_id).then(setStudents).finally(() => setDataLoading(false));
+    Promise.all([
+      api.listStudents(token, user.school_id).then(setStudents),
+      api.listClasses(token, user.school_id).then(setClasses),
+    ]).finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
+
+  const studentsInClass = classId ? students.filter((s) => s.class_id === Number(classId)) : [];
 
   function loadLogs(sid: string) {
     if (!token || !user?.school_id || !sid) return;
@@ -86,11 +93,20 @@ export default function PickupDropoffPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label>Student</Label>
-              <Select value={studentId} onValueChange={(v) => v && setStudentId(v)}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Choose a student" /></SelectTrigger>
+              <Label>Class</Label>
+              <Select value={classId} onValueChange={(v) => { if (v) { setClassId(v); setStudentId(""); } }}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Choose a class" /></SelectTrigger>
                 <SelectContent>
-                  {students.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.first_name} {s.last_name} ({s.admission_number})</SelectItem>)}
+                  {classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Student</Label>
+              <Select value={studentId} onValueChange={(v) => v && setStudentId(v)} disabled={!classId}>
+                <SelectTrigger className="w-full"><SelectValue placeholder={classId ? "Choose a student" : "Pick a class first"} /></SelectTrigger>
+                <SelectContent>
+                  {studentsInClass.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.first_name} {s.last_name} ({s.admission_number})</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

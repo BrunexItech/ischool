@@ -273,6 +273,7 @@ function VisitorsTab() {
   const { token, user } = useAuth();
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [search, setSearch] = useState("");
+  const [date, setDate] = useState("");
   const [loading, setLoading] = useState(true);
 
   const reload = () => {
@@ -294,22 +295,19 @@ function VisitorsTab() {
   if (loading) return <PageLoader />;
   const sorted = [...visitors].sort((a, b) => (a.signed_out_at ? 1 : 0) - (b.signed_out_at ? 1 : 0));
   const q = search.trim().toLowerCase();
-  const filtered = !q
-    ? sorted
-    : sorted.filter(
-        (v) =>
-          v.name.toLowerCase().includes(q) ||
-          v.badge.toLowerCase().includes(q) ||
-          v.host_name.toLowerCase().includes(q) ||
-          v.purpose.toLowerCase().includes(q) ||
-          (v.vehicle_registration ?? "").toLowerCase().includes(q)
-      );
+  const filtered = sorted
+    .filter((v) => !q || v.name.toLowerCase().includes(q) || v.badge.toLowerCase().includes(q) || v.host_name.toLowerCase().includes(q) || v.purpose.toLowerCase().includes(q) || (v.vehicle_registration ?? "").toLowerCase().includes(q))
+    .filter((v) => !date || v.signed_in_at.slice(0, 10) === date);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative max-w-sm">
-        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search by name, badge, host, or purpose..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-wrap gap-2">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search by name, badge, host, or purpose..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-auto" />
+        {date && <Button variant="ghost" size="sm" onClick={() => setDate("")}>Clear date</Button>}
       </div>
       {filtered.map((v) => (
         <Card key={v.id}>
@@ -561,6 +559,7 @@ function VehiclesTab() {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ registration: "", driver_name: "", purpose: "" });
+  const [date, setDate] = useState("");
 
   const canDecide = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
 
@@ -630,8 +629,13 @@ function VehiclesTab() {
 
       <ReleaseRequestsCard requests={releaseRequests} canDecide={canDecide} onDecided={reload} />
 
+      <div className="flex flex-wrap items-center gap-2">
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-auto" />
+        {date && <Button variant="ghost" size="sm" onClick={() => setDate("")}>Clear date</Button>}
+      </div>
+
       <div className="flex flex-col gap-2">
-        {logs.map((l) => {
+        {logs.filter((l) => !date || l.logged_at.slice(0, 10) === date).map((l) => {
           const isCurrentlyIn = l.direction === "in" && latestByRegistration.get(l.registration)?.id === l.id;
           const hasPendingRelease = pendingRegistrations.has(l.registration);
           return (
@@ -650,7 +654,7 @@ function VehiclesTab() {
             </Card>
           );
         })}
-        {logs.length === 0 && <p className="text-sm text-muted-foreground">No vehicle movements logged.</p>}
+        {logs.filter((l) => !date || l.logged_at.slice(0, 10) === date).length === 0 && <p className="text-sm text-muted-foreground">No vehicle movements for that filter.</p>}
       </div>
     </div>
   );
