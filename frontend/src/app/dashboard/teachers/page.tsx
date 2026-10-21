@@ -102,6 +102,7 @@ export default function TeachersPage() {
               <TableRow>
                 <TableHead>Teacher</TableHead>
                 <TableHead>Staff no. / dept.</TableHead>
+                <TableHead>TSC #</TableHead>
                 <TableHead>Class teacher of</TableHead>
                 <TableHead>Teaches</TableHead>
               </TableRow>
@@ -119,6 +120,7 @@ export default function TeachersPage() {
                     <TableCell className="text-xs text-muted-foreground">
                       {t.staff_number} {t.department ? `· ${t.department}` : ""}
                     </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{t.tsc_number ?? "—"}</TableCell>
                     <TableCell>
                       {homerooms.length === 0 ? (
                         <span className="text-xs text-muted-foreground">—</span>
@@ -148,7 +150,7 @@ export default function TeachersPage() {
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
                     {teachers.length === 0 ? "No teachers added yet — add one from the Staff page." : "No teachers match your search."}
                   </TableCell>
                 </TableRow>

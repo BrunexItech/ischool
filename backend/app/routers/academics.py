@@ -391,6 +391,7 @@ def _staff_out(profile: StaffProfile) -> StaffOut:
         staff_number=profile.staff_number,
         department=profile.department,
         phone=profile.phone,
+        tsc_number=profile.tsc_number,
     )
 
 
@@ -444,6 +445,7 @@ def create_staff(
         staff_number=payload.staff_number,
         department=payload.department,
         phone=payload.phone,
+        tsc_number=payload.tsc_number,
     )
     db.add(profile)
     db.commit()

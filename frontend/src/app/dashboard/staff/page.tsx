@@ -31,6 +31,7 @@ export default function StaffPage() {
     staff_number: "",
     department: "",
     phone: "",
+    tsc_number: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,6 +58,7 @@ export default function StaffPage() {
       s.staff_number.toLowerCase().includes(q) ||
       s.email.toLowerCase().includes(q) ||
       (s.department ?? "").toLowerCase().includes(q) ||
+      (s.tsc_number ?? "").toLowerCase().includes(q) ||
       s.role.toLowerCase().includes(q)
     );
   });
@@ -74,9 +76,10 @@ export default function StaffPage() {
         staff_number: form.staff_number,
         department: form.department || undefined,
         phone: form.phone || undefined,
+        tsc_number: form.role === "teacher" ? form.tsc_number || undefined : undefined,
       });
       setStaff((s) => [...s, created]);
-      setForm({ email: "", full_name: "", password: "", role: "teacher", staff_number: "", department: "", phone: "" });
+      setForm({ email: "", full_name: "", password: "", role: "teacher", staff_number: "", department: "", phone: "", tsc_number: "" });
       toast.success(`${created.full_name} added to staff`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to add staff member");
@@ -140,6 +143,12 @@ export default function StaffPage() {
               <Label>Department</Label>
               <Input value={form.department} onChange={(e) => set("department", e.target.value)} />
             </div>
+            {form.role === "teacher" && (
+              <div className="grid gap-1.5">
+                <Label>TSC number</Label>
+                <Input value={form.tsc_number} onChange={(e) => set("tsc_number", e.target.value)} />
+              </div>
+            )}
             <div className="sm:col-span-2 lg:col-span-3">
               <Button disabled={submitting} type="submit">
                 <UserPlus /> {submitting ? "Adding..." : "Add staff member"}
@@ -167,6 +176,7 @@ export default function StaffPage() {
               <TableHead>Staff #</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>TSC #</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Email</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -178,6 +188,7 @@ export default function StaffPage() {
                 <TableCell className="font-mono text-xs text-muted-foreground">{s.staff_number}</TableCell>
                 <TableCell className="font-medium">{s.full_name}</TableCell>
                 <TableCell><Badge variant="secondary" className="capitalize">{s.role.replace(/_/g, " ")}</Badge></TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{s.tsc_number ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{s.department ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{s.email}</TableCell>
                 <TableCell className="text-right">
@@ -187,7 +198,7 @@ export default function StaffPage() {
             ))}
             {filteredStaff.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   {staff.length === 0 ? "No staff added yet." : "No staff match your search."}
                 </TableCell>
               </TableRow>

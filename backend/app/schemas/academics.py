@@ -103,6 +103,7 @@ class StaffCreate(BaseModel):
     staff_number: str
     department: str | None = None
     phone: str | None = None
+    tsc_number: str | None = None
 
 
 class StaffOut(BaseModel):
@@ -117,3 +118,4 @@ class StaffOut(BaseModel):
     staff_number: str
     department: str | None
     phone: str | None
+    tsc_number: str | None

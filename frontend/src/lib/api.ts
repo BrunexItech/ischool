@@ -106,6 +106,7 @@ export interface Staff {
   staff_number: string;
   department: string | null;
   phone: string | null;
+  tsc_number: string | null;
 }
 
 export type AttendanceStatus = "present" | "absent" | "late" | "excused";
@@ -1449,6 +1450,7 @@ export const api = {
       staff_number: string;
       department?: string;
       phone?: string;
+      tsc_number?: string;
     }
   ) =>
     request<Staff>(

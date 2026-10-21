@@ -97,6 +97,7 @@ class StaffProfile(Base):
     staff_number: Mapped[str] = mapped_column(String(50), nullable=False)
     department: Mapped[str | None] = mapped_column(String(100), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    tsc_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     school: Mapped["School"] = relationship("School", back_populates="staff_profiles")
