@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Home, BookOpen } from "lucide-react";
+import { Search, Home } from "lucide-react";
 import { api, SchoolClass, Staff, Subject, TeacherAssignment } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
