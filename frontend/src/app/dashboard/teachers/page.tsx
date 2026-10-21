@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function TeachersPage() {
   const router = useRouter();
@@ -94,56 +95,68 @@ export default function TeachersPage() {
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((t) => {
-          const homerooms = homeroomClasses(t.user_id);
-          const teaching = teachingAssignments(t.user_id);
-          return (
-            <Card key={t.id}>
-              <CardContent className="flex flex-col gap-3 pt-6">
-                <div>
-                  <p className="font-heading font-semibold">{t.full_name}</p>
-                  <p className="text-xs text-muted-foreground">{t.email}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t.staff_number} {t.department ? `· ${t.department}` : ""}
-                  </p>
-                </div>
-
-                {homerooms.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Home className="size-3.5 text-primary" />
-                    {homerooms.map((c) => (
-                      <Badge key={c.id} variant="default">{c.name} · class teacher</Badge>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-start gap-1.5">
-                  <BookOpen className="mt-0.5 size-3.5 text-muted-foreground" />
-                  {teaching.length === 0 ? (
-                    <span className="text-xs text-muted-foreground">No teaching assignments yet</span>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {teaching.map((a) => (
-                        <Badge key={a.id} variant="secondary">
-                          {className(a.class_id)}{subjectName(a.subject_id) ? ` · ${subjectName(a.subject_id)}` : ""}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        {filtered.length === 0 && (
-          <Card className="sm:col-span-2 lg:col-span-3">
-            <CardContent className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-              {teachers.length === 0 ? "No teachers added yet — add one from the Staff page." : "No teachers match your search."}
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      <Card>
+        <CardContent className="overflow-x-auto p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Teacher</TableHead>
+                <TableHead>Staff no. / dept.</TableHead>
+                <TableHead>Class teacher of</TableHead>
+                <TableHead>Teaches</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((t) => {
+                const homerooms = homeroomClasses(t.user_id);
+                const teaching = teachingAssignments(t.user_id);
+                return (
+                  <TableRow key={t.id}>
+                    <TableCell>
+                      <p className="font-medium">{t.full_name}</p>
+                      <p className="text-xs text-muted-foreground">{t.email}</p>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {t.staff_number} {t.department ? `· ${t.department}` : ""}
+                    </TableCell>
+                    <TableCell>
+                      {homerooms.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {homerooms.map((c) => (
+                            <Badge key={c.id} variant="default"><Home className="size-3" />{c.name}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {teaching.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">No teaching assignments yet</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {teaching.map((a) => (
+                            <Badge key={a.id} variant="secondary">
+                              {className(a.class_id)}{subjectName(a.subject_id) ? ` · ${subjectName(a.subject_id)}` : ""}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
+                    {teachers.length === 0 ? "No teachers added yet — add one from the Staff page." : "No teachers match your search."}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <div className="flex gap-2">
         <Link href="/dashboard/teacher-assignments"><Button variant="outline" size="sm">Manage class & subject assignments</Button></Link>
