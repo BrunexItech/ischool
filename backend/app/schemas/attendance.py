@@ -8,6 +8,7 @@ from app.models.attendance import AttendanceStatus
 class AttendanceEntry(BaseModel):
     student_id: int
     status: AttendanceStatus
+    reason: str | None = None
 
 
 class AttendanceMarkRequest(BaseModel):
@@ -25,4 +26,5 @@ class AttendanceRecordOut(BaseModel):
     student_id: int
     date: date
     status: AttendanceStatus
+    reason: str | None
     recorded_by: int | None

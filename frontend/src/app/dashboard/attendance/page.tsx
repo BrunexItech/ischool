@@ -11,18 +11,47 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { History, Save } from "lucide-react";
+import { History, Save, Search } from "lucide-react";
 
-const STATUS_OPTIONS: AttendanceStatus[] = ["present", "absent", "late", "excused"];
+const STATUS_OPTIONS: AttendanceStatus[] = ["present", "late", "absent", "excused"];
 
-const STATUS_STYLES: Record<AttendanceStatus, string> = {
-  present: "text-emerald-600",
-  absent: "text-red-600",
-  late: "text-amber-600",
-  excused: "text-sky-600",
+const STATUS_LABEL: Record<AttendanceStatus, string> = {
+  present: "P",
+  late: "L",
+  absent: "A",
+  excused: "E",
 };
+
+const STATUS_FULL_LABEL: Record<AttendanceStatus, string> = {
+  present: "Present",
+  late: "Late",
+  absent: "Absent",
+  excused: "Excused",
+};
+
+const STATUS_ACTIVE_STYLES: Record<AttendanceStatus, string> = {
+  present: "bg-emerald-600 text-white hover:bg-emerald-600",
+  late: "bg-amber-500 text-white hover:bg-amber-500",
+  absent: "bg-red-600 text-white hover:bg-red-600",
+  excused: "bg-sky-600 text-white hover:bg-sky-600",
+};
+
+const STATUS_BADGE_STYLES: Record<AttendanceStatus, string> = {
+  present: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300",
+  late: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300",
+  absent: "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300",
+  excused: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-300",
+};
+
+const NEEDS_REASON: AttendanceStatus[] = ["absent", "late", "excused"];
+
+function initials(first: string, last: string) {
+  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+}
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -32,6 +61,10 @@ function monthAgo() {
   const d = new Date();
   d.setDate(d.getDate() - 30);
   return d.toISOString().slice(0, 10);
+}
+
+function formatDate(d: string) {
+  return new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
 function HistoryCard({ schoolId, classes }: { schoolId: number; classes: SchoolClass[] }) {
@@ -89,16 +122,16 @@ function HistoryCard({ schoolId, classes }: { schoolId: number; classes: SchoolC
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid gap-1.5">
             <Label>From</Label>
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-44" />
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full sm:w-44" />
           </div>
           <div className="grid gap-1.5">
             <Label>To</Label>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-44" />
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full sm:w-44" />
           </div>
           <div className="grid gap-1.5">
             <Label>Class</Label>
             <Select value={historyClassId} onValueChange={(v) => v && setHistoryClassId(v)}>
-              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all_classes__">Every class</SelectItem>
                 {classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
@@ -124,7 +157,7 @@ function HistoryCard({ schoolId, classes }: { schoolId: number; classes: SchoolC
           <TableBody>
             {byDate.map((row) => (
               <TableRow key={row.date}>
-                <TableCell className="font-medium">{new Date(row.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</TableCell>
+                <TableCell className="font-medium">{formatDate(row.date)}</TableCell>
                 <TableCell className="text-right tabular-nums text-emerald-600">{row.present}</TableCell>
                 <TableCell className="text-right tabular-nums text-amber-600">{row.late}</TableCell>
                 <TableCell className="text-right tabular-nums text-sky-600">{row.excused}</TableCell>
@@ -151,8 +184,12 @@ export default function AttendancePage() {
   const [date, setDate] = useState(today());
   const [students, setStudents] = useState<Student[]>([]);
   const [statuses, setStatuses] = useState<Record<number, AttendanceStatus>>({});
+  const [reasons, setReasons] = useState<Record<number, string>>({});
+  const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const canMark = user?.role === "super_admin" || user?.role === "teacher" || user?.role === "staff";
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
@@ -168,16 +205,54 @@ export default function AttendancePage() {
     if (!token || !user?.school_id || classId === null) return;
     api.listStudents(token, user.school_id, classId).then(setStudents);
     api.listAttendance(token, user.school_id, classId, date).then((records) => {
-      const map: Record<number, AttendanceStatus> = {};
-      for (const r of records) map[r.student_id] = r.status;
-      setStatuses(map);
+      const statusMap: Record<number, AttendanceStatus> = {};
+      const reasonMap: Record<number, string> = {};
+      for (const r of records) {
+        statusMap[r.student_id] = r.status;
+        if (r.reason) reasonMap[r.student_id] = r.reason;
+      }
+      setStatuses(statusMap);
+      setReasons(reasonMap);
     });
   }, [token, user?.school_id, classId, date]);
 
-  const roster = useMemo(() => students, [students]);
+  const roster = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return students;
+    return students.filter(
+      (s) =>
+        `${s.first_name} ${s.last_name}`.toLowerCase().includes(q) ||
+        s.admission_number.toLowerCase().includes(q)
+    );
+  }, [students, search]);
+
+  const selectedClass = classes.find((c) => c.id === classId);
+
+  const counts = useMemo(() => {
+    const result = { present: 0, late: 0, absent: 0, excused: 0, unmarked: 0 };
+    for (const s of students) {
+      const status = statuses[s.id];
+      if (!status) result.unmarked += 1;
+      else result[status] += 1;
+    }
+    return result;
+  }, [students, statuses]);
 
   function setStatus(studentId: number, status: AttendanceStatus) {
+    if (!canMark) return;
     setStatuses((s) => ({ ...s, [studentId]: status }));
+    if (!NEEDS_REASON.includes(status)) {
+      setReasons((r) => {
+        const next = { ...r };
+        delete next[studentId];
+        return next;
+      });
+    }
+  }
+
+  function setReason(studentId: number, reason: string) {
+    if (!canMark) return;
+    setReasons((r) => ({ ...r, [studentId]: reason }));
   }
 
   async function handleSave() {
@@ -187,7 +262,11 @@ export default function AttendancePage() {
       await api.markAttendance(token, user.school_id, {
         class_id: classId,
         date,
-        records: roster.map((s) => ({ student_id: s.id, status: statuses[s.id] ?? "present" })),
+        records: students.map((s) => {
+          const status = statuses[s.id] ?? "present";
+          const reason = NEEDS_REASON.includes(status) ? reasons[s.id]?.trim() : undefined;
+          return { student_id: s.id, status, reason: reason || undefined };
+        }),
       });
       toast.success("Attendance saved");
     } catch (err) {
@@ -200,7 +279,7 @@ export default function AttendancePage() {
   if (loading) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Attendance" description="Mark daily attendance for a class." />
+        <PageHeader title="Attendance" description="Daily register." />
         <PageLoader />
       </div>
     );
@@ -208,66 +287,139 @@ export default function AttendancePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Attendance" description="Mark daily attendance for a class." />
+      <PageHeader
+        title="Attendance"
+        description={`Daily register · saved for ${formatDate(date)}`}
+        action={
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="grid gap-1.5">
+              <Label>Class</Label>
+              <Select value={classId ? String(classId) : ""} onValueChange={(v) => v && setClassId(Number(v))}>
+                <SelectTrigger className="w-40 sm:w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Date</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-40 sm:w-44" />
+            </div>
+          </div>
+        }
+      />
 
       <Card>
-        <CardContent className="flex flex-wrap items-end gap-3 pt-6">
-          <div className="grid gap-1.5">
-            <Label>Class</Label>
-            <Select value={classId ? String(classId) : ""} onValueChange={(v) => v && setClassId(Number(v))}>
-              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        <CardHeader>
+          <CardTitle>{selectedClass ? `${selectedClass.name} register` : "Register"}</CardTitle>
+          <CardDescription>
+            {canMark ? "Tap P present, L late, A absent, E excused. " : "Read-only — recorded by the class teacher. "}
+            {students.length} learner{students.length === 1 ? "" : "s"}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className={STATUS_BADGE_STYLES.present}>Present {counts.present}</Badge>
+              <Badge variant="outline" className={STATUS_BADGE_STYLES.late}>Late {counts.late}</Badge>
+              <Badge variant="outline" className={STATUS_BADGE_STYLES.absent}>Absent {counts.absent}</Badge>
+              <Badge variant="secondary">Unmarked {counts.unmarked}</Badge>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name or admission no"
+                className="pl-8"
+              />
+            </div>
           </div>
-          <div className="grid gap-1.5">
-            <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-44" />
-          </div>
-          <Button onClick={handleSave} disabled={saving || roster.length === 0}>
-            <Save /> {saving ? "Saving..." : "Save attendance"}
-          </Button>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Admission #</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead className="w-40">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {roster.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell className="font-mono text-xs text-muted-foreground">{s.admission_number}</TableCell>
-                <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>
-                <TableCell>
-                  <Select value={statuses[s.id] ?? "present"} onValueChange={(v) => v && setStatus(s.id, v as AttendanceStatus)}>
-                    <SelectTrigger className={`w-36 capitalize ${STATUS_STYLES[statuses[s.id] ?? "present"]}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_OPTIONS.map((opt) => (
-                        <SelectItem key={opt} value={opt} className="capitalize">{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-              </TableRow>
-            ))}
-            {roster.length === 0 && (
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                  No students in this class.
-                </TableCell>
+                <TableHead>Learner</TableHead>
+                <TableHead>Adm No</TableHead>
+                <TableHead className="w-48">Mark</TableHead>
+                <TableHead>Reason</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {roster.map((s) => {
+                const status = statuses[s.id] ?? "present";
+                return (
+                  <TableRow key={s.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar size="sm">
+                          <AvatarFallback>{initials(s.first_name, s.last_name)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{s.first_name} {s.last_name}</div>
+                          {s.gender && <div className="text-xs text-muted-foreground capitalize">{s.gender}</div>}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{s.admission_number}</TableCell>
+                    <TableCell>
+                      {canMark ? (
+                        <div className="flex gap-1">
+                          {STATUS_OPTIONS.map((opt) => (
+                            <Button
+                              key={opt}
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              aria-label={STATUS_FULL_LABEL[opt]}
+                              className={status === opt ? STATUS_ACTIVE_STYLES[opt] : ""}
+                              onClick={() => setStatus(s.id, opt)}
+                            >
+                              {STATUS_LABEL[opt]}
+                            </Button>
+                          ))}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className={STATUS_BADGE_STYLES[status]}>{STATUS_FULL_LABEL[status]}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {NEEDS_REASON.includes(status) ? (
+                        canMark ? (
+                          <Input
+                            value={reasons[s.id] ?? ""}
+                            onChange={(e) => setReason(s.id, e.target.value)}
+                            placeholder="Why? e.g. Sick, travelling..."
+                            className="min-w-48"
+                          />
+                        ) : (
+                          <span className="text-sm text-muted-foreground">{reasons[s.id] || "No reason given"}</span>
+                        )
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {roster.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                    {students.length === 0 ? "No students in this class." : "No learners match your search."}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+
+          {canMark && (
+            <div className="flex justify-end">
+              <Button onClick={handleSave} disabled={saving || students.length === 0}>
+                <Save /> {saving ? "Saving..." : "Save attendance"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {user?.school_id && <HistoryCard schoolId={user.school_id} classes={classes} />}

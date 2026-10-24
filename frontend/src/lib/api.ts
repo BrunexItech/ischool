@@ -162,6 +162,7 @@ export interface AttendanceRecord {
   student_id: number;
   date: string;
   status: AttendanceStatus;
+  reason: string | null;
   recorded_by: number | null;
 }
 
@@ -1581,7 +1582,7 @@ export const api = {
   markAttendance: (
     token: string,
     schoolId: number,
-    payload: { class_id: number; date: string; records: { student_id: number; status: AttendanceStatus }[] }
+    payload: { class_id: number; date: string; records: { student_id: number; status: AttendanceStatus; reason?: string }[] }
   ) =>
     request<AttendanceRecord[]>(
       `/schools/${schoolId}/attendance`,

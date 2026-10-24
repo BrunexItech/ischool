@@ -16,7 +16,9 @@ from app.schemas.attendance import AttendanceMarkRequest, AttendanceRecordOut
 router = APIRouter(prefix="/schools/{school_id}/attendance", tags=["attendance"])
 
 VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.TEACHER, UserRole.STAFF, UserRole.GROUP_PRINCIPAL)
-MARK_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
+# Heads of Institution and Group Principals can see attendance but not record
+# or change it — that stays with whoever actually took the register.
+MARK_ROLES = (UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.STAFF)
 
 
 @router.get(
@@ -85,7 +87,7 @@ def mark_attendance(
         record = existing.get(entry.student_id)
         should_notify = False
         if record:
-            if record.status != entry.status:
+            if record.status != entry.status or record.reason != entry.reason:
                 record_audit(
                     db,
                     school_id=school_id,
@@ -93,11 +95,12 @@ def mark_attendance(
                     action="attendance.update",
                     entity_type="attendance_record",
                     entity_id=record.id,
-                    before={"status": record.status.value},
-                    after={"status": entry.status.value},
+                    before={"status": record.status.value, "reason": record.reason},
+                    after={"status": entry.status.value, "reason": entry.reason},
                 )
                 should_notify = entry.status in NOTABLE
             record.status = entry.status
+            record.reason = entry.reason
             record.recorded_by = current_user.id
         else:
             record = AttendanceRecord(
@@ -106,6 +109,7 @@ def mark_attendance(
                 student_id=entry.student_id,
                 date=payload.date,
                 status=entry.status,
+                reason=entry.reason,
                 recorded_by=current_user.id,
             )
             db.add(record)
@@ -114,12 +118,15 @@ def mark_attendance(
 
         student = students.get(entry.student_id)
         if should_notify and student is not None and student.guardian_user_id is not None:
+            body = f"{student.first_name} {student.last_name} was marked {entry.status.value} on {payload.date}."
+            if entry.reason:
+                body += f" Reason: {entry.reason}"
             notify(
                 db,
                 school_id=school_id,
                 user_id=student.guardian_user_id,
                 title=f"{student.first_name} was marked {entry.status.value}",
-                body=f"{student.first_name} {student.last_name} was marked {entry.status.value} on {payload.date}.",
+                body=body,
             )
 
     db.commit()
