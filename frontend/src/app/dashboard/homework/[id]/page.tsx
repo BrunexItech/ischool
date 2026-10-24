@@ -125,9 +125,9 @@ function AttachmentCard({ hw, onAttached }: { hw: HomeworkDetail; onAttached: (u
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-9 w-56 text-xs" />
+          <Input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-9 w-56 text-xs" />
           <Button size="sm" variant="outline" disabled={uploading || !file} onClick={handleUpload}>
-            {uploading ? <Spinner size={14} className="text-current" /> : <FileUp />} {hw.attachment_url ? "Replace" : "Attach PDF"}
+            {uploading ? <Spinner size={14} className="text-current" /> : <FileUp />} {hw.attachment_url ? "Replace" : "Attach file"}
           </Button>
         </div>
       </CardContent>
@@ -171,7 +171,7 @@ export default function HomeworkDetailPage({ params }: { params: Promise<{ id: s
     <div className="flex flex-col gap-6">
       <PageHeader
         title={hw.title}
-        description={`Due ${new Date(hw.due_date + "T12:00:00").toLocaleDateString()} · ${hw.submitted_count} of ${hw.total_students} submitted, ${hw.reviewed_count} reviewed`}
+        description={`${hw.homework_type} · Due ${new Date(hw.due_date + "T12:00:00").toLocaleDateString()} · ${hw.submitted_count} of ${hw.total_students} submitted, ${hw.reviewed_count} reviewed`}
       />
       {hw.instructions && (
         <Card><CardContent className="pt-6 text-sm text-muted-foreground">{hw.instructions}</CardContent></Card>

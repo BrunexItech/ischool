@@ -427,21 +427,24 @@ function TeacherDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {homeroom ? `Class teacher · ${homeroom.class_name} · ` : ""}
-            {todayLabel()}
-          </p>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">{greet()}, {user.full_name.split(" ")[0]}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={homeroom ? `/dashboard/attendance?class_id=${homeroom.class_id}` : "/dashboard/attendance"}>
-            <Button variant="outline"><ClipboardCheck /> Class register</Button>
-          </Link>
-          <Link href="/dashboard/homework">
-            <Button><Plus /> New assignment</Button>
-          </Link>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[#6e1316] p-5 text-primary-foreground shadow-md sm:p-6">
+        <GraduationCap className="pointer-events-none absolute -right-6 -bottom-8 size-36 text-white/10" strokeWidth={1} />
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-primary-foreground/70 uppercase">
+              {homeroom ? `Class teacher · ${homeroom.class_name} · ` : ""}
+              {todayLabel()}
+            </p>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{greet()}, {user.full_name.split(" ")[0]}</h1>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href={homeroom ? `/dashboard/attendance?class_id=${homeroom.class_id}` : "/dashboard/attendance"}>
+              <Button variant="secondary"><ClipboardCheck /> Class register</Button>
+            </Link>
+            <Link href="/dashboard/homework">
+              <Button variant="outline" className="border-white/30 bg-white/10 text-primary-foreground hover:bg-white/20 hover:text-primary-foreground"><Plus /> New assignment</Button>
+            </Link>
+          </div>
         </div>
       </div>
 

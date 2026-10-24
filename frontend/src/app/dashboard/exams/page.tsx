@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const NO_CLASS = "all";
+const EXAM_TYPES = ["Opener", "CAT 1", "CAT 2", "Mid Term", "End Term", "Mock", "Other"];
 
 interface DraftQuestion {
   question_text: string;
@@ -40,7 +41,7 @@ export default function ExamsPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [form, setForm] = useState({ subjectId: "", classId: NO_CLASS, title: "", term: "", duration: "60", opensAt: "", closesAt: "" });
+  const [form, setForm] = useState({ subjectId: "", classId: NO_CLASS, title: "", examType: "CAT 1", customType: "", term: "", duration: "60", opensAt: "", closesAt: "" });
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyQuestion()]);
   const [mode, setMode] = useState<"questions" | "paper">("questions");
   const [paperFile, setPaperFile] = useState<File | null>(null);
@@ -90,7 +91,7 @@ export default function ExamsPage() {
         }
       }
     } else if (!paperFile) {
-      toast.error("Choose a PDF file for the exam paper");
+      toast.error("Choose a PDF or photo of the exam paper");
       return;
     }
 
@@ -100,6 +101,7 @@ export default function ExamsPage() {
         subject_id: Number(form.subjectId),
         class_id: form.classId === NO_CLASS ? undefined : Number(form.classId),
         title: form.title,
+        exam_type: form.examType === "Other" ? form.customType.trim() || "Other" : form.examType,
         term: form.term,
         duration_minutes: Number(form.duration),
         opens_at: form.opensAt ? new Date(form.opensAt).toISOString() : undefined,
@@ -123,7 +125,7 @@ export default function ExamsPage() {
       }
 
       setExams((e) => [finalExam, ...e]);
-      setForm({ subjectId: "", classId: NO_CLASS, title: "", term: "", duration: "60", opensAt: "", closesAt: "" });
+      setForm({ subjectId: "", classId: NO_CLASS, title: "", examType: "CAT 1", customType: "", term: "", duration: "60", opensAt: "", closesAt: "" });
       setQuestions([emptyQuestion()]);
       setPaperFile(null);
       toast.success(`${finalExam.title} created`);
@@ -204,6 +206,21 @@ export default function ExamsPage() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
+                <Label>Type</Label>
+                <Select value={form.examType} onValueChange={(v) => v && setForm((f) => ({ ...f, examType: v }))}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {EXAM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.examType === "Other" && (
+                <div className="grid gap-1.5">
+                  <Label>Custom type</Label>
+                  <Input placeholder="e.g. Mock 2" value={form.customType} onChange={(e) => setForm((f) => ({ ...f, customType: e.target.value }))} />
+                </div>
+              )}
+              <div className="grid gap-1.5">
                 <Label>Term</Label>
                 <Input required placeholder="e.g. Term 1 2026" value={form.term} onChange={(e) => setForm((f) => ({ ...f, term: e.target.value }))} />
               </div>
@@ -226,7 +243,7 @@ export default function ExamsPage() {
                 <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="questions">Build questions (online sitting)</SelectItem>
-                  <SelectItem value="paper">Upload a PDF paper (offline sitting)</SelectItem>
+                  <SelectItem value="paper">Upload a paper (PDF or photo, offline sitting)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -235,8 +252,8 @@ export default function ExamsPage() {
               <div className="flex items-center gap-3 rounded-lg border border-dashed p-4">
                 <FileUp className="size-5 text-muted-foreground" />
                 <div className="flex-1">
-                  <Input type="file" accept="application/pdf" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} />
-                  <p className="mt-1 text-xs text-muted-foreground">Students download this PDF within the window above and sit it on paper; you record the score via Results afterwards.</p>
+                  <Input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} />
+                  <p className="mt-1 text-xs text-muted-foreground">Students download this file within the window above and sit it on paper; you record the score via Results afterwards.</p>
                 </div>
               </div>
             ) : (
@@ -303,7 +320,10 @@ export default function ExamsPage() {
           {exams.map((exam) => (
             <div key={exam.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
               <div>
-                <p className="font-medium">{exam.title}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-medium">{exam.title}</p>
+                  <Badge variant="outline">{exam.exam_type}</Badge>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {subjectName(exam.subject_id)} · {className(exam.class_id)} · {exam.term}
                   {exam.paper_file_url ? " · Paper upload" : ` · ${exam.duration_minutes} min · ${exam.total_marks} marks · ${exam.question_count} questions`}
@@ -327,7 +347,7 @@ export default function ExamsPage() {
                     {uploadingPaperFor === exam.id ? "Uploading..." : "Upload paper"}
                     <input
                       type="file"
-                      accept="application/pdf"
+                      accept="application/pdf,image/png,image/jpeg,image/webp"
                       className="hidden"
                       disabled={uploadingPaperFor === exam.id}
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadPaper(exam, f); }}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { NotebookPen } from "lucide-react";
+import { FileUp, NotebookPen, X } from "lucide-react";
 import { api, ApiError, HomeworkListItem, SchoolClass, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
@@ -18,6 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+const HOMEWORK_TYPES = ["Assignment", "Project", "Classwork", "Revision", "Reading", "Other"];
+
 export default function HomeworkPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
@@ -30,10 +32,13 @@ export default function HomeworkPage() {
     classId: "",
     subjectId: "",
     title: "",
+    type: "Assignment",
+    customType: "",
     instructions: "",
     dueDate: "",
     allowDigital: true,
   });
+  const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!loading && user && !["head_of_institution", "teacher", "staff", "super_admin", "group_principal"].includes(user.role)) router.replace("/dashboard");
@@ -60,16 +65,21 @@ export default function HomeworkPage() {
     if (!token || !user?.school_id || !form.classId || !form.subjectId || !form.title || !form.dueDate) return;
     setSubmitting(true);
     try {
-      const created = await api.createHomework(token, user.school_id, {
+      let created = await api.createHomework(token, user.school_id, {
         class_id: Number(form.classId),
         subject_id: Number(form.subjectId),
         title: form.title,
+        homework_type: form.type === "Other" ? form.customType.trim() || "Other" : form.type,
         instructions: form.instructions || undefined,
         due_date: form.dueDate,
         allow_digital_submission: form.allowDigital,
       });
+      if (file) {
+        created = await api.uploadHomeworkAttachment(token, user.school_id, created.id, file);
+      }
       setItems((it) => [created, ...it]);
-      setForm({ classId: "", subjectId: "", title: "", instructions: "", dueDate: "", allowDigital: true });
+      setForm({ classId: "", subjectId: "", title: "", type: "Assignment", customType: "", instructions: "", dueDate: "", allowDigital: true });
+      setFile(null);
       toast.success("Homework posted");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to post homework");
@@ -118,6 +128,21 @@ export default function HomeworkPage() {
                 <Label>Due date</Label>
                 <Input required type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} className="w-44" />
               </div>
+              <div className="grid gap-1.5">
+                <Label>Type</Label>
+                <Select value={form.type} onValueChange={(v) => v && setForm((f) => ({ ...f, type: v }))}>
+                  <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {HOMEWORK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.type === "Other" && (
+                <div className="grid gap-1.5">
+                  <Label>Custom type</Label>
+                  <Input placeholder="e.g. Science Fair" value={form.customType} onChange={(e) => setForm((f) => ({ ...f, customType: e.target.value }))} className="w-44" />
+                </div>
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label>Title</Label>
@@ -126,6 +151,18 @@ export default function HomeworkPage() {
             <div className="grid gap-1.5">
               <Label>Instructions (optional)</Label>
               <Textarea rows={3} value={form.instructions} onChange={(e) => setForm((f) => ({ ...f, instructions: e.target.value }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Attach a worksheet (optional) — PDF or photo</Label>
+              {file ? (
+                <div className="flex w-fit items-center gap-2 rounded-lg border p-2 pl-3 text-sm">
+                  <FileUp className="size-4 text-muted-foreground" />
+                  <span className="max-w-56 truncate">{file.name}</span>
+                  <Button type="button" variant="ghost" size="icon-sm" onClick={() => setFile(null)}><X /></Button>
+                </div>
+              ) : (
+                <Input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="w-fit" />
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.allowDigital} onCheckedChange={(v) => setForm((f) => ({ ...f, allowDigital: v }))} />
@@ -148,7 +185,11 @@ export default function HomeworkPage() {
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><NotebookPen className="size-4.5" /></div>
               <div>
-                <p className="font-medium">{hw.title}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-medium">{hw.title}</p>
+                  <Badge variant="outline">{hw.homework_type}</Badge>
+                  {hw.attachment_url && <FileUp className="size-3.5 text-muted-foreground" />}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {subjectName(hw.subject_id)} — {className(hw.class_id)} · Due {new Date(hw.due_date + "T12:00:00").toLocaleDateString()}
                   {hw.created_by_name ? ` · ${hw.created_by_name}` : ""}
