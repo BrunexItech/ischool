@@ -25,11 +25,11 @@ function collectSelectItems(node: React.ReactNode, acc: Record<string, React.Rea
   })
 }
 
-function Select({
+function Select<Value, Multiple extends boolean | undefined = false>({
   children,
   items,
   ...props
-}: SelectPrimitive.Root.Props) {
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
   const derivedItems = React.useMemo(() => {
     if (items) return items
     const acc: Record<string, React.ReactNode> = {}
