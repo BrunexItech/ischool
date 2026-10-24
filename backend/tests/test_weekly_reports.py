@@ -35,7 +35,7 @@ def test_school_admin_cannot_trigger_weekly_reports(client, school_admin_token):
 
 
 def test_a_standalone_school_gets_only_its_own_branch_report(client, db_session, school, super_admin_token):
-    _make_user(db_session, school, UserRole.SCHOOL_ADMIN, "owner@test-academy.test")
+    _make_user(db_session, school, UserRole.HEAD_OF_INSTITUTION, "owner@test-academy.test")
 
     with patch("app.services.weekly_reports.send_email", return_value=True) as mock_send:
         response = client.post("/schools/weekly-reports/send", headers=auth_headers(super_admin_token))
@@ -47,7 +47,7 @@ def test_a_standalone_school_gets_only_its_own_branch_report(client, db_session,
 
 def test_a_group_owner_gets_both_its_own_report_and_the_group_rollup(client, db_session, school, super_admin_token):
     _make_branch(db_session, school)
-    _make_user(db_session, school, UserRole.SCHOOL_ADMIN, "group.owner@test-academy.test")
+    _make_user(db_session, school, UserRole.HEAD_OF_INSTITUTION, "group.owner@test-academy.test")
 
     with patch("app.services.weekly_reports.send_email", return_value=True) as mock_send:
         response = client.post("/schools/weekly-reports/send", headers=auth_headers(super_admin_token))
@@ -63,7 +63,7 @@ def test_a_group_owner_gets_both_its_own_report_and_the_group_rollup(client, db_
 
 def test_a_branch_admin_gets_only_their_own_branch_report_not_the_group_rollup(client, db_session, school, super_admin_token):
     branch = _make_branch(db_session, school)
-    _make_user(db_session, branch, UserRole.SCHOOL_ADMIN, "branch.admin@test-academy.test")
+    _make_user(db_session, branch, UserRole.HEAD_OF_INSTITUTION, "branch.admin@test-academy.test")
 
     with patch("app.services.weekly_reports.send_email", return_value=True) as mock_send:
         response = client.post("/schools/weekly-reports/send", headers=auth_headers(super_admin_token))
@@ -106,7 +106,7 @@ def test_bursar_gets_their_own_weekly_finance_report(client, db_session, school,
 
 def test_a_role_with_no_staff_sends_nothing_for_that_domain(client, db_session, school, super_admin_token):
     # No TRANSPORT_STAFF exists for this school — must not error or send anything for it.
-    _make_user(db_session, school, UserRole.SCHOOL_ADMIN, "solo.admin@test-academy.test")
+    _make_user(db_session, school, UserRole.HEAD_OF_INSTITUTION, "solo.admin@test-academy.test")
 
     with patch("app.services.weekly_reports.send_email", return_value=True) as mock_send:
         response = client.post("/schools/weekly-reports/send", headers=auth_headers(super_admin_token))

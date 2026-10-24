@@ -68,7 +68,7 @@ def test_unrelated_school_admin_cannot_manage_someone_elses_branch(
 
 def test_branch_admin_cannot_see_parent_group_summary(client, school, db_session):
     branch = _make_branch(db_session, school)
-    branch_admin, password = _make_user(db_session, branch, UserRole.SCHOOL_ADMIN, "admin@milai-secondary.test")
+    branch_admin, password = _make_user(db_session, branch, UserRole.HEAD_OF_INSTITUTION, "admin@milai-secondary.test")
     token = _login(client, branch_admin.email, password)
 
     response = client.get(f"/schools/{school.id}/dashboard/group-summary", headers=auth_headers(token))

@@ -31,7 +31,7 @@ def _with_schools(db: Session, supervisor: User) -> SupervisorWithSchoolsOut:
 
 @router.get("/supervisors", response_model=list[SupervisorWithSchoolsOut], dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))])
 def list_supervisors(db: Session = Depends(get_db)):
-    supervisors = db.query(User).filter_by(role=UserRole.SUPERVISOR).order_by(User.full_name).all()
+    supervisors = db.query(User).filter_by(role=UserRole.GROUP_PRINCIPAL).order_by(User.full_name).all()
     return [_with_schools(db, s) for s in supervisors]
 
 
@@ -51,7 +51,7 @@ def create_supervisor(payload: SupervisorCreate, db: Session = Depends(get_db)):
         email=payload.email,
         full_name=payload.full_name,
         hashed_password=hash_password(payload.password),
-        role=UserRole.SUPERVISOR,
+        role=UserRole.GROUP_PRINCIPAL,
         must_change_password=True,
     )
     db.add(supervisor)
@@ -66,7 +66,7 @@ def create_supervisor(payload: SupervisorCreate, db: Session = Depends(get_db)):
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
 )
 def link_school(supervisor_id: int, payload: SupervisorLinkCreate, db: Session = Depends(get_db)):
-    supervisor = db.query(User).filter_by(id=supervisor_id, role=UserRole.SUPERVISOR).first()
+    supervisor = db.query(User).filter_by(id=supervisor_id, role=UserRole.GROUP_PRINCIPAL).first()
     if supervisor is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Supervisor not found")
     school = db.get(School, payload.school_id)
@@ -86,7 +86,7 @@ def link_school(supervisor_id: int, payload: SupervisorLinkCreate, db: Session =
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
 )
 def unlink_school(supervisor_id: int, school_id: int, db: Session = Depends(get_db)):
-    supervisor = db.query(User).filter_by(id=supervisor_id, role=UserRole.SUPERVISOR).first()
+    supervisor = db.query(User).filter_by(id=supervisor_id, role=UserRole.GROUP_PRINCIPAL).first()
     if supervisor is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Supervisor not found")
 
@@ -103,7 +103,7 @@ def unlink_school(supervisor_id: int, school_id: int, db: Session = Depends(get_
 @router.get(
     "/supervisor/schools",
     response_model=list[LinkedSchoolOut],
-    dependencies=[Depends(require_roles(UserRole.SUPERVISOR))],
+    dependencies=[Depends(require_roles(UserRole.GROUP_PRINCIPAL))],
 )
 def my_linked_schools(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     links = db.query(SupervisorSchoolLink).filter_by(supervisor_user_id=current_user.id).all()
@@ -113,7 +113,7 @@ def my_linked_schools(db: Session = Depends(get_db), current_user: User = Depend
 @router.get(
     "/supervisor/overview",
     response_model=SupervisorOverviewOut,
-    dependencies=[Depends(require_roles(UserRole.SUPERVISOR))],
+    dependencies=[Depends(require_roles(UserRole.GROUP_PRINCIPAL))],
 )
 def my_overview(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Everything happening across every school this supervisor is linked

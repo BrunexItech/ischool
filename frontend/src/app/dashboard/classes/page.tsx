@@ -133,7 +133,7 @@ export default function ClassesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState("");
 
-  const canManage = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
+  const canManage = user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
 
   function refreshClasses() {
     if (!token || !user?.school_id) return;

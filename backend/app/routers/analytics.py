@@ -22,8 +22,8 @@ router = APIRouter(prefix="/schools/{school_id}/analytics", tags=["analytics"])
 
 VIEW_ROLES = (
     UserRole.SUPER_ADMIN,
-    UserRole.SCHOOL_ADMIN,
-    UserRole.SUPERVISOR,
+    UserRole.HEAD_OF_INSTITUTION,
+    UserRole.GROUP_PRINCIPAL,
     UserRole.TEACHER,
     UserRole.STAFF,
     UserRole.SECURITY,

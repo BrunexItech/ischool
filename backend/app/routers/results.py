@@ -15,9 +15,9 @@ from app.schemas.results import ReportCardOut, ReportCardRemarkUpdate, ResultOut
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["results"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.TEACHER, UserRole.STAFF)
-MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
-RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.TEACHER)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
+MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER)
 
 
 def _grade_for(score: float) -> str:
@@ -135,7 +135,7 @@ def update_report_card_remarks(
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
 
-    is_admin = current_user.role in (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
+    is_admin = current_user.role in (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
     if not is_admin:
         if payload.principal_remark is not None:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Only a school admin can set the principal's remark")

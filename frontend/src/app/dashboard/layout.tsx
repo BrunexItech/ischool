@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading, schoolOptions, viewingSchoolId, editingEnabled, toggleEditing } = useAuth();
-  const isSupervisorViewing = user?.role === "supervisor" && viewingSchoolId !== null;
+  const isSupervisorViewing = user?.role === "group_principal" && viewingSchoolId !== null;
   const viewingSchoolName = schoolOptions.find((s) => s.id === viewingSchoolId)?.name;
 
   useEffect(() => {

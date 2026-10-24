@@ -35,7 +35,7 @@ export default function AnnouncementsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const canPost = user?.role === "school_admin" || user?.role === "teacher" || user?.role === "super_admin" || user?.role === "supervisor";
+  const canPost = user?.role === "head_of_institution" || user?.role === "teacher" || user?.role === "super_admin" || user?.role === "group_principal";
 
   useEffect(() => {
     if (!token || !user?.school_id) return;

@@ -30,21 +30,21 @@ router = APIRouter(prefix="/schools/{school_id}", tags=["students & staff"])
 # rosters, staff need records); only admins manage enrollment/HR records.
 VIEW_ROLES = (
     UserRole.SUPER_ADMIN,
-    UserRole.SCHOOL_ADMIN,
+    UserRole.HEAD_OF_INSTITUTION,
     UserRole.TEACHER,
     UserRole.STAFF,
     UserRole.SECURITY,
     UserRole.BOARDING_STAFF,
     UserRole.TRANSPORT_STAFF,
     UserRole.BURSAR,
-    UserRole.SUPERVISOR,
+    UserRole.GROUP_PRINCIPAL,
 )
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 # A supervisor may register staff in a school they're linked to (their one
 # named "edit" power) without getting the rest of ADMIN_ROLES' reach
 # (class management, password resets).
-STAFF_MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
-ENROLL_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.STAFF)
+STAFF_MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+ENROLL_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF)
 # Job-function roles an admin may hand out when adding a staff account —
 # each narrows that login to its own working view (see require_roles usage
 # in security.py / boarding.py / transport.py / finance.py / fees.py).

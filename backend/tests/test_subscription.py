@@ -14,7 +14,7 @@ def test_suspended_school_blocks_login(client, db_session, school):
 
     user = User(
         school_id=school.id, email=user_email, full_name="Admin",
-        hashed_password=hash_password("TestPass123!"), role=UserRole.SCHOOL_ADMIN,
+        hashed_password=hash_password("TestPass123!"), role=UserRole.HEAD_OF_INSTITUTION,
     )
     db_session.add(user)
     db_session.commit()

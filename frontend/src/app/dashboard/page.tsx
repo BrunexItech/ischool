@@ -569,11 +569,11 @@ export default function DashboardPage() {
   const home = schoolOptions.find((o) => o.isHome);
   const isViewingGroup = home !== undefined && viewingSchoolId === home.id;
 
-  if (user.role === "school_admin" && user.school_id) {
+  if (user.role === "head_of_institution" && user.school_id) {
     if (isViewingGroup) return <GroupOverview />;
     return <AdminDashboard schoolId={user.school_id} />;
   }
-  if (user.role === "supervisor") {
+  if (user.role === "group_principal") {
     if (viewingSchoolId === null) return <SupervisorOverview />;
     return <AdminDashboard schoolId={viewingSchoolId} />;
   }

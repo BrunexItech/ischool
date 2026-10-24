@@ -36,7 +36,7 @@ export default function StaffPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && user.role !== "school_admin" && user.role !== "super_admin" && user.role !== "supervisor") {
+    if (!loading && user && user.role !== "head_of_institution" && user.role !== "super_admin" && user.role !== "group_principal") {
       router.replace("/dashboard");
     }
   }, [loading, user, router]);

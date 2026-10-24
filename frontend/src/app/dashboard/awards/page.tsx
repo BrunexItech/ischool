@@ -38,10 +38,10 @@ export default function AwardsPage() {
     date_awarded: "",
   });
 
-  const canAwardStaff = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
+  const canAwardStaff = user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin", "supervisor"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["head_of_institution", "teacher", "staff", "super_admin", "group_principal"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -185,7 +185,7 @@ export default function AwardsPage() {
                 <TableCell>{a.category ? <Badge variant="outline" className="capitalize">{a.category}</Badge> : "—"}</TableCell>
                 <TableCell>{new Date(a.date_awarded).toLocaleDateString()}</TableCell>
                 <TableCell className="text-right">
-                  {(user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor") && (
+                  {(user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal") && (
                     <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(a.id)}><Trash2 /></Button>
                   )}
                 </TableCell>

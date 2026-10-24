@@ -4,6 +4,7 @@ import { HeartHandshake, Wallet, Bell, CalendarCheck } from "lucide-react";
 import { LoginForm, LoginAudienceConfig } from "@/components/LoginForm";
 
 const config: LoginAudienceConfig = {
+  audience: "parent",
   heroTitle: <>Stay close to your child&apos;s day, from anywhere.</>,
   features: [
     { icon: CalendarCheck, label: "Attendance, results and report cards" },

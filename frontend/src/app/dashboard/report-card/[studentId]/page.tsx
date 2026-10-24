@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
-const STAFF_ROLES = ["school_admin", "teacher", "staff", "super_admin", "supervisor"];
+const STAFF_ROLES = ["head_of_institution", "teacher", "staff", "super_admin", "group_principal"];
 
 const GRADE_STYLE: Record<string, string> = {
   A: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
@@ -95,7 +95,7 @@ export default function ReportCardPage({ params }: { params: Promise<{ studentId
   const router = useRouter();
   const { user, token, loading } = useAuth();
   const isStaff = !!user && STAFF_ROLES.includes(user.role);
-  const canEditPrincipalRemark = user?.role === "school_admin" || user?.role === "super_admin";
+  const canEditPrincipalRemark = user?.role === "head_of_institution" || user?.role === "super_admin";
   const canEditClassTeacherRemark = canEditPrincipalRemark || user?.role === "teacher";
 
   const [terms, setTerms] = useState<string[]>([]);

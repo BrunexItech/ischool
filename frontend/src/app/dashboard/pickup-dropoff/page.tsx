@@ -31,7 +31,7 @@ export default function PickupDropoffPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "teacher", "staff", "super_admin", "security", "supervisor"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["head_of_institution", "teacher", "staff", "super_admin", "security", "group_principal"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -159,7 +159,7 @@ export default function PickupDropoffPage() {
                   <TableCell>{l.person_name}</TableCell>
                   <TableCell>{l.notes ?? "—"}</TableCell>
                   <TableCell className="text-right">
-                    {(user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor") && (
+                    {(user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal") && (
                       <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(l.id)}><Trash2 /></Button>
                     )}
                   </TableCell>

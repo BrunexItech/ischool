@@ -239,7 +239,7 @@ export default function CrmPage() {
   const [dragStage, setDragStage] = useState<LeadStage | null>(null);
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "super_admin", "supervisor"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["head_of_institution", "super_admin", "group_principal"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {

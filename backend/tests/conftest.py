@@ -117,13 +117,13 @@ def super_admin_token(client, db_session):
 
 @pytest.fixture
 def school_admin_token(client, db_session, school):
-    user, password = _make_user(db_session, school, UserRole.SCHOOL_ADMIN, "admin@test-academy.test")
+    user, password = _make_user(db_session, school, UserRole.HEAD_OF_INSTITUTION, "admin@test-academy.test")
     return _login(client, user.email, password)
 
 
 @pytest.fixture
 def other_school_admin_token(client, db_session, other_school):
-    user, password = _make_user(db_session, other_school, UserRole.SCHOOL_ADMIN, "admin@rival-academy.test")
+    user, password = _make_user(db_session, other_school, UserRole.HEAD_OF_INSTITUTION, "admin@rival-academy.test")
     return _login(client, user.email, password)
 
 

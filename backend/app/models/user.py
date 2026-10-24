@@ -9,7 +9,7 @@ from app.core.database import Base
 
 class UserRole(str, enum.Enum):
     SUPER_ADMIN = "super_admin"  # us — manages schools/onboarding, not tied to any school
-    SCHOOL_ADMIN = "school_admin"
+    HEAD_OF_INSTITUTION = "head_of_institution"  # runs one operating school day-to-day (formerly school_admin)
     TEACHER = "teacher"
     STAFF = "staff"
     STUDENT = "student"
@@ -18,7 +18,7 @@ class UserRole(str, enum.Enum):
     BOARDING_STAFF = "boarding_staff"
     TRANSPORT_STAFF = "transport_staff"
     BURSAR = "bursar"
-    SUPERVISOR = "supervisor"  # platform-level oversight account, linked to specific schools by the super-admin — not tied to any one school itself
+    GROUP_PRINCIPAL = "group_principal"  # group-wide oversight across every school under the umbrella (formerly supervisor)
 
 
 class User(Base):

@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!token || !realUser) return;
 
-    if (realUser.role === "school_admin" && realUser.school_id) {
+    if (realUser.role === "head_of_institution" && realUser.school_id) {
       let cancelled = false;
       Promise.all([api.getSchool(token, realUser.school_id), api.listBranches(token, realUser.school_id)])
         .then(([home, branches]: [School, School[]]) => {
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    if (realUser.role === "supervisor") {
+    if (realUser.role === "group_principal") {
       let cancelled = false;
       api
         .listMyLinkedSchools(token)

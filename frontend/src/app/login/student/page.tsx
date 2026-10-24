@@ -4,6 +4,7 @@ import { BookOpen, Award, FileText, Video } from "lucide-react";
 import { LoginForm, LoginAudienceConfig } from "@/components/LoginForm";
 
 const config: LoginAudienceConfig = {
+  audience: "student",
   heroTitle: <>Your classes, results and homework, all in one place.</>,
   features: [
     { icon: BookOpen, label: "Homework and exams" },

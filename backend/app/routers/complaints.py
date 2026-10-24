@@ -14,7 +14,7 @@ from app.schemas.complaint import ComplaintCreate, ComplaintOut, ComplaintRespon
 router = APIRouter(prefix="/schools/{school_id}/complaints", tags=["complaints"])
 
 RAISE_ROLES = (UserRole.STUDENT, UserRole.PARENT, UserRole.TEACHER)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 
 
 @router.post("", response_model=ComplaintOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(*RAISE_ROLES))])

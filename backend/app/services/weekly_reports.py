@@ -232,7 +232,7 @@ _PRINCIPAL_PROMPT = (
 
 
 def send_branch_report(db: Session, school: School) -> int:
-    recipients = _users_with_role(db, school.id, UserRole.SCHOOL_ADMIN)
+    recipients = _users_with_role(db, school.id, UserRole.HEAD_OF_INSTITUTION)
     sent = 0
     if recipients:
         metrics, data_summary = _principal_week_data(db, school)
@@ -260,7 +260,7 @@ _GROUP_PROMPT = (
 
 
 def send_group_report(db: Session, group: School) -> int:
-    recipients = _users_with_role(db, group.id, UserRole.SCHOOL_ADMIN)
+    recipients = _users_with_role(db, group.id, UserRole.HEAD_OF_INSTITUTION)
     if not recipients:
         return 0
 

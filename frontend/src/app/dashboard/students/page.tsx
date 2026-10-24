@@ -287,7 +287,7 @@ function AdminStudentsView() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const canEnroll = user?.role === "school_admin" || user?.role === "staff" || user?.role === "super_admin" || user?.role === "supervisor";
+  const canEnroll = user?.role === "head_of_institution" || user?.role === "staff" || user?.role === "super_admin" || user?.role === "group_principal";
 
   useEffect(() => {
     if (!token || !user?.school_id) return;

@@ -33,18 +33,23 @@ def require_roles(*roles: UserRole):
 
 
 def ensure_school_access(db: Session, current_user: User, school_id: int) -> None:
-    """Non-super-admins may only act within their own school — except a group
-    owner (a school_admin whose own school is the *parent* of the target
-    school) may also act within any of their own branches, and a SUPERVISOR
-    may act within any school the super-admin has explicitly linked them to.
+    """Non-super-admins may only act within their own school — except:
+    - a group owner (a HEAD_OF_INSTITUTION whose own school is the *parent*
+      of the target school) may also act within any of their own branches;
+    - a GROUP_PRINCIPAL's own school_id is the umbrella's GROUP-type row, so
+      the same parent-match check gives them every real school under it —
+      the Milai Group hierarchy reuses the existing branch-access mechanism,
+      it isn't a separate system;
+    - a legacy-linked GROUP_PRINCIPAL (formerly SUPERVISOR) may also act
+      within any school the super-admin explicitly linked them to.
     Super-admins manage any school."""
     if current_user.role == UserRole.SUPER_ADMIN or current_user.school_id == school_id:
         return
-    if current_user.role == UserRole.SCHOOL_ADMIN and current_user.school_id is not None:
+    if current_user.role in (UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL) and current_user.school_id is not None:
         target = db.get(School, school_id)
         if target is not None and target.parent_school_id == current_user.school_id:
             return
-    if current_user.role == UserRole.SUPERVISOR:
+    if current_user.role == UserRole.GROUP_PRINCIPAL:
         linked = db.query(SupervisorSchoolLink).filter_by(supervisor_user_id=current_user.id, school_id=school_id).first()
         if linked is not None:
             return

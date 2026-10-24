@@ -207,7 +207,7 @@ export default function CalendarPage() {
   const [activeDay, setActiveDay] = useState<string | null>(null);
 
   const grid = useMemo(() => monthGrid(cursor.year, cursor.month), [cursor]);
-  const canEdit = user?.role === "school_admin" || user?.role === "supervisor";
+  const canEdit = user?.role === "head_of_institution" || user?.role === "group_principal";
 
   useEffect(() => {
     if (!token || !user?.school_id) return;

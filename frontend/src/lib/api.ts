@@ -2,7 +2,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type UserRole =
   | "super_admin"
-  | "school_admin"
+  | "head_of_institution"
   | "teacher"
   | "staff"
   | "student"
@@ -11,7 +11,7 @@ export type UserRole =
   | "boarding_staff"
   | "transport_staff"
   | "bursar"
-  | "supervisor";
+  | "group_principal";
 
 export interface User {
   id: number;

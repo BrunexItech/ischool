@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const ROLES_ALLOWED = ["student", "parent", "teacher", "school_admin", "super_admin", "supervisor"];
+const ROLES_ALLOWED = ["student", "parent", "teacher", "head_of_institution", "super_admin", "group_principal"];
 
 function RespondBox({ complaint, canRespond, onResponded }: { complaint: Complaint; canRespond: boolean; onResponded: (c: Complaint) => void }) {
   const { token, user } = useAuth();
@@ -67,7 +67,7 @@ export default function ComplaintsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ audience: "class_teacher" as "class_teacher" | "principal", subject: "", message: "", student_id: "" });
 
-  const isRecipient = user?.role === "teacher" || user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
+  const isRecipient = user?.role === "teacher" || user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
   const canRaise = user?.role === "student" || user?.role === "parent" || user?.role === "teacher";
 
   useEffect(() => {

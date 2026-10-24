@@ -12,7 +12,7 @@ from app.schemas.asset import DepreciationRunCreate, DepreciationRunOut, FixedAs
 
 router = APIRouter(prefix="/schools/{school_id}/assets", tags=["assets"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 DEPRECIATION_EXPENSE_CODE = "5200"
 ACCUMULATED_DEPRECIATION_CODE = "1590"
 ACCOUNTS_PAYABLE_CODE = "2010"

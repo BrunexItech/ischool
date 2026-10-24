@@ -24,7 +24,7 @@ from app.schemas.dashboard import (
 
 router = APIRouter(prefix="/schools/{school_id}/dashboard", tags=["dashboard"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 
 
 def compute_attendance_trend(db: Session, school_id: int) -> list[AttendanceTrendPoint]:

@@ -14,7 +14,16 @@ import { WritingAnimation } from "@/components/WritingAnimation";
 
 const SCHOOL_NAME = "Milai School";
 
+type Audience = "staff" | "parent" | "student" | "admin";
+
+const AUDIENCE_TABS: { key: Audience; label: string; href: string }[] = [
+  { key: "staff", label: "Staff", href: "/login/staff" },
+  { key: "parent", label: "Parent", href: "/login/parent" },
+  { key: "student", label: "Student", href: "/login/student" },
+];
+
 export interface LoginAudienceConfig {
+  audience: Audience;
   heroTitle: React.ReactNode;
   features: { icon: LucideIcon; label: string }[];
   pageTitle: string;
@@ -67,45 +76,52 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/login-hero.jpg" alt="Students at Milai School" className="size-full object-cover" />
           }
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--sidebar)]/85 via-[var(--sidebar)]/55 to-[var(--sidebar)]/25" />
         </div>
         <div className="relative flex items-center gap-3.5">
           {
             // eslint-disable-next-line @next/next/no-img-element
-            <img src="/mila-logo.png" alt={SCHOOL_NAME} className="size-20 shrink-0 drop-shadow-sm" />
+            <img src="/mila-logo.png" alt={SCHOOL_NAME} className="size-20 shrink-0 drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]" />
           }
-          <div>
+          <div className="[text-shadow:0_2px_10px_rgba(0,0,0,0.65)]">
             <p className="text-2xl leading-tight font-semibold">{SCHOOL_NAME}</p>
             <p className="mt-0.5 text-[0.7rem] tracking-widest text-[#FFA819] uppercase">Nurture With Excellence</p>
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
           <h2 className="max-w-sm text-4xl leading-[1.1] font-semibold text-balance">{config.heroTitle}</h2>
           <ul className="flex flex-col gap-3.5">
             {config.features.map((f) => (
-              <li key={f.label} className="flex items-center gap-3 text-sm text-white/85">
-                <f.icon className="size-4.5 shrink-0 text-white/60" />
+              <li key={f.label} className="flex items-center gap-3 text-sm text-white/95">
+                <f.icon className="size-4.5 shrink-0 text-white/80" />
                 {f.label}
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="relative space-y-1">
-          <p className="text-sm font-medium text-white/90">Building strong foundations for life and learning.</p>
-          <p className="text-xs text-white/50">© {new Date().getFullYear()} {SCHOOL_NAME}</p>
+        <div className="relative space-y-1 [text-shadow:0_2px_10px_rgba(0,0,0,0.65)]">
+          <p className="text-sm font-medium text-white">Building strong foundations for life and learning.</p>
+          <p className="text-xs text-white/70">© {new Date().getFullYear()} {SCHOOL_NAME}</p>
         </div>
       </div>
 
       {/* Sign-in panel */}
-      <div className="relative flex items-center justify-center bg-background p-6">
-        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary via-[#FFA819] to-primary lg:hidden" />
-        <div className="w-full max-w-sm">
+      <div className="relative flex flex-col bg-background lg:items-center lg:justify-center lg:p-6">
+        {/* Mobile-only hero banner */}
+        <div className="relative h-44 shrink-0 overflow-hidden lg:hidden">
+          {
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/login-hero.jpg" alt="Milai School campus" className="size-full object-cover" />
+          }
+          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary via-[#FFA819] to-primary" />
+        </div>
+
+        <div className="relative z-10 mx-auto -mt-9 w-full max-w-sm rounded-t-[2rem] bg-background px-6 pt-7 pb-10 lg:mt-0 lg:rounded-none lg:px-0 lg:py-0">
           <div className="mb-6 flex items-center gap-2.5 lg:hidden">
             {
               // eslint-disable-next-line @next/next/no-img-element
-              <img src="/mila-logo.png" alt={SCHOOL_NAME} className="size-14 shrink-0" />
+              <img src="/mila-logo.png" alt={SCHOOL_NAME} className="size-14 shrink-0 drop-shadow-sm" />
             }
             <div>
               <p className="text-lg leading-tight font-semibold text-foreground">{SCHOOL_NAME}</p>
@@ -115,9 +131,28 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
           <div className="mb-4 hidden lg:block">
             <WritingAnimation />
           </div>
+          {config.audience !== "admin" && (
+          <div className="mb-5 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+            {AUDIENCE_TABS.map((tab) => (
+              <Link
+                key={tab.key}
+                href={tab.href}
+                className={
+                  tab.key === config.audience
+                    ? "rounded-lg bg-background py-1.5 text-center text-sm font-semibold text-foreground shadow-sm"
+                    : "rounded-lg py-1.5 text-center text-sm text-muted-foreground hover:text-foreground"
+                }
+              >
+                {tab.label}
+              </Link>
+            ))}
+          </div>
+          )}
           <div className="h-1 w-10 rounded-full bg-[#FFA819]" />
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{config.pageTitle}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{config.pageSubtitle}</p>
+          <div key={config.audience} className="animate-in fade-in duration-300">
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">{config.pageTitle}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{config.pageSubtitle}</p>
+          </div>
 
           <form onSubmit={handleSubmit} className="mt-7 space-y-4">
             <div className="grid gap-1.5">

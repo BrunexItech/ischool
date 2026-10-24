@@ -26,7 +26,7 @@ router = APIRouter(prefix="/schools/{school_id}", tags=["staff attendance"])
 # not a student or parent.
 EMPLOYEE_ROLES = (
     UserRole.SUPER_ADMIN,
-    UserRole.SCHOOL_ADMIN,
+    UserRole.HEAD_OF_INSTITUTION,
     UserRole.TEACHER,
     UserRole.STAFF,
     UserRole.SECURITY,
@@ -34,7 +34,7 @@ EMPLOYEE_ROLES = (
     UserRole.TRANSPORT_STAFF,
     UserRole.BURSAR,
 )
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 
 
 # --- Staff attendance (clock in/out) ---

@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-const EMPLOYEE_ROLES = ["school_admin", "super_admin", "teacher", "staff", "security", "boarding_staff", "transport_staff", "bursar"];
+const EMPLOYEE_ROLES = ["head_of_institution", "super_admin", "teacher", "staff", "security", "boarding_staff", "transport_staff", "bursar"];
 
 function fmtTime(iso: string | null) {
   return iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—";
@@ -397,10 +397,10 @@ function AdminRoster() {
 export default function StaffAttendancePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const isAdmin = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
+  const isAdmin = user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
 
   useEffect(() => {
-    if (!loading && user && !EMPLOYEE_ROLES.includes(user.role) && user.role !== "supervisor") router.replace("/dashboard");
+    if (!loading && user && !EMPLOYEE_ROLES.includes(user.role) && user.role !== "group_principal") router.replace("/dashboard");
   }, [loading, user, router]);
 
   if (loading || !user) return <PageLoader />;

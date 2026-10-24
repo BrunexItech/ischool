@@ -307,8 +307,8 @@ export default function TripsPage() {
   if (loading || dataLoading) return <PageLoader />;
   if (!user) return null;
 
-  const canRequest = user.role === "school_admin" || user.role === "teacher" || user.role === "supervisor";
-  const canManage = user.role === "school_admin" || user.role === "supervisor";
+  const canRequest = user.role === "head_of_institution" || user.role === "teacher" || user.role === "group_principal";
+  const canManage = user.role === "head_of_institution" || user.role === "group_principal";
   const filtered = statusFilter ? trips.filter((t) => t.status === statusFilter) : trips;
   const statuses: (TripStatus | "")[] = ["", "requested", "approved", "in_progress", "completed", "declined", "cancelled"];
 

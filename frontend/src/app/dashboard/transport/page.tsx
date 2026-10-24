@@ -71,7 +71,7 @@ export default function TransportPage() {
   const [submittingAssign, setSubmittingAssign] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && !["school_admin", "staff", "super_admin", "transport_staff", "supervisor"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["head_of_institution", "staff", "super_admin", "transport_staff", "group_principal"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {

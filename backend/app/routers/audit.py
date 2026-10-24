@@ -9,7 +9,7 @@ from app.schemas.audit import AuditLogOut
 
 router = APIRouter(prefix="/schools/{school_id}/audit-log", tags=["audit"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 
 
 @router.get("", response_model=list[AuditLogOut], dependencies=[Depends(require_roles(*ADMIN_ROLES))])

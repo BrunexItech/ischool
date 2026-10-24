@@ -6,8 +6,6 @@ import { UserRole } from "@/lib/api";
 
 const STAFF_ROLES: UserRole[] = [
   "super_admin",
-  "school_admin",
-  "supervisor",
   "teacher",
   "staff",
   "security",
@@ -17,6 +15,7 @@ const STAFF_ROLES: UserRole[] = [
 ];
 
 const config: LoginAudienceConfig = {
+  audience: "staff",
   heroTitle: <>Milai School 360, the school&apos;s complete management system: classes, finance and daily operations, all in one place.</>,
   features: [
     { icon: Users, label: "Classes, attendance and results" },

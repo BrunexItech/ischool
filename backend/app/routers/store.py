@@ -12,7 +12,7 @@ from app.schemas.store import StockIssueCreate, StockItemCreate, StockItemOut, S
 
 router = APIRouter(prefix="/schools/{school_id}/stores", tags=["stores"])
 
-STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.STAFF)
+STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF)
 INVENTORY_CODE = "1200"
 ACCOUNTS_PAYABLE_CODE = "2010"
 

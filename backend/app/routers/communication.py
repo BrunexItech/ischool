@@ -26,15 +26,15 @@ AUDIENCE_ROLES: dict[AnnouncementAudience, tuple[UserRole, ...]] = {
 
 VIEW_ROLES = (
     UserRole.SUPER_ADMIN,
-    UserRole.SCHOOL_ADMIN,
-    UserRole.SUPERVISOR,
+    UserRole.HEAD_OF_INSTITUTION,
+    UserRole.GROUP_PRINCIPAL,
     UserRole.TEACHER,
     UserRole.STAFF,
     UserRole.STUDENT,
     UserRole.PARENT,
 )
-POST_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR, UserRole.TEACHER)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SUPERVISOR)
+POST_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 
 
 @router.get(
@@ -140,7 +140,7 @@ def create_announcement(
             # with a real person — the practical way to "see feedback" without
             # standing up inbound-email infrastructure.
             admin_emails = {
-                e for (e,) in db.query(User.email).filter_by(school_id=school_id, role=UserRole.SCHOOL_ADMIN, is_active=True)
+                e for (e,) in db.query(User.email).filter_by(school_id=school_id, role=UserRole.HEAD_OF_INSTITUTION, is_active=True)
             }
             cc = sorted(admin_emails | {current_user.email})
             subject = announcement.title

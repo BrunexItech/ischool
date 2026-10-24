@@ -16,6 +16,11 @@ class SubscriptionStatus(str, enum.Enum):
     SUSPENDED = "suspended"
 
 
+class SchoolType(str, enum.Enum):
+    SCHOOL = "school"  # a real operating institution — students, staff, fees, classes
+    GROUP = "group"  # the umbrella entity over a set of schools; never operational itself
+
+
 def _default_trial_end() -> datetime:
     return datetime.now(timezone.utc) + timedelta(days=TRIAL_DAYS)
 
@@ -32,6 +37,12 @@ class School(Base):
     # still a fully independent tenant (its own students/staff/fees/modules),
     # just grouped under a parent for reporting and onboarding purposes.
     parent_school_id: Mapped[int | None] = mapped_column(ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)
+
+    # Distinguishes a real operating school from a non-operational "group"
+    # row used purely as the parent anchor for a set of schools under one
+    # umbrella (e.g. a Group Principal's own school_id points at a GROUP
+    # row, never at an operating school).
+    school_type: Mapped[SchoolType] = mapped_column(Enum(SchoolType), default=SchoolType.SCHOOL, server_default="SCHOOL")
 
     # Branding
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

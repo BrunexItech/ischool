@@ -78,7 +78,7 @@ def test_admin_cannot_create_staff_with_a_non_staff_role(client, school_admin_to
             "email": "sneaky@test-academy.test",
             "full_name": "Sneaky",
             "password": "SneakyPass123!",
-            "role": "school_admin",
+            "role": "head_of_institution",
             "staff_number": "SNK-001",
         },
     )

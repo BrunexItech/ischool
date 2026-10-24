@@ -572,7 +572,7 @@ function VehiclesTab() {
   const [form, setForm] = useState({ registration: "", driver_name: "", purpose: "" });
   const [date, setDate] = useState("");
 
-  const canDecide = user?.role === "school_admin" || user?.role === "super_admin" || user?.role === "supervisor";
+  const canDecide = user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
 
   const reload = () => {
     if (!token || !user?.school_id) return;
