@@ -34,6 +34,7 @@ from app.routers import (
     budget,
     calendar_events,
     communication,
+    competency,
     complaints,
     dashboard,
     exams,
@@ -84,6 +85,7 @@ app.include_router(results.router)
 app.include_router(fees.router)
 app.include_router(communication.router)
 app.include_router(complaints.router)
+app.include_router(competency.router)
 app.include_router(live_classes.router)
 app.include_router(live_classes.public_router)
 app.include_router(portal.router)

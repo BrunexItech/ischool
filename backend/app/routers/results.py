@@ -68,6 +68,42 @@ def create_subject(
     return subject
 
 
+# The five official Pre-Primary learning areas — Kenya School Readiness
+# Assessment Tool, Ministry of Education Assessors' Guide (April 2022),
+# Foreword p.ii. Fixed, verified names; not teacher/admin-editable here,
+# only seeded once per school on request.
+PRE_PRIMARY_LEARNING_AREAS = [
+    "Language Activities",
+    "Mathematical Activities",
+    "Environmental Activities",
+    "Psychomotor and Creative Activities",
+    "Religious Education Activities",
+]
+
+
+@router.post(
+    "/subjects/seed-pre-primary-learning-areas",
+    response_model=list[SubjectOut],
+    dependencies=[Depends(require_roles(*MANAGE_ROLES)), Depends(require_feature("results"))],
+)
+def seed_pre_primary_learning_areas(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Idempotent — adds any of the five official learning areas this
+    school doesn't already have as a Subject, by case-insensitive name
+    match. Never duplicates, never touches existing subjects."""
+    ensure_school_access(db, current_user, school_id)
+    existing_names = {s.name.strip().lower() for s in db.query(Subject).filter_by(school_id=school_id).all()}
+    created = []
+    for name in PRE_PRIMARY_LEARNING_AREAS:
+        if name.strip().lower() not in existing_names:
+            subject = Subject(school_id=school_id, name=name)
+            db.add(subject)
+            created.append(subject)
+    db.commit()
+    for s in created:
+        db.refresh(s)
+    return db.query(Subject).filter_by(school_id=school_id).filter(Subject.name.in_(PRE_PRIMARY_LEARNING_AREAS)).all()
+
+
 # --- Results ---
 
 

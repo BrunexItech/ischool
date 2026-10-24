@@ -1,5 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.competency_assessment import CompetencyAssessmentOut
+
 
 class SubjectCreate(BaseModel):
     name: str
@@ -57,6 +59,7 @@ class ReportCardOut(BaseModel):
     attendance_rate: float | None
     class_teacher_remark: str | None
     principal_remark: str | None
+    competency_assessments: list[CompetencyAssessmentOut] = []
 
 
 class ReportCardRemarkUpdate(BaseModel):

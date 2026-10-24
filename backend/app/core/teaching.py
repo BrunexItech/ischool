@@ -29,6 +29,22 @@ def ensure_can_manage_attendance(db: Session, current_user: User, class_id: int)
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only this class's class teacher can mark its register")
 
 
+def ensure_has_any_assignment(db: Session, current_user: User, class_id: int) -> None:
+    """For things that aren't subject-specific (e.g. an observation note) —
+    any connection to the class is enough: homeroom, or any TeacherAssignment
+    row regardless of subject."""
+    if current_user.role != UserRole.TEACHER:
+        return
+    is_homeroom_teacher = (
+        db.query(SchoolClass).filter_by(id=class_id, homeroom_teacher_id=current_user.id).first() is not None
+    )
+    if is_homeroom_teacher:
+        return
+    assigned = db.query(TeacherAssignment).filter_by(teacher_user_id=current_user.id, class_id=class_id).first()
+    if assigned is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not assigned to this class")
+
+
 def ensure_can_grade(db: Session, current_user: User, class_id: int | None, subject_id: int) -> None:
     if current_user.role != UserRole.TEACHER:
         return

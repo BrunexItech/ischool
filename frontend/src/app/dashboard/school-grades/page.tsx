@@ -93,7 +93,16 @@ export default function SchoolGradesPage() {
             {schoolOptions.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Badge variant="secondary">{enabledIds.size} grade{enabledIds.size === 1 ? "" : "s"} enabled</Badge>
+        <Badge variant="secondary">
+          {enabledIds.size === 0
+            ? "No grades enabled yet"
+            : (() => {
+                const enabled = allGrades.filter((g) => enabledIds.has(g.id)).sort((a, b) => a.sort_order - b.sort_order);
+                const lowest = enabled[0]?.display_name;
+                const highest = enabled[enabled.length - 1]?.display_name;
+                return lowest === highest ? lowest : `${lowest} to ${highest}`;
+              })()}
+        </Badge>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

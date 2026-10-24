@@ -3,9 +3,23 @@ from sqlalchemy.orm import Session
 from app.models.academic_term import AcademicTerm
 from app.models.academics import Student
 from app.models.attendance import AttendanceRecord, AttendanceStatus
+from app.models.competency_assessment import CompetencyAssessment
+from app.models.grade_level import LevelGroup
 from app.models.report_card_remark import ReportCardRemark
 from app.models.results import Result
+from app.schemas.competency_assessment import CompetencyAssessmentOut
 from app.schemas.results import ReportCardOut, ReportCardRow
+
+
+def _is_pre_primary(student: Student) -> bool:
+    """A PP1/PP2 class — identified via the class's assigned national grade,
+    never by name-matching. No class/grade means "not pre-primary" (treat
+    as the conventional flow)."""
+    return (
+        student.school_class is not None
+        and student.school_class.grade is not None
+        and student.school_class.grade.level_group == LevelGroup.PRE_PRIMARY
+    )
 
 
 def _grade_for(score: float) -> str:
@@ -22,8 +36,14 @@ def _grade_for(score: float) -> str:
 
 def _class_position(db: Session, student: Student, term: str) -> str | None:
     """Ranks every student in the same class by their term average, highest
-    first — the classic '7 / 32' line on a printed report card."""
-    if student.class_id is None:
+    first — the classic '7 / 32' line on a printed report card.
+
+    Never computed for PP1/PP2: the Kenya School Readiness Assessment Tool
+    (Ministry of Education Assessors' Guide, April 2022, Scoring Guide
+    p.2/p.xiv) states this assessment "shall not be used for ranking
+    learners" — so pre-primary report cards omit a position entirely
+    rather than ranking a 4-5 year-old."""
+    if student.class_id is None or _is_pre_primary(student):
         return None
 
     classmates = db.query(Student.id).filter_by(school_id=student.school_id, class_id=student.class_id, is_active=True).all()
@@ -81,6 +101,19 @@ def build_report_card(db: Session, student: Student, term: str) -> ReportCardOut
 
     remark = db.query(ReportCardRemark).filter_by(school_id=student.school_id, student_id=student.id, term=term).first()
 
+    competency_assessments = []
+    if _is_pre_primary(student):
+        # A compiled summary of this term's observations — presented as our
+        # own record, not formatted as or claimed to be the official KSRAT
+        # form itself (that form's exact layout hasn't been reproduced here).
+        competency_rows = (
+            db.query(CompetencyAssessment)
+            .filter_by(school_id=student.school_id, student_id=student.id, term=term)
+            .order_by(CompetencyAssessment.subject_id, CompetencyAssessment.assessment_date)
+            .all()
+        )
+        competency_assessments = [CompetencyAssessmentOut.model_validate(c) for c in competency_rows]
+
     return ReportCardOut(
         school_name=student.school.name,
         school_logo_url=student.school.logo_url,
@@ -96,4 +129,5 @@ def build_report_card(db: Session, student: Student, term: str) -> ReportCardOut
         attendance_rate=_attendance_rate(db, student, term),
         class_teacher_remark=remark.class_teacher_remark if remark else None,
         principal_remark=remark.principal_remark if remark else None,
+        competency_assessments=competency_assessments,
     )

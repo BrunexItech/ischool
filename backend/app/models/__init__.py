@@ -65,6 +65,8 @@ from app.models.staff_attendance import StaffAttendance, DutyAssignment
 from app.models.supervisor_link import SupervisorSchoolLink
 from app.models.homework import Homework, HomeworkSubmission, HomeworkSubmissionStatus
 from app.models.grade_level import GradeLevel, SchoolEnabledGrade, LevelGroup
+from app.models.competency_assessment import CompetencyAssessment, PerformanceLevel
+from app.models.observation_note import ObservationNote
 
 __all__ = [
     "School",
