@@ -4,22 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LucideIcon } from "lucide-react";
-import { GraduationCap } from "lucide-react";
-import { api, ApiError, UserRole } from "@/lib/api";
+import { ApiError, UserRole } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { getTenantSlug } from "@/lib/tenant";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
 import { WritingAnimation } from "@/components/WritingAnimation";
 
-interface Branding {
-  name: string;
-  logo_url: string | null;
-  primary_color: string;
-  secondary_color: string;
-}
+const SCHOOL_NAME = "Milai School";
 
 export interface LoginAudienceConfig {
   heroTitle: React.ReactNode;
@@ -33,7 +26,6 @@ export interface LoginAudienceConfig {
 export function LoginForm({ config }: { config: LoginAudienceConfig }) {
   const router = useRouter();
   const { login, logout, user } = useAuth();
-  const [branding, setBranding] = useState<Branding | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,17 +38,6 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
       router.replace(user.must_change_password ? "/change-password" : "/dashboard");
     }
   }, [user, router, config.allowedRoles]);
-
-  useEffect(() => {
-    const slug = getTenantSlug();
-    if (!slug) return;
-    api
-      .getSchoolBySlug(slug)
-      .then((school) =>
-        setBranding({ name: school.name, logo_url: school.logo_url, primary_color: school.primary_color, secondary_color: school.secondary_color })
-      )
-      .catch(() => setBranding(null));
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,33 +58,20 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
     }
   }
 
-  const schoolName = branding?.name ?? "Milai Group of Schools";
-
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
-      <div
-        className="relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex"
-        style={{
-          background: branding
-            ? `linear-gradient(to bottom right, ${branding.primary_color}, ${branding.primary_color}, ${branding.secondary_color})`
-            : "var(--sidebar)",
-        }}
-      >
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-[var(--sidebar)] p-10 text-white lg:flex">
         <div className="flex items-center gap-2.5">
           <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/15">
-            {branding?.logo_url ? (
+            {
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={branding.logo_url} alt={schoolName} className="size-full object-contain p-1" />
-            ) : (
-              <GraduationCap className="size-5" />
-            )}
+              <img src="/mila-logo.svg" alt={SCHOOL_NAME} className="size-full object-contain p-1" />
+            }
           </div>
           <div>
-            <p className="text-lg leading-none font-semibold">{schoolName}</p>
-            <p className="mt-1 text-[0.68rem] tracking-widest text-white/50 uppercase">
-              {branding ? "School management" : "Grow. Discover. Lead."}
-            </p>
+            <p className="text-lg leading-none font-semibold">{SCHOOL_NAME}</p>
+            <p className="mt-1 text-[0.68rem] tracking-widest text-white/50 uppercase">Nurture with excellence</p>
           </div>
         </div>
 
@@ -119,7 +87,7 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
           </ul>
         </div>
 
-        <p className="text-xs text-white/50">© {new Date().getFullYear()} {schoolName}</p>
+        <p className="text-xs text-white/50">© {new Date().getFullYear()} {SCHOOL_NAME}</p>
       </div>
 
       {/* Sign-in panel */}

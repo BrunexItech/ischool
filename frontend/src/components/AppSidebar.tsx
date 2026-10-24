@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { api } from "@/lib/api";
 import {
   GraduationCap,
   LayoutDashboard,
@@ -41,7 +39,6 @@ import {
   UserCheck,
   FileText,
   CreditCard,
-  Palette,
   LayoutGrid,
   CalendarClock,
   ChevronsUpDown,
@@ -150,7 +147,6 @@ const NAV_SECTIONS = [
     label: "Administration",
     items: [
       { href: "/dashboard/staff", label: "Staff", icon: UserSquare2, roles: ["school_admin", "supervisor"] },
-      { href: "/dashboard/branding", label: "Branding", icon: Palette, roles: ["school_admin", "supervisor"] },
       { href: "/dashboard/activity-log", label: "Activity Log", icon: History, roles: ["school_admin", "supervisor"] },
     ],
   },
@@ -173,23 +169,14 @@ function initials(name: string) {
 }
 
 export function AppSidebar() {
-  const { user, token, logout, schoolOptions, viewingSchoolId, switchSchool } = useAuth();
+  const { user, logout, schoolOptions, viewingSchoolId, switchSchool } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
-  const [brand, setBrand] = useState<{ name: string; logo_url: string | null } | null>(null);
 
   function closeOnMobile() {
     if (isMobile) setOpenMobile(false);
   }
-
-  useEffect(() => {
-    if (!token || !user?.school_id) return;
-    api
-      .getSchoolBranding(token, user.school_id)
-      .then((school) => setBrand({ name: school.name, logo_url: school.logo_url }))
-      .catch(() => setBrand(null));
-  }, [token, user?.school_id]);
 
   if (!user) return null;
 
@@ -207,15 +194,13 @@ export function AppSidebar() {
               render={
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
                   <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    {brand?.logo_url ? (
+                    {
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={brand.logo_url} alt={brand.name} className="size-full object-contain p-1" />
-                    ) : (
-                      <GraduationCap className="size-4.5" />
-                    )}
+                      <img src="/mila-logo.svg" alt="Milai School" className="size-full object-contain p-1" />
+                    }
                   </div>
                   <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden">
-                    <span className="truncate text-sm font-semibold tracking-tight">{brand?.name ?? "Milai Group of Schools"}</span>
+                    <span className="truncate text-sm font-semibold tracking-tight">Milai School</span>
                     <span className="truncate text-[0.68rem] text-sidebar-foreground/50">
                       {schoolOptions.length} {schoolOptions.length === 1 ? "school" : "schools"} · switch
                     </span>
@@ -238,15 +223,13 @@ export function AppSidebar() {
         ) : (
           <div className="flex items-center gap-2 px-2 py-1.5">
             <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-              {brand?.logo_url ? (
+              {
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={brand.logo_url} alt={brand.name} className="size-full object-contain p-1" />
-              ) : (
-                <GraduationCap className="size-4.5" />
-              )}
+                <img src="/mila-logo.svg" alt="Milai School" className="size-full object-contain p-1" />
+              }
             </div>
             <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-              <span className="truncate text-sm font-semibold tracking-tight">{brand?.name ?? "Milai Group of Schools"}</span>
+              <span className="truncate text-sm font-semibold tracking-tight">Milai School</span>
               <span className="text-[0.68rem] text-sidebar-foreground/50">School management</span>
             </div>
           </div>
