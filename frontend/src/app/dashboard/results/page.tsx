@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Plus, Save } from "lucide-react";
+import { FileText, Plus, Save, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 export default function ResultsPage() {
@@ -27,6 +27,7 @@ export default function ResultsPage() {
   const [scores, setScores] = useState<Record<number, string>>({});
   const [newSubject, setNewSubject] = useState("");
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -72,6 +73,23 @@ export default function ResultsPage() {
     toast.success(`${subject.name} added`);
   }
 
+  async function handleSeedLearningAreas() {
+    if (!token || !user?.school_id) return;
+    setSeeding(true);
+    try {
+      const seeded = await api.seedPrePrimaryLearningAreas(token, user.school_id);
+      setSubjects((s) => {
+        const existingNames = new Set(s.map((x) => x.name));
+        return [...s, ...seeded.filter((x) => !existingNames.has(x.name))];
+      });
+      toast.success("Official PP1/PP2 learning areas added");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to add learning areas");
+    } finally {
+      setSeeding(false);
+    }
+  }
+
   async function handleSaveScores() {
     if (!token || !user?.school_id || subjectId === null) return;
     setSaving(true);
@@ -115,6 +133,9 @@ export default function ResultsPage() {
             </div>
             <Button type="submit" variant="secondary"><Plus /> Add</Button>
           </form>
+          <Button type="button" variant="outline" onClick={handleSeedLearningAreas} disabled={seeding}>
+            <Sparkles /> {seeding ? "Adding..." : "Add official PP1/PP2 learning areas"}
+          </Button>
         </CardContent>
       </Card>
 

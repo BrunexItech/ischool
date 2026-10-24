@@ -225,6 +225,21 @@ export default function ReportCardPage({ params }: { params: Promise<{ studentId
               </Table>
             </div>
 
+            {card.competency_assessments.length > 0 && (
+              <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+                <p className="text-sm font-semibold">Competency assessment</p>
+                {card.competency_assessments.map((c) => (
+                  <div key={c.id} className="rounded-lg border p-2.5 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium">{c.strand}{c.sub_strand ? ` · ${c.sub_strand}` : ""}</p>
+                      <span className="text-xs font-medium text-muted-foreground capitalize">{c.performance_level.replace(/_/g, " ")}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{c.criterion}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Overall */}
             <div className="flex items-center justify-between rounded-lg px-5 py-4 text-white" style={{ backgroundColor: accent }}>
               <div className="flex items-center gap-2">

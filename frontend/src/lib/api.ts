@@ -87,6 +87,39 @@ export interface GradeLevel {
   sort_order: number;
 }
 
+export type PerformanceLevel = "exceeding_expectation" | "meeting_expectation" | "approaching_expectation" | "below_expectation";
+
+export interface CompetencyAssessment {
+  id: number;
+  school_id: number;
+  student_id: number;
+  class_id: number;
+  subject_id: number;
+  teacher_user_id: number | null;
+  term: string;
+  strand: string;
+  sub_strand: string | null;
+  criterion: string;
+  performance_level: PerformanceLevel;
+  assessment_date: string;
+  teacher_comment: string | null;
+  follow_up_action: string | null;
+  created_at: string;
+}
+
+export interface ObservationNote {
+  id: number;
+  school_id: number;
+  student_id: number;
+  class_id: number;
+  teacher_user_id: number | null;
+  subject_id: number | null;
+  strand: string | null;
+  note: string;
+  noted_on: string;
+  created_at: string;
+}
+
 export interface Student {
   id: number;
   school_id: number;
@@ -475,6 +508,7 @@ export interface ReportCard {
   attendance_rate: number | null;
   class_teacher_remark: string | null;
   principal_remark: string | null;
+  competency_assessments: CompetencyAssessment[];
 }
 
 export interface PickupDropoffLog {
@@ -1405,6 +1439,42 @@ export const api = {
     request<GradeLevel[]>(
       `/schools/${schoolId}/enabled-grades`,
       { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade_level_ids: gradeLevelIds }) },
+      token
+    ),
+
+  seedPrePrimaryLearningAreas: (token: string, schoolId: number) =>
+    request<Subject[]>(`/schools/${schoolId}/subjects/seed-pre-primary-learning-areas`, { method: "POST" }, token),
+
+  listCompetencyAssessments: (token: string, schoolId: number, studentId: number) =>
+    request<CompetencyAssessment[]>(`/schools/${schoolId}/competency-assessments?student_id=${studentId}`, {}, token),
+
+  createCompetencyAssessment: (
+    token: string,
+    schoolId: number,
+    payload: {
+      student_id: number; class_id: number; subject_id: number; term: string;
+      strand: string; sub_strand?: string; criterion: string;
+      performance_level: PerformanceLevel; assessment_date: string;
+      teacher_comment?: string; follow_up_action?: string;
+    }
+  ) =>
+    request<CompetencyAssessment>(
+      `/schools/${schoolId}/competency-assessments`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listObservationNotes: (token: string, schoolId: number, studentId: number) =>
+    request<ObservationNote[]>(`/schools/${schoolId}/observation-notes?student_id=${studentId}`, {}, token),
+
+  createObservationNote: (
+    token: string,
+    schoolId: number,
+    payload: { student_id: number; class_id: number; subject_id?: number; strand?: string; note: string; noted_on: string }
+  ) =>
+    request<ObservationNote>(
+      `/schools/${schoolId}/observation-notes`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       token
     ),
 

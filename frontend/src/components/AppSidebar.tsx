@@ -79,6 +79,7 @@ const NAV_SECTIONS = [
     label: "Academics",
     items: [
       { href: "/dashboard/my-classes", label: "My Classes", icon: LayoutGrid, roles: ["teacher"] },
+      { href: "/dashboard/competency", label: "Learner Progress", icon: NotebookPen, roles: ["teacher"] },
       { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["head_of_institution", "staff", "group_principal"] },
       { href: "/dashboard/school-grades", label: "School Grades", icon: LayoutGrid, roles: ["group_principal"] },
       { href: "/dashboard/teachers", label: "Teachers", icon: GraduationCap, roles: ["head_of_institution", "group_principal"] },
