@@ -26,6 +26,8 @@ class Homework(Base):
     subject_id: Mapped[int] = mapped_column(ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Same free-text-backed, fixed-choices-in-the-UI pattern as Exam.exam_type.
+    homework_type: Mapped[str] = mapped_column(String(50), nullable=False, default="Other")
     instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     attachment_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     due_date: Mapped[date_] = mapped_column(Date, nullable=False)

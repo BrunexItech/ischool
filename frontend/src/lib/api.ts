@@ -452,6 +452,7 @@ export interface Exam {
   subject_id: number;
   class_id: number | null;
   title: string;
+  exam_type: string;
   term: string;
   duration_minutes: number;
   is_published: boolean;
@@ -1200,6 +1201,7 @@ export interface Homework {
   class_id: number;
   subject_id: number;
   title: string;
+  homework_type: string;
   instructions: string | null;
   attachment_url: string | null;
   due_date: string;
@@ -1644,8 +1646,9 @@ export const api = {
       subject_id: number;
       class_id?: number;
       title: string;
+      exam_type?: string;
       term: string;
-      duration_minutes: number;
+      duration_minutes?: number;
       opens_at?: string;
       closes_at?: string;
       questions: {
@@ -2472,7 +2475,7 @@ export const api = {
   createHomework: (
     token: string,
     schoolId: number,
-    payload: { class_id: number; subject_id: number; title: string; instructions?: string; due_date: string; allow_digital_submission: boolean }
+    payload: { class_id: number; subject_id: number; title: string; homework_type?: string; instructions?: string; due_date: string; allow_digital_submission: boolean }
   ) =>
     request<HomeworkListItem>(
       `/schools/${schoolId}/homework`,
@@ -2488,6 +2491,9 @@ export const api = {
     form.append("file", file);
     return request<HomeworkListItem>(`/schools/${schoolId}/homework/${homeworkId}/attachment`, { method: "POST", body: form }, token);
   },
+
+  remindHomework: (token: string, schoolId: number, homeworkId: number) =>
+    request<{ reminded: number }>(`/schools/${schoolId}/homework/${homeworkId}/remind`, { method: "POST" }, token),
 
   reviewHomeworkSubmission: (
     token: string,

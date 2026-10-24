@@ -25,9 +25,22 @@ import {
   GraduationCap,
   UserCheck,
   MessageSquareWarning,
+  Plus,
+  BellRing,
 } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
-import { Announcement, api, DashboardSummary, GroupSummary, MyClass, MyTimetableSlot, SupervisorOverview as SupervisorOverviewData } from "@/lib/api";
+import { toast } from "sonner";
+import {
+  api,
+  ApiError,
+  AttendanceRecord,
+  DashboardSummary,
+  GroupSummary,
+  HomeworkListItem,
+  MyClass,
+  MyTimetableSlot,
+  SupervisorOverview as SupervisorOverviewData,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
@@ -319,40 +332,70 @@ const QUICK_LINKS = [
 ];
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function timeToMinutes(t: string) {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
 }
 
-function formatTime(t: string) {
-  const [h, m] = t.slice(0, 5).split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+function formatTime24(t: string) {
+  return t.slice(0, 5);
 }
 
 function TeacherDashboard() {
   const { user, token } = useAuth();
   const [classes, setClasses] = useState<MyClass[]>([]);
   const [timetable, setTimetable] = useState<MyTimetableSlot[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [homework, setHomework] = useState<HomeworkListItem[]>([]);
+  const [homeroomAttendance, setHomeroomAttendance] = useState<{ present: number; total: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [remindingId, setRemindingId] = useState<number | null>(null);
+
+  const jsDay = new Date().getDay();
+  const todayIndex = jsDay === 0 ? -1 : jsDay - 1;
+  const [selectedDay, setSelectedDay] = useState(todayIndex >= 0 ? todayIndex : 0);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
     Promise.all([
       api.listMyClasses(token, user.school_id).catch(() => []),
       api.listMyTimetable(token, user.school_id).catch(() => []),
-      api.listAnnouncements(token, user.school_id).catch(() => []),
+      api.listHomework(token, user.school_id).catch(() => []),
     ])
-      .then(([cs, tt, an]) => {
+      .then(([cs, tt, hw]) => {
         setClasses(cs);
         setTimetable(tt);
-        setAnnouncements(an);
+        const myClassIds = new Set(cs.map((c) => c.class_id));
+        setHomework(hw.filter((h) => myClassIds.has(h.class_id)));
+
+        const homeroom = cs.find((c) => c.is_homeroom_teacher);
+        if (homeroom) {
+          const today = new Date().toISOString().slice(0, 10);
+          api
+            .listAttendance(token, user.school_id!, homeroom.class_id, today)
+            .then((records: AttendanceRecord[]) => {
+              const present = records.filter((r) => r.status !== "absent").length;
+              setHomeroomAttendance({ present, total: homeroom.student_count });
+            })
+            .catch(() => setHomeroomAttendance(null));
+        }
       })
       .finally(() => setLoading(false));
   }, [token, user?.school_id]);
+
+  async function handleRemind(hw: HomeworkListItem) {
+    if (!token || !user?.school_id) return;
+    setRemindingId(hw.id);
+    try {
+      const result = await api.remindHomework(token, user.school_id, hw.id);
+      toast.success(result.reminded > 0 ? `Reminded ${result.reminded} learner${result.reminded === 1 ? "" : "s"}` : "Everyone has already submitted");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to send reminder");
+    } finally {
+      setRemindingId(null);
+    }
+  }
 
   if (loading || !user) {
     return (
@@ -363,53 +406,64 @@ function TeacherDashboard() {
     );
   }
 
-  const jsDay = new Date().getDay();
-  const todayIndex = jsDay === 0 ? -1 : jsDay - 1;
+  const homeroom = classes.find((c) => c.is_homeroom_teacher);
   const todaySlots = timetable.filter((s) => s.day_of_week === todayIndex).sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const daySlots = timetable.filter((s) => s.day_of_week === selectedDay).sort((a, b) => a.start_time.localeCompare(b.start_time));
 
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
   const currentSlot = todaySlots.find((s) => timeToMinutes(s.start_time) <= nowMinutes && nowMinutes < timeToMinutes(s.end_time));
-  const nextSlot = !currentSlot ? todaySlots.find((s) => timeToMinutes(s.start_time) > nowMinutes) : undefined;
 
-  const homeroomCount = classes.filter((c) => c.is_homeroom_teacher).length;
-  const totalLearners = classes.reduce((sum, c) => sum + c.student_count, 0);
-  const markableClasses = classes.filter((c) => c.can_mark_attendance);
-  const pendingRegisters = markableClasses.filter((c) => !c.attendance_marked_today);
-  const registersMarked = markableClasses.length - pendingRegisters.length;
+  const openHomework = homework
+    .filter((h) => h.submitted_count < h.total_students || h.reviewed_count < h.submitted_count)
+    .sort((a, b) => (a.due_date < b.due_date ? -1 : 1))
+    .slice(0, 5);
+  const submissionsToMark = homework.reduce((sum, h) => sum + Math.max(0, h.submitted_count - h.reviewed_count), 0);
+
+  const attendancePct = homeroomAttendance && homeroomAttendance.total > 0 ? Math.round((homeroomAttendance.present / homeroomAttendance.total) * 100) : null;
+
+  const classNameFor = (id: number) => classes.find((c) => c.class_id === id)?.class_name ?? "—";
+  const subjectNameFor = (classId: number, subjectId: number) =>
+    classes.find((c) => c.class_id === classId)?.subjects.find((s) => s.subject_id === subjectId)?.subject_name ?? "—";
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={`${greet()}, ${user.full_name.split(" ")[0]}`}
-        description={todayLabel()}
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Link href="/dashboard/attendance"><Button variant="outline"><ClipboardCheck /> Take attendance</Button></Link>
-            <Link href="/dashboard/results"><Button><Award /> Grading</Button></Link>
-          </div>
-        }
-      />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {homeroom ? `Class teacher · ${homeroom.class_name} · ` : ""}
+            {todayLabel()}
+          </p>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">{greet()}, {user.full_name.split(" ")[0]}</h1>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href={homeroom ? `/dashboard/attendance?class_id=${homeroom.class_id}` : "/dashboard/attendance"}>
+            <Button variant="outline"><ClipboardCheck /> Class register</Button>
+          </Link>
+          <Link href="/dashboard/homework">
+            <Button><Plus /> New assignment</Button>
+          </Link>
+        </div>
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Metric
-          label="Classes you teach"
-          value={classes.length}
-          sub={homeroomCount ? `${homeroomCount} as class teacher` : "Subject teacher"}
-          href="/dashboard/my-classes"
-        />
-        <Metric label="Learners" value={totalLearners} sub="Across all your classes" href="/dashboard/students" />
-        <Metric
-          label="Registers today"
-          value={markableClasses.length ? `${registersMarked}/${markableClasses.length}` : "—"}
-          sub={pendingRegisters.length ? `${pendingRegisters.length} still pending` : markableClasses.length ? "All marked" : "Nothing to mark"}
-          meterPercent={markableClasses.length ? (registersMarked / markableClasses.length) * 100 : undefined}
-          meterClassName={pendingRegisters.length ? "bg-amber-500" : "bg-emerald-500"}
-          href="/dashboard/attendance"
+          label={homeroom ? `${homeroom.class_name} attendance` : "Attendance today"}
+          value={attendancePct !== null ? `${attendancePct}%` : "—"}
+          sub={homeroomAttendance ? `${homeroomAttendance.present} of ${homeroomAttendance.total} learners in today` : "No homeroom class"}
+          meterPercent={attendancePct ?? undefined}
+          meterClassName={attendancePct !== null && attendancePct < 80 ? "bg-amber-500" : "bg-emerald-500"}
+          href={homeroom ? `/dashboard/attendance?class_id=${homeroom.class_id}` : "/dashboard/attendance"}
         />
         <Metric
-          label="Today's periods"
+          label="Submissions to mark"
+          value={submissionsToMark}
+          sub={`Across ${openHomework.length} open assignment${openHomework.length === 1 ? "" : "s"}`}
+          href="/dashboard/homework"
+        />
+        <Metric
+          label="Lessons today"
           value={todaySlots.length}
-          sub={currentSlot ? `Now: ${currentSlot.subject_name}` : nextSlot ? `Next: ${nextSlot.subject_name}` : "No lessons scheduled"}
+          sub={todaySlots.length ? `Including ${todaySlots.slice(0, 2).map((s) => s.subject_name).join(", ")}` : "No lessons scheduled"}
           href="/dashboard/timetable"
         />
       </div>
@@ -417,70 +471,102 @@ function TeacherDashboard() {
       <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Today&apos;s schedule</CardTitle>
-            <CardDescription>
-              {DAY_NAMES[todayIndex] ?? "Weekend"} · {todaySlots.length} period{todaySlots.length === 1 ? "" : "s"}
-            </CardDescription>
+            <CardTitle className="text-base">My timetable</CardTitle>
+            <CardDescription>40-minute lessons · current term timetable</CardDescription>
           </CardHeader>
-          <CardContent>
-            {todaySlots.length ? (
+          <CardContent className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-1.5">
+              {DAY_NAMES.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSelectedDay(i)}
+                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    selectedDay === i ? "border-foreground bg-foreground text-background" : "border-input hover:bg-accent"
+                  }`}
+                >
+                  {DAY_SHORT[i]}{i === todayIndex ? " · today" : ""}
+                </button>
+              ))}
+            </div>
+
+            {daySlots.length ? (
               <ol className="flex flex-col gap-2">
-                {todaySlots.map((s) => {
-                  const isNow = s.id === currentSlot?.id;
-                  const isNext = s.id === nextSlot?.id;
+                {daySlots.map((s) => {
+                  const isNow = selectedDay === todayIndex && s.id === currentSlot?.id;
                   return (
-                    <li
-                      key={s.id}
-                      className={`flex items-center gap-3 rounded-lg border p-2.5 ${
-                        isNow
-                          ? "border-primary/50 bg-primary/5"
-                          : isNext
-                          ? "border-amber-300/60 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20"
-                          : ""
-                      }`}
-                    >
-                      <div className="flex w-24 shrink-0 flex-col items-start text-xs text-muted-foreground tabular-nums">
-                        <span>{formatTime(s.start_time)}</span>
-                        <span>{formatTime(s.end_time)}</span>
+                    <li key={s.id} className={`flex items-center gap-3 rounded-lg border p-2.5 ${isNow ? "border-primary/50 bg-primary/5" : ""}`}>
+                      <div className="flex w-16 shrink-0 flex-col items-start text-xs text-muted-foreground tabular-nums">
+                        <span>{formatTime24(s.start_time)}</span>
+                        <span>{formatTime24(s.end_time)}</span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{s.subject_name} · {s.class_name}</p>
-                        <p className="text-xs text-muted-foreground">{s.room ? `Room ${s.room}` : "No room set"}</p>
+                        <p className="truncate text-sm font-medium">{s.subject_name}</p>
+                        <p className="text-xs text-muted-foreground">{s.class_name}{s.room ? ` · Room ${s.room}` : ""}</p>
                       </div>
                       {isNow && <Badge className="shrink-0">Now</Badge>}
-                      {!isNow && isNext && <Badge variant="outline" className="shrink-0 border-amber-400 text-amber-700 dark:text-amber-400">Next</Badge>}
+                      <Link href={`/dashboard/attendance?class_id=${s.class_id}`}>
+                        <Button size="sm" variant="outline" className="shrink-0">Register</Button>
+                      </Link>
                     </li>
                   );
                 })}
               </ol>
             ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">No lessons scheduled for today.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No lessons scheduled for {DAY_NAMES[selectedDay]}.</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Latest announcements</CardTitle>
-            <CardDescription>From your school</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-base"><BellRing className="size-4.5" /> Submission alerts</CardTitle>
+            <CardDescription>Open assignments in your classes</CardDescription>
           </CardHeader>
           <CardContent>
-            {announcements.length ? (
-              <ul className="flex flex-col gap-3">
-                {announcements.slice(0, 5).map((a) => (
-                  <li key={a.id} className="flex items-start gap-3">
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Megaphone className="size-3.5" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{a.title}</p>
-                      <p className="text-xs text-muted-foreground">{formatAgo(a.created_at)}</p>
-                    </div>
-                  </li>
-                ))}
+            {openHomework.length ? (
+              <ul className="flex flex-col gap-4">
+                {openHomework.map((hw) => {
+                  const missing = hw.total_students - hw.submitted_count;
+                  const unmarked = hw.submitted_count - hw.reviewed_count;
+                  const pct = hw.total_students > 0 ? Math.round((hw.submitted_count / hw.total_students) * 100) : 0;
+                  return (
+                    <li key={hw.id} className="flex flex-col gap-2 rounded-lg border p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">{hw.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {classNameFor(hw.class_id)} · {subjectNameFor(hw.class_id, hw.subject_id)} · due {new Date(hw.due_date + "T12:00:00").toLocaleDateString()}
+                          </p>
+                        </div>
+                        {missing > 0 ? (
+                          <Badge variant="outline" className="shrink-0 border-red-300 text-red-700 dark:border-red-900 dark:text-red-400">{missing} missing</Badge>
+                        ) : (
+                          <Badge variant="outline" className="shrink-0 border-amber-300 text-amber-700 dark:border-amber-900 dark:text-amber-400">{unmarked} to mark</Badge>
+                        )}
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {hw.submitted_count}/{hw.total_students} handed in{unmarked > 0 ? ` · ${unmarked} unmarked` : ""}
+                        </p>
+                        <div className="flex gap-1.5">
+                          {missing > 0 && (
+                            <Button size="sm" variant="outline" disabled={remindingId === hw.id} onClick={() => handleRemind(hw)}>
+                              {remindingId === hw.id ? "Reminding..." : "Remind"}
+                            </Button>
+                          )}
+                          <Link href={`/dashboard/homework/${hw.id}`}><Button size="sm">Review</Button></Link>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">No announcements yet.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">Nothing needs your attention — every assignment is handed in and marked.</p>
             )}
           </CardContent>
         </Card>

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
-from app.core.uploads import save_document
+from app.core.uploads import save_document_or_image
 from app.models.exam import Exam, ExamAnswer, ExamQuestion, ExamQuestionType, ExamSubmission, ExamSubmissionStatus
 from app.models.results import Subject
 from app.models.user import User, UserRole
@@ -56,6 +56,7 @@ def create_exam(school_id: int, payload: ExamCreate, db: Session = Depends(get_d
         subject_id=payload.subject_id,
         class_id=payload.class_id,
         title=payload.title,
+        exam_type=payload.exam_type,
         term=payload.term,
         duration_minutes=payload.duration_minutes,
         opens_at=payload.opens_at,
@@ -137,7 +138,7 @@ def upload_exam_paper(
     if exam is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Exam not found")
 
-    relative_path = save_document(file, subdir=f"schools/{school_id}/exam-papers", base_name=f"exam-{exam.id}")
+    relative_path = save_document_or_image(file, subdir=f"schools/{school_id}/exam-papers", base_name=f"exam-{exam.id}")
     exam.paper_file_url = f"{settings.backend_url}/uploads/{relative_path}"
     db.commit()
     db.refresh(exam)

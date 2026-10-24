@@ -27,8 +27,9 @@ class ExamCreate(BaseModel):
     subject_id: int
     class_id: int | None = None
     title: str
+    exam_type: str = "Other"
     term: str
-    duration_minutes: int
+    duration_minutes: int = 60
     opens_at: datetime | None = None
     closes_at: datetime | None = None
     questions: list[ExamQuestionCreate] = []
@@ -75,6 +76,7 @@ class ExamOut(BaseModel):
     subject_id: int
     class_id: int | None
     title: str
+    exam_type: str
     term: str
     duration_minutes: int
     is_published: bool

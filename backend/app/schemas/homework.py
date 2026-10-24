@@ -9,6 +9,7 @@ class HomeworkCreate(BaseModel):
     class_id: int
     subject_id: int
     title: str
+    homework_type: str = "Other"
     instructions: str | None = None
     due_date: date
     allow_digital_submission: bool = True
@@ -22,6 +23,7 @@ class HomeworkOut(BaseModel):
     class_id: int
     subject_id: int
     title: str
+    homework_type: str
     instructions: str | None
     attachment_url: str | None
     due_date: date
@@ -64,6 +66,7 @@ class HomeworkForStudentOut(BaseModel):
     id: int
     subject_name: str
     title: str
+    homework_type: str
     instructions: str | None
     attachment_url: str | None
     due_date: date

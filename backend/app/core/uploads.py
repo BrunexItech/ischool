@@ -16,6 +16,10 @@ MAX_IMAGE_BYTES = 2 * 1024 * 1024  # 2MB — plenty for a logo, small enough to 
 ALLOWED_DOCUMENT_TYPES = {"application/pdf": "pdf"}
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024  # 10MB — comfortable for a scanned/typed exam paper
 
+# A teacher attaching an exam paper or homework sheet just as often has a
+# phone photo of it as a scanned PDF — accept either under one limit.
+ALLOWED_DOCUMENT_OR_IMAGE_TYPES = {**ALLOWED_DOCUMENT_TYPES, **ALLOWED_IMAGE_TYPES}
+
 
 def save_image(upload: UploadFile, *, subdir: str, base_name: str) -> str:
     """Validates and saves an image upload, returning its path relative to
@@ -56,6 +60,28 @@ def save_document(upload: UploadFile, *, subdir: str, base_name: str) -> str:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "File must be 10MB or smaller")
 
     extension = ALLOWED_DOCUMENT_TYPES[upload.content_type]
+    directory = UPLOAD_ROOT / subdir
+    directory.mkdir(parents=True, exist_ok=True)
+
+    for existing in directory.glob(f"{base_name}.*"):
+        existing.unlink()
+
+    relative_path = f"{subdir}/{base_name}.{extension}"
+    (directory / f"{base_name}.{extension}").write_bytes(contents)
+    return relative_path
+
+
+def save_document_or_image(upload: UploadFile, *, subdir: str, base_name: str) -> str:
+    """Same pattern as save_document, but also accepts a phone photo of a
+    paper (PNG/JPEG/WEBP) as an alternative to a scanned PDF."""
+    if upload.content_type not in ALLOWED_DOCUMENT_OR_IMAGE_TYPES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only a PDF, PNG, JPEG, or WEBP file is allowed")
+
+    contents = upload.file.read(MAX_DOCUMENT_BYTES + 1)
+    if len(contents) > MAX_DOCUMENT_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File must be 10MB or smaller")
+
+    extension = ALLOWED_DOCUMENT_OR_IMAGE_TYPES[upload.content_type]
     directory = UPLOAD_ROOT / subdir
     directory.mkdir(parents=True, exist_ok=True)
 

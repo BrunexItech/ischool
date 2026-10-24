@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
+from app.core.notify import notify
 from app.core.teaching import ensure_can_grade
-from app.core.uploads import save_document
+from app.core.uploads import save_document_or_image
 from app.models.academics import SchoolClass, Student
 from app.models.homework import Homework, HomeworkSubmission, HomeworkSubmissionStatus
 from app.models.user import User, UserRole
@@ -118,11 +119,51 @@ def upload_homework_attachment(
     hw = _get_homework(db, school_id, homework_id)
     ensure_can_grade(db, current_user, hw.class_id, hw.subject_id)
 
-    relative_path = save_document(file, subdir=f"schools/{school_id}/homework", base_name=f"homework-{hw.id}")
+    relative_path = save_document_or_image(file, subdir=f"schools/{school_id}/homework", base_name=f"homework-{hw.id}")
     hw.attachment_url = f"{settings.backend_url}/uploads/{relative_path}"
     db.commit()
     db.refresh(hw)
     return _list_item_out(db, hw)
+
+
+@router.post(
+    "/{homework_id}/remind",
+    response_model=dict,
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("homework"))],
+)
+def remind_homework(school_id: int, homework_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Nudges every active student who hasn't submitted (or isn't marked
+    done) yet — a notification to their own account and their guardian's,
+    whichever of the two exist."""
+    ensure_school_access(db, current_user, school_id)
+    hw = _get_homework(db, school_id, homework_id)
+    ensure_can_grade(db, current_user, hw.class_id, hw.subject_id)
+
+    students = db.query(Student).filter_by(school_id=school_id, class_id=hw.class_id, is_active=True).all()
+    done_ids = {
+        s.student_id
+        for s in db.query(HomeworkSubmission).filter_by(homework_id=hw.id).all()
+        if s.status in (HomeworkSubmissionStatus.SUBMITTED, HomeworkSubmissionStatus.REVIEWED)
+    }
+
+    reminded = 0
+    for student in students:
+        if student.id in done_ids:
+            continue
+        for user_id in {student.user_id, student.guardian_user_id}:
+            if user_id is None:
+                continue
+            notify(
+                db,
+                school_id=school_id,
+                user_id=user_id,
+                title=f"Reminder: {hw.title}",
+                body=f"{hw.title} is due {hw.due_date} and hasn't been handed in yet.",
+            )
+        reminded += 1
+
+    db.commit()
+    return {"reminded": reminded}
 
 
 @router.get(

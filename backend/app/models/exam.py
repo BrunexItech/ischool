@@ -42,6 +42,10 @@ class Exam(Base):
     class_id: Mapped[int | None] = mapped_column(ForeignKey("school_classes.id", ondelete="SET NULL"), nullable=True)
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # A short, teacher-chosen label like "CAT 1" or "End Term" — the frontend
+    # offers a fixed set of common ones plus a free-text "Other", but this
+    # column just stores whatever string was picked.
+    exam_type: Mapped[str] = mapped_column(String(50), nullable=False, default="Other")
     term: Mapped[str] = mapped_column(String(50), nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)  # open for students to sit online
