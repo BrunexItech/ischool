@@ -182,6 +182,17 @@ export interface Result {
   remarks: string | null;
 }
 
+export interface GradingBand {
+  id: number;
+  school_id: number;
+  level_code: string;
+  label: string;
+  min_score: number;
+  max_score: number;
+  points: number;
+  sort_order: number;
+}
+
 export interface FeePayment {
   id: number;
   invoice_id: number;
@@ -1777,6 +1788,20 @@ export const api = {
     request<Result>(
       `/schools/${schoolId}/results`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listGradingBands: (token: string, schoolId: number) =>
+    request<GradingBand[]>(`/schools/${schoolId}/grading-bands`, {}, token),
+
+  updateGradingBands: (
+    token: string,
+    schoolId: number,
+    bands: { level_code: string; label: string; min_score: number; max_score: number; points: number }[]
+  ) =>
+    request<GradingBand[]>(
+      `/schools/${schoolId}/grading-bands`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bands }) },
       token
     ),
 

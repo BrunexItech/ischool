@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.notify import notify
 from app.core.report_card import build_report_card
+from app.core.grading import level_for_score
 from app.core.teaching import ensure_can_grade
 from app.models.academics import Student
 from app.models.report_card_remark import ReportCardRemark
@@ -18,18 +19,6 @@ router = APIRouter(prefix="/schools/{school_id}", tags=["results"])
 VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
 MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER)
-
-
-def _grade_for(score: float) -> str:
-    if score >= 80:
-        return "A"
-    if score >= 70:
-        return "B"
-    if score >= 60:
-        return "C"
-    if score >= 50:
-        return "D"
-    return "E"
 
 
 # --- Subjects ---
@@ -220,7 +209,7 @@ def upsert_result(
         .filter_by(school_id=school_id, student_id=payload.student_id, subject_id=payload.subject_id, term=payload.term)
         .first()
     )
-    grade = payload.grade or _grade_for(payload.score)
+    grade = payload.grade or level_for_score(db, school_id, payload.score)
 
     if result:
         before = {"score": float(result.score), "grade": result.grade, "remarks": result.remarks}

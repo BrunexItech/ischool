@@ -41,6 +41,7 @@ from app.routers import (
     fees,
     finance,
     grade_levels,
+    grading_bands,
     homework,
     leads,
     ledger,
@@ -101,6 +102,7 @@ app.include_router(activities.router)
 app.include_router(analytics.router)
 app.include_router(finance.router)
 app.include_router(grade_levels.router)
+app.include_router(grading_bands.router)
 app.include_router(pickup_dropoff.router)
 app.include_router(exams.router)
 app.include_router(plans.router)

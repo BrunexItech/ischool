@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.academic_term import AcademicTerm
 from app.models.academics import Student
 from app.models.attendance import AttendanceRecord, AttendanceStatus
+from app.core.grading import level_for_score
 from app.models.competency_assessment import CompetencyAssessment
 from app.models.grade_level import LevelGroup
 from app.models.report_card_remark import ReportCardRemark
@@ -20,18 +21,6 @@ def _is_pre_primary(student: Student) -> bool:
         and student.school_class.grade is not None
         and student.school_class.grade.level_group == LevelGroup.PRE_PRIMARY
     )
-
-
-def _grade_for(score: float) -> str:
-    if score >= 80:
-        return "A"
-    if score >= 70:
-        return "B"
-    if score >= 60:
-        return "C"
-    if score >= 50:
-        return "D"
-    return "E"
 
 
 def _class_position(db: Session, student: Student, term: str) -> str | None:
@@ -124,7 +113,7 @@ def build_report_card(db: Session, student: Student, term: str) -> ReportCardOut
         term=term,
         rows=rows,
         average=average,
-        overall_grade=_grade_for(average) if average is not None else None,
+        overall_grade=level_for_score(db, student.school_id, average) if average is not None else None,
         class_position=_class_position(db, student, term),
         attendance_rate=_attendance_rate(db, student, term),
         class_teacher_remark=remark.class_teacher_remark if remark else None,

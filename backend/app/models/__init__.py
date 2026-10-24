@@ -67,6 +67,7 @@ from app.models.homework import Homework, HomeworkSubmission, HomeworkSubmission
 from app.models.grade_level import GradeLevel, SchoolEnabledGrade, LevelGroup
 from app.models.competency_assessment import CompetencyAssessment, PerformanceLevel
 from app.models.observation_note import ObservationNote
+from app.models.grading_band import GradingBand
 
 __all__ = [
     "School",
