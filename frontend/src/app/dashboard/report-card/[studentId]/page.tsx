@@ -252,7 +252,7 @@ export default function ReportCardPage({ params }: { params: Promise<{ studentId
 
             <div className="flex items-center gap-1.5 border-t border-border pt-4 text-[0.65rem] text-muted-foreground">
               <CalendarCheck2 className="size-3.5" />
-              This is an official academic record issued by {card.school_name} via Milai Group of Schools.
+              This is an official academic record issued by {card.school_name} via Milai School.
             </div>
           </div>
         </div>

@@ -62,16 +62,21 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[var(--sidebar)] p-10 text-white lg:flex">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/15">
-            {
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src="/mila-logo.svg" alt={SCHOOL_NAME} className="size-full object-contain p-1" />
-            }
-          </div>
+        <div className="absolute inset-0">
+          {
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/login-hero.jpg" alt="Students at Milai School" className="size-full object-cover" />
+          }
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--sidebar)]/85 via-[var(--sidebar)]/55 to-[var(--sidebar)]/25" />
+        </div>
+        <div className="relative flex items-center gap-3.5">
+          {
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/mila-logo.png" alt={SCHOOL_NAME} className="size-20 shrink-0 drop-shadow-sm" />
+          }
           <div>
-            <p className="text-lg leading-none font-semibold">{SCHOOL_NAME}</p>
-            <p className="mt-1 text-[0.68rem] tracking-widest text-white/50 uppercase">Nurture with excellence</p>
+            <p className="text-2xl leading-tight font-semibold">{SCHOOL_NAME}</p>
+            <p className="mt-0.5 text-[0.7rem] tracking-widest text-[#FFA819] uppercase">Nurture With Excellence</p>
           </div>
         </div>
 
@@ -87,15 +92,30 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
           </ul>
         </div>
 
-        <p className="text-xs text-white/50">© {new Date().getFullYear()} {SCHOOL_NAME}</p>
+        <div className="relative space-y-1">
+          <p className="text-sm font-medium text-white/90">Building strong foundations for life and learning.</p>
+          <p className="text-xs text-white/50">© {new Date().getFullYear()} {SCHOOL_NAME}</p>
+        </div>
       </div>
 
       {/* Sign-in panel */}
-      <div className="flex items-center justify-center bg-background p-6">
+      <div className="relative flex items-center justify-center bg-background p-6">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary via-[#FFA819] to-primary lg:hidden" />
         <div className="w-full max-w-sm">
-          <div className="mb-4">
+          <div className="mb-6 flex items-center gap-2.5 lg:hidden">
+            {
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/mila-logo.png" alt={SCHOOL_NAME} className="size-14 shrink-0" />
+            }
+            <div>
+              <p className="text-lg leading-tight font-semibold text-foreground">{SCHOOL_NAME}</p>
+              <p className="text-[0.65rem] tracking-widest text-primary uppercase">Nurture With Excellence</p>
+            </div>
+          </div>
+          <div className="mb-4 hidden lg:block">
             <WritingAnimation />
           </div>
+          <div className="h-1 w-10 rounded-full bg-[#FFA819]" />
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{config.pageTitle}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{config.pageSubtitle}</p>
 

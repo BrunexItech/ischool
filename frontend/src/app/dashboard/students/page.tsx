@@ -124,7 +124,7 @@ function PortalAccountsDialog({ student, onUpdated }: { student: Student; onUpda
               </div>
               <label className="flex items-start gap-2 text-xs text-muted-foreground">
                 <Checkbox required checked={guardianConsent} onCheckedChange={(v) => setGuardianConsent(v === true)} className="mt-0.5" />
-                I confirm the guardian has consented to this account and to Milai Group of Schools processing their and their child&apos;s data.
+                I confirm the guardian has consented to this account and to Milai School processing their and their child&apos;s data.
               </label>
               <Button size="sm" type="submit" disabled={submittingGuardian || !guardianConsent}>{submittingGuardian ? "Creating..." : "Create login"}</Button>
             </form>

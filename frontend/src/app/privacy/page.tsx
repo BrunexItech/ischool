@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { GraduationCap } from "lucide-react";
 
-export const metadata = { title: "Privacy Policy — Milai Group of Schools" };
+export const metadata = { title: "Privacy Policy — Milai School" };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -20,25 +20,25 @@ export default function PrivacyPage() {
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <GraduationCap className="size-4.5" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">Milai Group of Schools</span>
+          <span className="text-lg font-semibold tracking-tight">Milai School</span>
         </Link>
         <Link href="/login" className="text-sm text-primary hover:underline">Sign in</Link>
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-12">
         <h1 className="mb-2 text-2xl font-semibold tracking-tight">Privacy Policy</h1>
-        <p className="mb-8 text-sm text-muted-foreground">Last updated: [Date] · Effective for [Your Company Legal Name] (&quot;Milai Group of Schools&quot;, &quot;we&quot;, &quot;us&quot;)</p>
+        <p className="mb-8 text-sm text-muted-foreground">Last updated: [Date] · Effective for [Your Company Legal Name] (&quot;Milai School&quot;, &quot;we&quot;, &quot;us&quot;)</p>
 
         <Section title="1. What this policy covers">
           <p>
-            Milai Group of Schools is a platform schools use to manage attendance, results, fees, communication, and
+            Milai School is a platform schools use to manage attendance, results, fees, communication, and
             live classes. This policy explains what personal data we process on behalf of the schools
-            using Milai Group of Schools (&quot;the School&quot;), why, and what rights students, parents/guardians, and
+            using Milai School (&quot;the School&quot;), why, and what rights students, parents/guardians, and
             staff have over that data.
           </p>
           <p>
             Each school is the data controller for its own students&apos;, parents&apos;, and staff
-            data — Milai Group of Schools acts as a data processor, storing and processing that data only as
+            data — Milai School acts as a data processor, storing and processing that data only as
             instructed by the School. Questions about a specific student&apos;s data should go to that
             student&apos;s school first.
           </p>
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
 
         <Section title="4. Children's data">
           <p>
-            Milai Group of Schools is used by schools to manage records belonging to minors. Accounts for students and
+            Milai School is used by schools to manage records belonging to minors. Accounts for students and
             parents/guardians are created and managed by the School, which is responsible for obtaining
             any consent required under applicable law before creating those accounts. Parents/guardians
             may ask their School to access, correct, or delete their child&apos;s data at any time.

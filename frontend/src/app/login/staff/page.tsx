@@ -17,7 +17,7 @@ const STAFF_ROLES: UserRole[] = [
 ];
 
 const config: LoginAudienceConfig = {
-  heroTitle: <>Run the whole school: classes, finance and operations in one place.</>,
+  heroTitle: <>Milai School 360, the school&apos;s complete management system: classes, finance and daily operations, all in one place.</>,
   features: [
     { icon: Users, label: "Classes, attendance and results" },
     { icon: Wallet2, label: "Fees, finance and payroll" },

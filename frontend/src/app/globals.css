@@ -74,14 +74,14 @@
   --chart-4: #B45309;
   --chart-5: #C8555A;
   --radius: 0.75rem;
-  --sidebar: #2B2B2D;
-  --sidebar-foreground: #ECE7E7;
-  --sidebar-primary: #A71C20;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #414042;
+  --sidebar: #7A1317;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #FFA819;
+  --sidebar-primary-foreground: #3A2000;
+  --sidebar-accent: #8F1C20;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #4A4A4C;
-  --sidebar-ring: #C8555A;
+  --sidebar-border: #8F1C20;
+  --sidebar-ring: #FFA819;
 }
 
 .dark {

@@ -21,13 +21,13 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Milai Group of Schools", template: "%s — Milai Group of Schools" },
-  description: "The all-in-one school management platform",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Milai Group of Schools" },
+  title: { default: "Milai School", template: "%s · Milai School" },
+  description: "Milai School 360: the school's own management platform",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Milai School" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B1B3F",
+  themeColor: "#A71C20",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

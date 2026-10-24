@@ -144,7 +144,7 @@ export default function AdminSupervisorsPage() {
             <GraduationCap className="size-4.5" />
           </div>
           <div>
-            <p className="text-sm font-semibold leading-none">Milai Group of Schools</p>
+            <p className="text-sm font-semibold leading-none">Milai School</p>
             <p className="text-xs text-muted-foreground">Super Admin</p>
           </div>
         </div>

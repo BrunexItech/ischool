@@ -94,7 +94,7 @@ export default function PaymentSettingsPage() {
       <Card className="border-dashed">
         <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">
           <Smartphone className="size-4.5 shrink-0" />
-          Every payment goes straight into <strong>your school&apos;s own</strong> account — Milai Group of Schools never holds or
+          Every payment goes straight into <strong>your school&apos;s own</strong> account — Milai School never holds or
           touches the funds, for M-Pesa or cards. Connect either or both; parents will see only the methods you&apos;ve
           set up. You can disable either at any time by clearing its credentials.
         </CardContent>

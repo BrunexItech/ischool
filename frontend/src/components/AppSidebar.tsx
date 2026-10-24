@@ -193,10 +193,10 @@ export function AppSidebar() {
             <DropdownMenuTrigger
               render={
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
-                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
                     {
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src="/mila-logo.svg" alt="Milai School" className="size-full object-contain p-1" />
+                      <img src="/mila-logo.png" alt="Milai School" className="size-full object-contain p-0.5" />
                     }
                   </div>
                   <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden">
@@ -222,10 +222,10 @@ export function AppSidebar() {
           </DropdownMenu>
         ) : (
           <div className="flex items-center gap-2 px-2 py-1.5">
-            <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+            <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
               {
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src="/mila-logo.svg" alt="Milai School" className="size-full object-contain p-1" />
+                <img src="/mila-logo.png" alt="Milai School" className="size-full object-contain p-0.5" />
               }
             </div>
             <div className="flex flex-col group-data-[collapsible=icon]:hidden">

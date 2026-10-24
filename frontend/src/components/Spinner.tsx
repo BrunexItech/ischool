@@ -22,7 +22,7 @@ export function PageLoader({ label = "Loading..." }: { label?: string }) {
         </div>
       </div>
       <div className="flex flex-col items-center gap-0.5">
-        <p className="font-heading text-sm font-semibold tracking-tight text-foreground">Milai Group of Schools</p>
+        <p className="font-heading text-sm font-semibold tracking-tight text-foreground">Milai School</p>
         <p className="text-xs text-muted-foreground">{label}</p>
       </div>
     </div>
