@@ -45,6 +45,7 @@ import {
   Check,
   LogOut,
   MessageSquareWarning,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -85,6 +86,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/teachers", label: "Teachers", icon: GraduationCap, roles: ["head_of_institution", "group_principal"] },
       { href: "/dashboard/lesson-plans", label: "Lesson Plans", icon: NotebookPen, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/homework", label: "Homework", icon: ClipboardList, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
+      { href: "/dashboard/conduct", label: "Conduct Reports", icon: AlertTriangle, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/students", label: "Students", icon: Users, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/results", label: "Grading", icon: Award, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
@@ -112,7 +114,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["head_of_institution", "staff", "transport_staff", "group_principal"] },
       { href: "/dashboard/trips", label: "Trips", icon: Map, roles: ["head_of_institution", "teacher", "staff", "transport_staff", "group_principal"] },
       { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["head_of_institution", "staff", "group_principal"] },
-      { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["head_of_institution", "teacher", "staff", "security", "group_principal"] },
+      { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["head_of_institution", "staff", "security", "group_principal"] },
       { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
     ],
   },

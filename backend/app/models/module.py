@@ -35,6 +35,7 @@ MODULE_KEYS = [
     "timetable",
     "staff_attendance",
     "homework",
+    "conduct",
 ]
 
 

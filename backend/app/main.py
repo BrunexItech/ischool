@@ -36,6 +36,7 @@ from app.routers import (
     communication,
     competency,
     complaints,
+    conduct,
     dashboard,
     exams,
     fees,
@@ -87,6 +88,7 @@ app.include_router(fees.router)
 app.include_router(communication.router)
 app.include_router(complaints.router)
 app.include_router(competency.router)
+app.include_router(conduct.router)
 app.include_router(live_classes.router)
 app.include_router(live_classes.public_router)
 app.include_router(portal.router)

@@ -8,8 +8,10 @@ from app.core.notify import notify
 from app.core.report_card import build_report_card
 from app.core.grading import level_for_score
 from app.core.teaching import ensure_can_grade
-from app.models.academics import Student
+from app.models.academics import SchoolClass, Student
+from app.models.grade_level import LevelGroup
 from app.models.report_card_remark import ReportCardRemark
+from app.models.teacher_assignment import TeacherAssignment
 from app.models.results import Result, Subject
 from app.models.user import User, UserRole
 from app.schemas.results import ReportCardOut, ReportCardRemarkUpdate, ResultOut, ResultUpsert, SubjectCreate, SubjectOut
@@ -73,13 +75,39 @@ PRE_PRIMARY_LEARNING_AREAS = [
 @router.post(
     "/subjects/seed-pre-primary-learning-areas",
     response_model=list[SubjectOut],
-    dependencies=[Depends(require_roles(*MANAGE_ROLES)), Depends(require_feature("results"))],
+    dependencies=[Depends(require_roles(*MANAGE_ROLES, UserRole.TEACHER)), Depends(require_feature("results"))],
 )
 def seed_pre_primary_learning_areas(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Idempotent — adds any of the five official learning areas this
     school doesn't already have as a Subject, by case-insensitive name
-    match. Never duplicates, never touches existing subjects."""
+    match. Never duplicates, never touches existing subjects. A teacher
+    can only do this if they actually teach a PP1/PP2 class — it's not a
+    general subject-management power for them, just this one shortcut."""
     ensure_school_access(db, current_user, school_id)
+
+    if current_user.role == UserRole.TEACHER:
+        teaches_pre_primary = (
+            db.query(SchoolClass)
+            .join(TeacherAssignment, TeacherAssignment.class_id == SchoolClass.id)
+            .filter(
+                SchoolClass.school_id == school_id,
+                SchoolClass.grade.has(level_group=LevelGroup.PRE_PRIMARY),
+                TeacherAssignment.teacher_user_id == current_user.id,
+            )
+            .first()
+            is not None
+            or db.query(SchoolClass)
+            .filter(
+                SchoolClass.school_id == school_id,
+                SchoolClass.homeroom_teacher_id == current_user.id,
+                SchoolClass.grade.has(level_group=LevelGroup.PRE_PRIMARY),
+            )
+            .first()
+            is not None
+        )
+        if not teaches_pre_primary:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't teach a PP1/PP2 class")
+
     existing_names = {s.name.strip().lower() for s in db.query(Subject).filter_by(school_id=school_id).all()}
     created = []
     for name in PRE_PRIMARY_LEARNING_AREAS:

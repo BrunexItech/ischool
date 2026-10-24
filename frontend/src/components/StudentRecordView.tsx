@@ -10,6 +10,8 @@ import {
   ApiError,
   Award,
   AttendanceRecord,
+  ConductCategory,
+  ConductReport,
   ExamForStudentListItem,
   FeeInvoice,
   HomeworkForStudent,
@@ -43,6 +45,17 @@ const ATTENDANCE_STYLE: Record<string, string> = {
 };
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const CONDUCT_CATEGORY_LABEL: Record<ConductCategory, string> = {
+  disruption: "Disruption",
+  disrespect: "Disrespect",
+  bullying: "Bullying",
+  fighting: "Fighting",
+  dishonesty: "Dishonesty / Cheating",
+  property_damage: "Property damage",
+  dress_code: "Dress code",
+  other: "Other",
+};
 
 const FEE_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"> = {
   paid: "default",
@@ -231,6 +244,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
   const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [conductReports, setConductReports] = useState<ConductReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [reportingEvent, setReportingEvent] = useState<"pickup" | "dropoff" | null>(null);
 
@@ -270,8 +284,11 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
       api.getChildTimetable(token, studentId).then(setTimetable).catch(() => setTimetable([])),
       api.getChildLiveClasses(token, studentId).then(setLiveClasses).catch(() => setLiveClasses([])),
       api.getChildTrips(token, studentId).then(setTrips).catch(() => setTrips([])),
+      user?.school_id
+        ? api.listConductReports(token, user.school_id, studentId).then(setConductReports).catch(() => setConductReports([]))
+        : Promise.resolve(),
     ]).finally(() => setLoading(false));
-  }, [token, studentId]);
+  }, [token, studentId, user?.school_id]);
 
   if (loading) return <PageLoader />;
 
@@ -291,6 +308,7 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
         <TabsTrigger value="exams">Exams</TabsTrigger>
         <TabsTrigger value="homework">Homework</TabsTrigger>
         <TabsTrigger value="pickup">Pickup/Drop-off</TabsTrigger>
+        <TabsTrigger value="conduct">Conduct</TabsTrigger>
       </TabsList>
 
       <TabsContent value="attendance" className="mt-4">
@@ -715,6 +733,33 @@ export function StudentRecordView({ studentId }: { studentId: number }) {
             </TableBody>
           </Table>
         </Card>
+      </TabsContent>
+
+      <TabsContent value="conduct" className="mt-4 flex flex-col gap-3">
+        {conductReports.map((r) => (
+          <Card key={r.id}>
+            <CardContent className="flex flex-col gap-2 pt-6">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="outline">{CONDUCT_CATEGORY_LABEL[r.category]}</Badge>
+                <Badge variant={r.status === "reviewed" ? "secondary" : "outline"}>{r.status === "reviewed" ? "Reviewed" : "Open"}</Badge>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(r.incident_date + "T12:00:00").toLocaleDateString()} · Filed by {r.reported_by_name}
+                </span>
+              </div>
+              <p className="text-sm">{r.description}</p>
+              {r.action_taken && <p className="text-sm text-muted-foreground">Action taken: {r.action_taken}</p>}
+              {r.response && (
+                <div className="mt-1 rounded-lg border bg-muted/40 p-2.5 text-sm">
+                  <p className="text-xs font-medium text-muted-foreground">Leadership response</p>
+                  <p>{r.response}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+        {conductReports.length === 0 && (
+          <Card><CardContent className="flex h-24 items-center justify-center text-sm text-muted-foreground">No conduct reports on file.</CardContent></Card>
+        )}
       </TabsContent>
     </Tabs>
   );

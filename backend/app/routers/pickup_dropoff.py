@@ -10,7 +10,7 @@ from app.schemas.pickup_dropoff import PickupDropoffCreate, PickupDropoffOut
 
 router = APIRouter(prefix="/schools/{school_id}/students/{student_id}/pickup-dropoff", tags=["pickup-dropoff"])
 
-LOG_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF, UserRole.SECURITY)
+LOG_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF, UserRole.SECURITY)
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 
 

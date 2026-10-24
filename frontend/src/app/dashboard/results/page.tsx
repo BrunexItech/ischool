@@ -146,6 +146,7 @@ export default function ResultsPage() {
   const [term, setTerm] = useState("");
   const [bands, setBands] = useState<GradingBand[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [canSeedPrePrimary, setCanSeedPrePrimary] = useState(false);
   const [scores, setScores] = useState<Record<number, string>>({});
   const [remarks, setRemarks] = useState<Record<number, string>>({});
   const [newSubject, setNewSubject] = useState("");
@@ -179,6 +180,18 @@ export default function ResultsPage() {
     if (!token || !user?.school_id || classId === null) return;
     api.listStudents(token, user.school_id, classId).then(setStudents);
   }, [token, user?.school_id, classId]);
+
+  useEffect(() => {
+    if (!token || !user?.school_id || user.role !== "teacher" || classes.length === 0) return;
+    Promise.all([api.listMyClasses(token, user.school_id), api.listGradeLevels(token)])
+      .then(([myClasses, grades]) => {
+        const prePrimaryGradeIds = new Set(grades.filter((g) => g.level_group === "pre_primary").map((g) => g.id));
+        const myClassIds = new Set(myClasses.map((c) => c.class_id));
+        const teaches = classes.some((c) => myClassIds.has(c.id) && c.grade_level_id !== null && prePrimaryGradeIds.has(c.grade_level_id));
+        setCanSeedPrePrimary(teaches);
+      })
+      .catch(() => setCanSeedPrePrimary(false));
+  }, [token, user?.school_id, user?.role, classes]);
 
   useEffect(() => {
     if (!token || !user?.school_id || subjectId === null || !term) return;
@@ -283,9 +296,11 @@ export default function ResultsPage() {
             </div>
             <Button type="submit" variant="secondary"><Plus /> Add</Button>
           </form>
-          <Button type="button" variant="outline" onClick={handleSeedLearningAreas} disabled={seeding}>
-            <Sparkles /> {seeding ? "Adding..." : "Add official PP1/PP2 learning areas"}
-          </Button>
+          {canSeedPrePrimary && (
+            <Button type="button" variant="outline" onClick={handleSeedLearningAreas} disabled={seeding}>
+              <Sparkles /> {seeding ? "Adding..." : "Add official PP1/PP2 learning areas"}
+            </Button>
+          )}
         </CardContent>
       </Card>
 

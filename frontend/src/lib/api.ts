@@ -581,6 +581,28 @@ export interface Award {
   date_awarded: string;
 }
 
+export type ConductCategory = "disruption" | "disrespect" | "bullying" | "fighting" | "dishonesty" | "property_damage" | "dress_code" | "other";
+export type ConductStatus = "open" | "reviewed";
+
+export interface ConductReport {
+  id: number;
+  school_id: number;
+  student_id: number;
+  class_id: number | null;
+  reported_by: number;
+  reported_by_name: string;
+  category: ConductCategory;
+  description: string;
+  action_taken: string | null;
+  incident_date: string;
+  status: ConductStatus;
+  response: string | null;
+  responded_by: number | null;
+  responded_at: string | null;
+  created_at: string;
+  student_name: string;
+}
+
 export type LeadStage = "enquiry" | "visit_booked" | "applied" | "offer_sent" | "enrolled" | "lost";
 
 export interface Lead {
@@ -2244,6 +2266,29 @@ export const api = {
     request<void>(`/schools/${schoolId}/awards/${awardId}`, { method: "DELETE" }, token),
 
   getChildAwards: (token: string, studentId: number) => request<Award[]>(`/portal/students/${studentId}/awards`, {}, token),
+
+  // --- Conduct reports ---
+
+  listConductReports: (token: string, schoolId: number, studentId?: number) =>
+    request<ConductReport[]>(`/schools/${schoolId}/conduct-reports${studentId ? `?student_id=${studentId}` : ""}`, {}, token),
+
+  createConductReport: (
+    token: string,
+    schoolId: number,
+    payload: { student_id: number; category: ConductCategory; description: string; action_taken?: string; incident_date: string }
+  ) =>
+    request<ConductReport>(
+      `/schools/${schoolId}/conduct-reports`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  respondConductReport: (token: string, schoolId: number, reportId: number, response: string) =>
+    request<ConductReport>(
+      `/schools/${schoolId}/conduct-reports/${reportId}/respond`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ response }) },
+      token
+    ),
 
   // --- Admissions CRM ---
 
