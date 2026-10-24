@@ -80,6 +80,7 @@ const NAV_SECTIONS = [
     items: [
       { href: "/dashboard/my-classes", label: "My Classes", icon: LayoutGrid, roles: ["teacher"] },
       { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["head_of_institution", "staff", "group_principal"] },
+      { href: "/dashboard/school-grades", label: "School Grades", icon: LayoutGrid, roles: ["group_principal"] },
       { href: "/dashboard/teachers", label: "Teachers", icon: GraduationCap, roles: ["head_of_institution", "group_principal"] },
       { href: "/dashboard/lesson-plans", label: "Lesson Plans", icon: NotebookPen, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/homework", label: "Homework", icon: ClipboardList, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },

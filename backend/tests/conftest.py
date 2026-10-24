@@ -29,17 +29,39 @@ from app.core.chart_of_accounts import seed_chart_of_accounts
 from app.core.database import Base, get_db
 from app.core.security import hash_password
 from app.main import app
+from app.models.grade_level import GradeLevel, LevelGroup
 from app.models.module import MODULE_KEYS, SchoolModule
 from app.models.school import School
 from app.models.user import User, UserRole
 
 engine = create_engine(TEST_DATABASE_URL)
 
+GRADES = [
+    ("PP1", "PP1", LevelGroup.PRE_PRIMARY, 1),
+    ("PP2", "PP2", LevelGroup.PRE_PRIMARY, 2),
+    ("G1", "Grade 1", LevelGroup.PRIMARY, 3),
+    ("G2", "Grade 2", LevelGroup.PRIMARY, 4),
+    ("G3", "Grade 3", LevelGroup.PRIMARY, 5),
+    ("G4", "Grade 4", LevelGroup.PRIMARY, 6),
+    ("G5", "Grade 5", LevelGroup.PRIMARY, 7),
+    ("G6", "Grade 6", LevelGroup.PRIMARY, 8),
+    ("G7", "Grade 7", LevelGroup.JUNIOR_SCHOOL, 9),
+    ("G8", "Grade 8", LevelGroup.JUNIOR_SCHOOL, 10),
+    ("G9", "Grade 9", LevelGroup.JUNIOR_SCHOOL, 11),
+    ("G10", "Grade 10", LevelGroup.SENIOR_SCHOOL, 12),
+    ("G11", "Grade 11", LevelGroup.SENIOR_SCHOOL, 13),
+    ("G12", "Grade 12", LevelGroup.SENIOR_SCHOOL, 14),
+]
+
 
 @pytest.fixture(scope="session", autouse=True)
 def _create_schema():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    with SQLASession(engine) as seed_session:
+        for code, name, group, order in GRADES:
+            seed_session.add(GradeLevel(code=code, display_name=name, level_group=group, sort_order=order))
+        seed_session.commit()
     yield
 
 

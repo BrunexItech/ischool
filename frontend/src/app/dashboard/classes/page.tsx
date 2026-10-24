@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { api, ApiError, SchoolClass, Staff } from "@/lib/api";
+import { api, ApiError, GradeLevel, SchoolClass, Staff } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
@@ -129,9 +129,12 @@ export default function ClassesPage() {
   const [teachers, setTeachers] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  const [gradeLevel, setGradeLevel] = useState("");
+  const [gradeLevelId, setGradeLevelId] = useState("");
+  const [enabledGrades, setEnabledGrades] = useState<GradeLevel[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState("");
+
+  const gradeById = useMemo(() => new Map(enabledGrades.map((g) => [g.id, g.display_name])), [enabledGrades]);
 
   const canManage = user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
 
@@ -147,6 +150,11 @@ export default function ClassesPage() {
     api.listStaff(token, user.school_id).then((s) => setTeachers(s.filter((x) => x.role === "teacher"))).catch(() => setTeachers([]));
   }, [token, user?.school_id, canManage]);
 
+  useEffect(() => {
+    if (!token || !user?.school_id) return;
+    api.listEnabledGrades(token, user.school_id).then(setEnabledGrades).catch(() => setEnabledGrades([]));
+  }, [token, user?.school_id]);
+
   function handleClassUpdated(updated: SchoolClass) {
     setClasses((cs) => cs.map((c) => (c.id === updated.id ? updated : c)));
   }
@@ -156,13 +164,14 @@ export default function ClassesPage() {
     if (!q) return classes;
     return classes.filter((c) => {
       const teacherName = teachers.find((t) => t.user_id === c.homeroom_teacher_id)?.full_name ?? "";
+      const gradeName = (c.grade_level_id ? gradeById.get(c.grade_level_id) : c.grade_level) ?? "";
       return (
         c.name.toLowerCase().includes(q) ||
-        (c.grade_level ?? "").toLowerCase().includes(q) ||
+        gradeName.toLowerCase().includes(q) ||
         teacherName.toLowerCase().includes(q)
       );
     });
-  }, [classes, teachers, search]);
+  }, [classes, teachers, search, gradeById]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -171,11 +180,11 @@ export default function ClassesPage() {
     try {
       const created = await api.createClass(token, user.school_id, {
         name,
-        grade_level: gradeLevel || undefined,
+        grade_level_id: gradeLevelId ? Number(gradeLevelId) : undefined,
       });
       setClasses((c) => [...c, created]);
       setName("");
-      setGradeLevel("");
+      setGradeLevelId("");
       toast.success(`${created.name} added`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to create class");
@@ -205,12 +214,17 @@ export default function ClassesPage() {
           <CardContent>
             <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="class-name">Class name</Label>
-                <Input id="class-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Form 1A" className="w-48" />
+                <Label htmlFor="grade-level">Grade</Label>
+                <Select value={gradeLevelId} onValueChange={(v) => v && setGradeLevelId(v)}>
+                  <SelectTrigger className="w-48"><SelectValue placeholder={enabledGrades.length ? "Choose a grade" : "No grades enabled yet"} /></SelectTrigger>
+                  <SelectContent>
+                    {enabledGrades.map((g) => <SelectItem key={g.id} value={String(g.id)}>{g.display_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="grade-level">Grade level</Label>
-                <Input id="grade-level" value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} placeholder="Form 1" className="w-48" />
+                <Label htmlFor="class-name">Class name</Label>
+                <Input id="class-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Grade 1 Chui" className="w-48" />
               </div>
               <Button disabled={submitting} type="submit">
                 <Plus /> {submitting ? "Adding..." : "Add class"}
@@ -246,7 +260,7 @@ export default function ClassesPage() {
             {filteredClasses.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
-                <TableCell className="text-muted-foreground">{c.grade_level ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{(c.grade_level_id ? gradeById.get(c.grade_level_id) : c.grade_level) ?? "—"}</TableCell>
                 {canManage && (
                   <TableCell>
                     <ClassTeacherCell schoolClass={c} teachers={teachers} onUpdated={handleClassUpdated} />

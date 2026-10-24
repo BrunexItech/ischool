@@ -13,7 +13,8 @@ class SchoolClass(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     school_id: Mapped[int] = mapped_column(ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    grade_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    grade_level: Mapped[str | None] = mapped_column(String(50), nullable=True)  # legacy free text, kept for unmapped records
+    grade_level_id: Mapped[int | None] = mapped_column(ForeignKey("grade_levels.id", ondelete="SET NULL"), nullable=True)
     homeroom_teacher_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -24,6 +25,7 @@ class SchoolClass(Base):
     school: Mapped["School"] = relationship("School", back_populates="classes")
     homeroom_teacher: Mapped["User | None"] = relationship("User")
     students: Mapped[list["Student"]] = relationship("Student", back_populates="school_class")
+    grade: Mapped["GradeLevel | None"] = relationship("GradeLevel")
 
 
 class Student(Base):

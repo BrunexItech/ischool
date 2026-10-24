@@ -73,7 +73,18 @@ export interface SchoolClass {
   school_id: number;
   name: string;
   grade_level: string | null;
+  grade_level_id: number | null;
   homeroom_teacher_id: number | null;
+}
+
+export type LevelGroup = "pre_primary" | "primary" | "junior_school" | "senior_school";
+
+export interface GradeLevel {
+  id: number;
+  code: string;
+  display_name: string;
+  level_group: LevelGroup;
+  sort_order: number;
 }
 
 export interface Student {
@@ -1366,7 +1377,7 @@ export const api = {
   listClasses: (token: string, schoolId: number) =>
     request<SchoolClass[]>(`/schools/${schoolId}/classes`, {}, token),
 
-  createClass: (token: string, schoolId: number, payload: { name: string; grade_level?: string }) =>
+  createClass: (token: string, schoolId: number, payload: { name: string; grade_level_id?: number | null }) =>
     request<SchoolClass>(
       `/schools/${schoolId}/classes`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
@@ -1377,11 +1388,23 @@ export const api = {
     token: string,
     schoolId: number,
     classId: number,
-    payload: { name?: string; grade_level?: string | null; homeroom_teacher_id?: number | null }
+    payload: { name?: string; grade_level_id?: number | null; homeroom_teacher_id?: number | null }
   ) =>
     request<SchoolClass>(
       `/schools/${schoolId}/classes/${classId}`,
       { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listGradeLevels: (token: string) => request<GradeLevel[]>("/grade-levels", {}, token),
+
+  listEnabledGrades: (token: string, schoolId: number) =>
+    request<GradeLevel[]>(`/schools/${schoolId}/enabled-grades`, {}, token),
+
+  setEnabledGrades: (token: string, schoolId: number, gradeLevelIds: number[]) =>
+    request<GradeLevel[]>(
+      `/schools/${schoolId}/enabled-grades`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade_level_ids: gradeLevelIds }) },
       token
     ),
 

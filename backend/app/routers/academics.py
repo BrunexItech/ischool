@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.security import ensure_password_strength, hash_password
 from app.models.academics import SchoolClass, StaffProfile, Student
+from app.models.grade_level import SchoolEnabledGrade
 from app.models.teacher_assignment import TeacherAssignment
 from app.models.user import User, UserRole
 from app.schemas.academics import (
@@ -61,6 +62,12 @@ STAFF_CREATABLE_ROLES = (
 # --- Classes ---
 
 
+def _ensure_grade_enabled(db: Session, school_id: int, grade_level_id: int) -> None:
+    enabled = db.query(SchoolEnabledGrade).filter_by(school_id=school_id, grade_level_id=grade_level_id).first()
+    if enabled is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This school is not configured to offer that grade — ask the Group Principal to enable it")
+
+
 @router.get(
     "/classes",
     response_model=list[SchoolClassOut],
@@ -87,6 +94,9 @@ def create_class(
 
     if db.query(SchoolClass).filter_by(school_id=school_id, name=payload.name).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "A class with that name already exists")
+
+    if payload.grade_level_id is not None:
+        _ensure_grade_enabled(db, school_id, payload.grade_level_id)
 
     school_class = SchoolClass(school_id=school_id, **payload.model_dump())
     db.add(school_class)
@@ -120,6 +130,8 @@ def update_class(
     if "name" in updates and updates["name"] != school_class.name:
         if db.query(SchoolClass).filter_by(school_id=school_id, name=updates["name"]).first():
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "A class with that name already exists")
+    if "grade_level_id" in updates and updates["grade_level_id"] is not None:
+        _ensure_grade_enabled(db, school_id, updates["grade_level_id"])
 
     for field, value in updates.items():
         setattr(school_class, field, value)

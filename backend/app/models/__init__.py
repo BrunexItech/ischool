@@ -64,6 +64,7 @@ from app.models.timetable import TimetableSlot
 from app.models.staff_attendance import StaffAttendance, DutyAssignment
 from app.models.supervisor_link import SupervisorSchoolLink
 from app.models.homework import Homework, HomeworkSubmission, HomeworkSubmissionStatus
+from app.models.grade_level import GradeLevel, SchoolEnabledGrade, LevelGroup
 
 __all__ = [
     "School",

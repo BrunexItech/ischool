@@ -7,13 +7,13 @@ from app.models.user import UserRole
 
 class SchoolClassCreate(BaseModel):
     name: str
-    grade_level: str | None = None
+    grade_level_id: int | None = None
     homeroom_teacher_id: int | None = None
 
 
 class SchoolClassUpdate(BaseModel):
     name: str | None = None
-    grade_level: str | None = None
+    grade_level_id: int | None = None
     homeroom_teacher_id: int | None = None
 
 
@@ -24,6 +24,7 @@ class SchoolClassOut(BaseModel):
     school_id: int
     name: str
     grade_level: str | None
+    grade_level_id: int | None
     homeroom_teacher_id: int | None
 
 
