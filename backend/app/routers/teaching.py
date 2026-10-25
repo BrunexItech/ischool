@@ -1,9 +1,8 @@
-from datetime import date
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.dates import school_today
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.models.academics import SchoolClass, Student
 from app.models.attendance import AttendanceRecord
@@ -27,7 +26,7 @@ def list_my_classes(school_id: int, db: Session = Depends(get_db), current_user:
     class teacher who also teaches a subject in their own class sees one
     card, not two."""
     ensure_school_access(db, current_user, school_id)
-    today = date.today()
+    today = school_today(db, school_id)
 
     rows: dict[int, MyClassOut] = {}
 

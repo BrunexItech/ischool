@@ -13,6 +13,7 @@ import {
   Subject,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { localDateStr } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,7 +41,7 @@ const LEVEL_VARIANT: Record<PerformanceLevel, "default" | "secondary" | "outline
 };
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateStr();
 }
 
 function CompetencyDialog({

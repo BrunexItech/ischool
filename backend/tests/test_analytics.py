@@ -3,8 +3,8 @@ that's allowed to view analytics (teacher, staff, bursar, security...) —
 unlike the admin-only dashboard summary it used to ride on, which also
 carries finance totals those roles shouldn't see."""
 
-from datetime import date
 
+from app.core.dates import school_today
 from app.models.academics import SchoolClass, Student
 from app.models.attendance import AttendanceRecord, AttendanceStatus
 from tests.conftest import auth_headers
@@ -17,7 +17,7 @@ def _seed_attendance(db_session, school):
     s1 = Student(school_id=school.id, class_id=cls.id, admission_number="AT-0001", first_name="Amani", last_name="Otieno")
     db_session.add(s1)
     db_session.flush()
-    db_session.add(AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s1.id, date=date.today(), status=AttendanceStatus.PRESENT))
+    db_session.add(AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s1.id, date=school_today(db_session, school.id), status=AttendanceStatus.PRESENT))
     db_session.commit()
 
 

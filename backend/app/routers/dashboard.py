@@ -5,6 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.dates import school_today
 from app.core.deps import ensure_school_access, get_current_user, require_roles
 from app.models.academics import SchoolClass, Student
 from app.models.attendance import AttendanceRecord, AttendanceStatus
@@ -31,7 +32,7 @@ def compute_attendance_trend(db: Session, school_id: int) -> list[AttendanceTren
     """The last 7 days' attendance rate — broken out so it can be reused by
     anything that's allowed to see attendance but not the rest of the
     (finance-heavy, admin-only) dashboard summary, e.g. the Analytics page."""
-    today = date.today()
+    today = school_today(db, school_id)
     start_date = today - timedelta(days=6)
     rows = (
         db.query(AttendanceRecord.date, AttendanceRecord.status, func.count())
@@ -60,7 +61,7 @@ def compute_attendance_trend(db: Session, school_id: int) -> list[AttendanceTren
 
 
 def _compute_summary(db: Session, school_id: int) -> DashboardSummaryOut:
-    today = date.today()
+    today = school_today(db, school_id)
 
     total_students = db.query(Student).filter_by(school_id=school_id, is_active=True).count()
 

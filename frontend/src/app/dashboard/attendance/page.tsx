@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { api, ApiError, AttendanceRecord, AttendanceStatus, SchoolClass, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { localDateStr } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -54,13 +55,13 @@ function initials(first: string, last: string) {
 }
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateStr();
 }
 
 function monthAgo() {
   const d = new Date();
   d.setDate(d.getDate() - 30);
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 
 function formatDate(d: string) {

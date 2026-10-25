@@ -2,8 +2,9 @@
 needs — headcounts, fee collection, an attendance trend, which registers are
 still unmarked today, the largest outstanding balances, and recent activity."""
 
-from datetime import date, timedelta
+from datetime import timedelta
 
+from app.core.dates import school_today
 from app.models.academics import SchoolClass, Student
 from app.models.attendance import AttendanceRecord, AttendanceStatus
 from app.models.audit_log import AuditLog
@@ -23,10 +24,10 @@ def _seed(db_session, school):
 
     db_session.add_all(
         [
-            AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s1.id, date=date.today(), status=AttendanceStatus.PRESENT),
-            AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s2.id, date=date.today(), status=AttendanceStatus.ABSENT),
-            AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s1.id, date=date.today() - timedelta(days=1), status=AttendanceStatus.PRESENT),
-            AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s2.id, date=date.today() - timedelta(days=1), status=AttendanceStatus.PRESENT),
+            AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s1.id, date=school_today(db_session, school.id), status=AttendanceStatus.PRESENT),
+            AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s2.id, date=school_today(db_session, school.id), status=AttendanceStatus.ABSENT),
+            AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s1.id, date=school_today(db_session, school.id) - timedelta(days=1), status=AttendanceStatus.PRESENT),
+            AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=s2.id, date=school_today(db_session, school.id) - timedelta(days=1), status=AttendanceStatus.PRESENT),
         ]
     )
 

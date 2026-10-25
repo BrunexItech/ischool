@@ -7,6 +7,7 @@ import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { api, ApiError, ConductCategory, ConductReport, SchoolClass, Student } from "@/lib/api";
 import { ClassStudentPicker } from "@/components/ClassStudentPicker";
 import { useAuth } from "@/lib/auth";
+import { localDateStr } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +31,7 @@ const CATEGORY_LABEL: Record<ConductCategory, string> = {
 };
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateStr();
 }
 
 function RespondDialog({ report, onResponded }: { report: ConductReport; onResponded: (r: ConductReport) => void }) {

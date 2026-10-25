@@ -48,6 +48,7 @@ import {
   SupervisorOverview as SupervisorOverviewData,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { localDateStr } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -148,7 +149,7 @@ function AdminDashboard({ schoolId }: { schoolId: number }) {
     date: p.date,
     label: new Date(p.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" }),
     rate: p.rate,
-    isToday: p.date === new Date().toISOString().slice(0, 10),
+    isToday: p.date === localDateStr(),
   }));
 
   return (
@@ -348,12 +349,6 @@ function timeToMinutes(t: string) {
 
 function formatTime24(t: string) {
   return t.slice(0, 5);
-}
-
-/** The local calendar date as YYYY-MM-DD. `toISOString()` would be the UTC
- * date, which is still "yesterday" in Kenya until 03:00. */
-function localDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function addDays(d: Date, n: number) {

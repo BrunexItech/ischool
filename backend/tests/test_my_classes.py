@@ -2,8 +2,8 @@
 assigned to teach, plus any class they're the homeroom teacher of even
 without an explicit assignment row — and never another teacher's classes."""
 
-from datetime import date
 
+from app.core.dates import school_today
 from app.models.academics import SchoolClass, Student
 from app.models.attendance import AttendanceRecord, AttendanceStatus
 from app.models.results import Subject
@@ -63,7 +63,7 @@ def test_attendance_marked_today_reflects_real_records(client, db_session, schoo
     student = Student(school_id=school.id, class_id=cls.id, admission_number="MC-002", first_name="C", last_name="D")
     db_session.add(student)
     db_session.flush()
-    db_session.add(AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=student.id, date=date.today(), status=AttendanceStatus.PRESENT))
+    db_session.add(AttendanceRecord(school_id=school.id, class_id=cls.id, student_id=student.id, date=school_today(db_session, school.id), status=AttendanceStatus.PRESENT))
     db_session.commit()
 
     token = _login(client, teacher.email, password)

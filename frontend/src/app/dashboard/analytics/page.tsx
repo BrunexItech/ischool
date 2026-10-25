@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { api, AcademicTerm, AttendanceTrendPoint, FinanceSummary, ResultsAnalytics } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { localDateStr } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,7 +90,7 @@ export default function AnalyticsPage() {
   const attendanceData = attendanceTrend.map((p) => ({
     label: new Date(p.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" }),
     rate: p.rate,
-    isToday: p.date === new Date().toISOString().slice(0, 10),
+    isToday: p.date === localDateStr(),
   }));
 
   const financeData = (finance?.monthly ?? []).map((m) => ({ month: m.month, Income: m.income, Expenses: m.expenses }));
