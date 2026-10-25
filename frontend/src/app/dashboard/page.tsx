@@ -27,6 +27,12 @@ import {
   MessageSquareWarning,
   Plus,
   BellRing,
+  CalendarClock,
+  MapPin,
+  CheckCircle2,
+  AlertTriangle,
+  RotateCw,
+  ClipboardList,
 } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
 import { toast } from "sonner";
@@ -49,12 +55,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-function todayLabel() {
-  return new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+function todayLabel(d: Date = new Date()) {
+  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
-function greet() {
-  const h = new Date().getHours();
+function greet(d: Date = new Date()) {
+  const h = d.getHours();
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
@@ -333,6 +339,7 @@ const QUICK_LINKS = [
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const ALERT_LIMIT = 5;
 
 function timeToMinutes(t: string) {
   const [h, m] = t.split(":").map(Number);
@@ -343,53 +350,244 @@ function formatTime24(t: string) {
   return t.slice(0, 5);
 }
 
+/** The local calendar date as YYYY-MM-DD. `toISOString()` would be the UTC
+ * date, which is still "yesterday" in Kenya until 03:00. */
+function localDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function addDays(d: Date, n: number) {
+  const copy = new Date(d);
+  copy.setDate(copy.getDate() + n);
+  return copy;
+}
+
+/** Monday of the week the timetable tabs describe — on a Sunday, the week
+ * that is about to start rather than the one that just ended. */
+function weekStart(now: Date) {
+  const jsDay = now.getDay();
+  const monday = addDays(now, jsDay === 0 ? 1 : 1 - jsDay);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+function daysUntil(dueDate: string, today: string) {
+  const ms = new Date(`${dueDate}T00:00:00`).getTime() - new Date(`${today}T00:00:00`).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
+function shortDate(iso: string) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function longDate(d: Date) {
+  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+}
+
+function dueLabel(daysLeft: number) {
+  if (daysLeft < 0) return `Overdue by ${-daysLeft} day${daysLeft === -1 ? "" : "s"}`;
+  if (daysLeft === 0) return "Due today";
+  if (daysLeft === 1) return "Due tomorrow";
+  return `Due in ${daysLeft} days`;
+}
+
+interface RegisterSummary {
+  marked: boolean;
+  recorded: number;
+  present: number;
+  absent: number;
+  late: number;
+  total: number;
+}
+
+interface SubmissionAlert {
+  hw: HomeworkListItem;
+  missing: number;
+  unmarked: number;
+  reviewed: number;
+  daysLeft: number;
+  overdue: boolean;
+}
+
+const NO_FAILURES = { classes: false, timetable: false, homework: false, register: false };
+
+type StatTone = "primary" | "emerald" | "amber" | "red";
+
+const STAT_TONES: Record<StatTone, string> = {
+  primary: "bg-primary/10 text-primary",
+  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  amber: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  red: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+};
+
+function TeacherStat({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  tone = "primary",
+  meter,
+  href,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | number;
+  sub: React.ReactNode;
+  tone?: StatTone;
+  meter?: { percent: number; className: string };
+  href?: string;
+}) {
+  const card = (
+    <Card className={`h-full min-h-32 ${href ? "transition-colors hover:border-primary/40 hover:bg-accent/40" : ""}`}>
+      <CardContent className="flex h-full flex-col gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${STAT_TONES[tone]}`}>
+            <Icon className="size-4" />
+          </span>
+          <span className="truncate text-sm font-medium text-muted-foreground">{label}</span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="font-heading text-3xl leading-none font-semibold tabular-nums">{value}</span>
+          <span className="text-xs text-muted-foreground">{sub}</span>
+        </div>
+        {meter && (
+          <div className="mt-auto h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className={`h-full rounded-full ${meter.className}`} style={{ width: `${Math.min(100, Math.max(0, meter.percent))}%` }} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+  if (!href) return card;
+  return (
+    <Link href={href} className="block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {card}
+    </Link>
+  );
+}
+
+function RetryNotice({ message, onRetry, busy }: { message: string; onRetry: () => void; busy: boolean }) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-red-200 bg-red-50/50 px-4 py-8 text-center dark:border-red-900/50 dark:bg-red-950/10"
+    >
+      <AlertTriangle className="size-5 text-red-600" />
+      <p className="text-sm text-muted-foreground">{message}</p>
+      <Button size="sm" variant="outline" onClick={onRetry} disabled={busy}>
+        <RotateCw className={busy ? "animate-spin" : ""} /> Try again
+      </Button>
+    </div>
+  );
+}
+
+interface TeacherData {
+  classes: MyClass[];
+  timetable: MyTimetableSlot[];
+  homework: HomeworkListItem[];
+  register: RegisterSummary | null;
+  failed: typeof NO_FAILURES;
+}
+
+async function fetchTeacherData(token: string, schoolId: number): Promise<TeacherData> {
+  const failed = { ...NO_FAILURES };
+  const [classes, timetable, homework] = await Promise.all([
+    api.listMyClasses(token, schoolId).catch(() => {
+      failed.classes = true;
+      return [] as MyClass[];
+    }),
+    api.listMyTimetable(token, schoolId).catch(() => {
+      failed.timetable = true;
+      return [] as MyTimetableSlot[];
+    }),
+    api.listHomework(token, schoolId).catch(() => {
+      failed.homework = true;
+      return [] as HomeworkListItem[];
+    }),
+  ]);
+
+  let register: RegisterSummary | null = null;
+  const homeroom = classes.find((c) => c.is_homeroom_teacher);
+  if (homeroom) {
+    try {
+      const records: AttendanceRecord[] = await api.listAttendance(token, schoolId, homeroom.class_id, localDateStr(new Date()));
+      const absent = records.filter((r) => r.status === "absent").length;
+      register = {
+        marked: records.length > 0,
+        recorded: records.length,
+        // Same rule the rest of the system uses: anyone not marked absent was in school.
+        present: records.length - absent,
+        absent,
+        late: records.filter((r) => r.status === "late").length,
+        total: homeroom.student_count,
+      };
+    } catch {
+      failed.register = true;
+    }
+  }
+  return { classes, timetable, homework, register, failed };
+}
+
 function TeacherDashboard() {
   const { user, token } = useAuth();
   const [classes, setClasses] = useState<MyClass[]>([]);
   const [timetable, setTimetable] = useState<MyTimetableSlot[]>([]);
   const [homework, setHomework] = useState<HomeworkListItem[]>([]);
-  const [homeroomAttendance, setHomeroomAttendance] = useState<{ present: number; total: number } | null>(null);
+  const [register, setRegister] = useState<RegisterSummary | null>(null);
+  const [failed, setFailed] = useState(NO_FAILURES);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [remindingId, setRemindingId] = useState<number | null>(null);
+  const [remindedIds, setRemindedIds] = useState<Set<number>>(() => new Set());
+  const [now, setNow] = useState(() => new Date());
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const d = new Date().getDay();
+    return d === 0 ? 0 : d - 1;
+  });
 
-  const jsDay = new Date().getDay();
-  const todayIndex = jsDay === 0 ? -1 : jsDay - 1;
-  const [selectedDay, setSelectedDay] = useState(todayIndex >= 0 ? todayIndex : 0);
+  // Keeps "Now"/"Done" and the date honest if the page is left open.
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const schoolId = user?.school_id ?? null;
 
   useEffect(() => {
-    if (!token || !user?.school_id) return;
-    Promise.all([
-      api.listMyClasses(token, user.school_id).catch(() => []),
-      api.listMyTimetable(token, user.school_id).catch(() => []),
-      api.listHomework(token, user.school_id).catch(() => []),
-    ])
-      .then(([cs, tt, hw]) => {
-        setClasses(cs);
-        setTimetable(tt);
-        const myClassIds = new Set(cs.map((c) => c.class_id));
-        setHomework(hw.filter((h) => myClassIds.has(h.class_id)));
+    if (!token || !schoolId) return;
+    let cancelled = false;
+    fetchTeacherData(token, schoolId).then((data) => {
+      if (cancelled) return;
+      setClasses(data.classes);
+      setTimetable(data.timetable);
+      setHomework(data.homework);
+      setRegister(data.register);
+      setFailed(data.failed);
+      setLoading(false);
+      setRetrying(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, schoolId, reloadKey]);
 
-        const homeroom = cs.find((c) => c.is_homeroom_teacher);
-        if (homeroom) {
-          const today = new Date().toISOString().slice(0, 10);
-          api
-            .listAttendance(token, user.school_id!, homeroom.class_id, today)
-            .then((records: AttendanceRecord[]) => {
-              const present = records.filter((r) => r.status !== "absent").length;
-              setHomeroomAttendance({ present, total: homeroom.student_count });
-            })
-            .catch(() => setHomeroomAttendance(null));
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [token, user?.school_id]);
+  function retry() {
+    setRetrying(true);
+    setReloadKey((k) => k + 1);
+  }
 
   async function handleRemind(hw: HomeworkListItem) {
     if (!token || !user?.school_id) return;
     setRemindingId(hw.id);
     try {
       const result = await api.remindHomework(token, user.school_id, hw.id);
-      toast.success(result.reminded > 0 ? `Reminded ${result.reminded} learner${result.reminded === 1 ? "" : "s"}` : "Everyone has already submitted");
+      if (result.reminded > 0) {
+        setRemindedIds((ids) => new Set(ids).add(hw.id));
+        toast.success(`Reminder sent for ${result.reminded} learner${result.reminded === 1 ? "" : "s"}`);
+      } else {
+        toast.info("Everyone has already handed this in");
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to send reminder");
     } finally {
@@ -406,117 +604,277 @@ function TeacherDashboard() {
     );
   }
 
-  const homeroom = classes.find((c) => c.is_homeroom_teacher);
-  const todaySlots = timetable.filter((s) => s.day_of_week === todayIndex).sort((a, b) => a.start_time.localeCompare(b.start_time));
-  const daySlots = timetable.filter((s) => s.day_of_week === selectedDay).sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const firstName = user.full_name.split(" ")[0];
+  const todayStr = localDateStr(now);
+  const jsDay = now.getDay();
+  const todayIndex = jsDay === 0 ? -1 : jsDay - 1;
+  const monday = weekStart(now);
+  const selectedDate = addDays(monday, selectedDay);
+  const isSelectedToday = selectedDay === todayIndex;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const classOf = (id: number) => classes.find((c) => c.class_id === id);
+  const homeroomClasses = classes.filter((c) => c.is_homeroom_teacher);
+  const homeroom = homeroomClasses[0];
+  const registerClass = homeroom?.can_mark_attendance ? homeroom : classes.find((c) => c.can_mark_attendance);
+  const canPostHomework = classes.some((c) => c.subjects.length > 0);
+
+  const byStart = (a: MyTimetableSlot, b: MyTimetableSlot) => a.start_time.localeCompare(b.start_time);
+  const todaySlots = timetable.filter((s) => s.day_of_week === todayIndex).sort(byStart);
+  const daySlots = timetable.filter((s) => s.day_of_week === selectedDay).sort(byStart);
   const currentSlot = todaySlots.find((s) => timeToMinutes(s.start_time) <= nowMinutes && nowMinutes < timeToMinutes(s.end_time));
+  const nextSlot = todaySlots.find((s) => timeToMinutes(s.start_time) > nowMinutes);
 
-  const openHomework = homework
-    .filter((h) => h.submitted_count < h.total_students || h.reviewed_count < h.submitted_count)
-    .sort((a, b) => (a.due_date < b.due_date ? -1 : 1))
-    .slice(0, 5);
-  const submissionsToMark = homework.reduce((sum, h) => sum + Math.max(0, h.submitted_count - h.reviewed_count), 0);
+  // Only work the teacher is actually assigned to mark: same rule the backend
+  // applies when they open a submission to review it.
+  const myHomework = homework.filter((h) => classOf(h.class_id)?.subjects.some((s) => s.subject_id === h.subject_id));
+  const alerts: SubmissionAlert[] = myHomework
+    .map((hw) => {
+      const daysLeft = daysUntil(hw.due_date, todayStr);
+      return {
+        hw,
+        missing: Math.max(0, hw.total_students - hw.submitted_count),
+        unmarked: Math.max(0, hw.submitted_count - hw.reviewed_count),
+        reviewed: hw.reviewed_count,
+        daysLeft,
+        overdue: daysLeft < 0,
+      };
+    })
+    .filter((a) => a.missing > 0 || a.unmarked > 0)
+    .sort((a, b) => {
+      if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+      // Overdue: most recently due first, so long-stale items sink. Open: soonest due first.
+      return a.overdue ? b.daysLeft - a.daysLeft : a.daysLeft - b.daysLeft;
+    });
+  const visibleAlerts = alerts.slice(0, ALERT_LIMIT);
+  const overdueCount = alerts.filter((a) => a.overdue).length;
+  const submissionsToMark = myHomework.reduce((sum, h) => sum + Math.max(0, h.submitted_count - h.reviewed_count), 0);
+  const assignmentsToMark = myHomework.filter((h) => h.submitted_count > h.reviewed_count).length;
 
-  const attendancePct = homeroomAttendance && homeroomAttendance.total > 0 ? Math.round((homeroomAttendance.present / homeroomAttendance.total) * 100) : null;
+  const attendancePct = register && register.marked && register.total > 0 ? Math.min(100, Math.round((register.present / register.total) * 100)) : null;
+  const attendanceTone: StatTone = attendancePct === null ? "amber" : attendancePct >= 80 ? "emerald" : attendancePct >= 60 ? "amber" : "red";
+  const attendanceHref = homeroom ? `/dashboard/attendance?class_id=${homeroom.class_id}` : undefined;
 
-  const classNameFor = (id: number) => classes.find((c) => c.class_id === id)?.class_name ?? "—";
-  const subjectNameFor = (classId: number, subjectId: number) =>
-    classes.find((c) => c.class_id === classId)?.subjects.find((s) => s.subject_id === subjectId)?.subject_name ?? "—";
+  const roleLabel = homeroom ? "Class teacher" : "Subject teacher";
+  const classLabel = homeroom
+    ? homeroomClasses.map((c) => c.class_name).join(", ")
+    : classes.length > 0
+    ? `${classes.length} class${classes.length === 1 ? "" : "es"}`
+    : "";
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[#6e1316] p-5 text-primary-foreground shadow-md sm:p-6">
-        <GraduationCap className="pointer-events-none absolute -right-6 -bottom-8 size-36 text-white/10" strokeWidth={1} />
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-primary-foreground/70 uppercase">
-              {homeroom ? `Class teacher · ${homeroom.class_name} · ` : ""}
-              {todayLabel()}
-            </p>
-            <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{greet()}, {user.full_name.split(" ")[0]}</h1>
+    <div className="flex flex-col gap-5 sm:gap-6">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[#6e1316] px-5 py-4 text-primary-foreground shadow-sm sm:px-6 sm:py-5">
+        <span className="absolute inset-y-0 left-0 w-1 bg-sidebar-primary" aria-hidden />
+        <GraduationCap className="pointer-events-none absolute -right-4 -bottom-6 size-28 text-white/10" strokeWidth={1} aria-hidden />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="rounded-full bg-sidebar-primary/15 px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-sidebar-primary uppercase">
+                {roleLabel}
+              </span>
+              {classLabel && <span className="truncate text-xs text-primary-foreground/75">{classLabel}</span>}
+            </div>
+            <h1 className="mt-1.5 truncate font-heading text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
+              {greet(now)}, {firstName}
+            </h1>
+            <p className="mt-0.5 text-xs text-primary-foreground/70">{todayLabel(now)}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href={homeroom ? `/dashboard/attendance?class_id=${homeroom.class_id}` : "/dashboard/attendance"}>
-              <Button variant="secondary"><ClipboardCheck /> Class register</Button>
-            </Link>
-            <Link href="/dashboard/homework">
-              <Button variant="outline" className="border-white/30 bg-white/10 text-primary-foreground hover:bg-white/20 hover:text-primary-foreground"><Plus /> New assignment</Button>
-            </Link>
-          </div>
+          {(registerClass || canPostHomework) && (
+            <div className="flex flex-wrap gap-2 sm:shrink-0">
+              {registerClass && (
+                <Button
+                  variant="secondary"
+                  nativeButton={false}
+                  className="h-10 flex-1 justify-center sm:h-9 sm:flex-none"
+                  render={
+                    <Link href={`/dashboard/attendance?class_id=${registerClass.class_id}`}>
+                      <ClipboardCheck /> Class register
+                    </Link>
+                  }
+                />
+              )}
+              {canPostHomework && (
+                <Button
+                  nativeButton={false}
+                  className="h-10 flex-1 justify-center bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 sm:h-9 sm:flex-none"
+                  render={
+                    <Link href="/dashboard/homework">
+                      <Plus /> New assignment
+                    </Link>
+                  }
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Metric
-          label={homeroom ? `${homeroom.class_name} attendance` : "Attendance today"}
-          value={attendancePct !== null ? `${attendancePct}%` : "—"}
-          sub={homeroomAttendance ? `${homeroomAttendance.present} of ${homeroomAttendance.total} learners in today` : "No homeroom class"}
-          meterPercent={attendancePct ?? undefined}
-          meterClassName={attendancePct !== null && attendancePct < 80 ? "bg-amber-500" : "bg-emerald-500"}
-          href={homeroom ? `/dashboard/attendance?class_id=${homeroom.class_id}` : "/dashboard/attendance"}
+      <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+        <TeacherStat
+          icon={UserCheck}
+          label={homeroom ? `${homeroom.class_name} attendance` : "Class attendance"}
+          tone={attendanceTone}
+          value={attendancePct !== null ? `${attendancePct}%` : register && !register.marked ? "Not taken" : "—"}
+          sub={
+            failed.classes
+              ? "Couldn't load your classes"
+              : !homeroom
+              ? "You're not a class teacher"
+              : failed.register
+              ? "Couldn't load today's register"
+              : register && !register.marked
+              ? `Register not taken yet · ${register.total} learner${register.total === 1 ? "" : "s"}`
+              : register
+              ? `${register.present} of ${register.total} present${register.absent ? ` · ${register.absent} absent` : ""}${register.late ? ` · ${register.late} late` : ""}`
+              : "—"
+          }
+          meter={attendancePct !== null ? { percent: attendancePct, className: attendanceTone === "emerald" ? "bg-emerald-500" : attendanceTone === "amber" ? "bg-amber-500" : "bg-red-500" } : undefined}
+          href={attendanceHref}
         />
-        <Metric
+        <TeacherStat
+          icon={ClipboardList}
           label="Submissions to mark"
-          value={submissionsToMark}
-          sub={`Across ${openHomework.length} open assignment${openHomework.length === 1 ? "" : "s"}`}
+          tone={submissionsToMark > 0 ? "amber" : "emerald"}
+          value={failed.homework || failed.classes ? "—" : submissionsToMark}
+          sub={
+            failed.homework || failed.classes
+              ? "Couldn't load assignments"
+              : submissionsToMark > 0
+              ? `Across ${assignmentsToMark} assignment${assignmentsToMark === 1 ? "" : "s"}`
+              : "All caught up"
+          }
           href="/dashboard/homework"
         />
-        <Metric
+        <TeacherStat
+          icon={CalendarClock}
           label="Lessons today"
-          value={todaySlots.length}
-          sub={todaySlots.length ? `Including ${todaySlots.slice(0, 2).map((s) => s.subject_name).join(", ")}` : "No lessons scheduled"}
-          href="/dashboard/timetable"
+          value={failed.timetable ? "—" : todaySlots.length}
+          sub={
+            failed.timetable
+              ? "Couldn't load your timetable"
+              : currentSlot
+              ? `Now: ${currentSlot.subject_name} · ${currentSlot.class_name}`
+              : nextSlot
+              ? `Next: ${formatTime24(nextSlot.start_time)} ${nextSlot.subject_name} · ${nextSlot.class_name}`
+              : todaySlots.length > 0
+              ? "All lessons done for today"
+              : "No lessons scheduled today"
+          }
+          href="/dashboard/my-classes"
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+      <div className="grid items-start gap-4 xl:grid-cols-[1.3fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">My timetable</CardTitle>
-            <CardDescription>40-minute lessons · current term timetable</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-base"><CalendarClock className="size-4.5" /> My timetable</CardTitle>
+            <CardDescription>
+              {longDate(selectedDate)}
+              {isSelectedToday ? " · today" : ""}
+              {!failed.timetable && ` · ${daySlots.length} lesson${daySlots.length === 1 ? "" : "s"}`}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-1.5">
-              {DAY_NAMES.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setSelectedDay(i)}
-                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-                    selectedDay === i ? "border-foreground bg-foreground text-background" : "border-input hover:bg-accent"
-                  }`}
-                >
-                  {DAY_SHORT[i]}{i === todayIndex ? " · today" : ""}
-                </button>
-              ))}
+            <div role="tablist" aria-label="Day of the week" className="grid grid-cols-6 gap-1.5">
+              {DAY_SHORT.map((label, i) => {
+                const selected = selectedDay === i;
+                const isToday = i === todayIndex;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    aria-label={`${DAY_NAMES[i]} ${addDays(monday, i).getDate()}${isToday ? ", today" : ""}`}
+                    onClick={() => setSelectedDay(i)}
+                    className={`flex min-h-11 min-w-0 flex-col items-center justify-center rounded-lg border px-1 py-1 leading-tight transition-colors ${
+                      selected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : isToday
+                        ? "border-primary/40 hover:bg-accent"
+                        : "border-input hover:bg-accent"
+                    }`}
+                  >
+                    <span className="text-[0.65rem] font-medium tracking-wide uppercase opacity-80">{label}</span>
+                    <span className="relative text-sm font-semibold tabular-nums">
+                      {addDays(monday, i).getDate()}
+                      {isToday && <span className="absolute -top-0.5 -right-2 size-1.5 rounded-full bg-sidebar-primary" aria-hidden />}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {daySlots.length ? (
+            {failed.timetable ? (
+              <RetryNotice message="We couldn't load your timetable." onRetry={retry} busy={retrying} />
+            ) : daySlots.length > 0 ? (
               <ol className="flex flex-col gap-2">
                 {daySlots.map((s) => {
-                  const isNow = selectedDay === todayIndex && s.id === currentSlot?.id;
+                  const isNow = isSelectedToday && s.id === currentSlot?.id;
+                  const isNext = isSelectedToday && !currentSlot && s.id === nextSlot?.id;
+                  const isDone = isSelectedToday && timeToMinutes(s.end_time) <= nowMinutes;
+                  const klass = classOf(s.class_id);
+                  const canRegister = isSelectedToday && !!klass?.can_mark_attendance;
                   return (
-                    <li key={s.id} className={`flex items-center gap-3 rounded-lg border p-2.5 ${isNow ? "border-primary/50 bg-primary/5" : ""}`}>
-                      <div className="flex w-16 shrink-0 flex-col items-start text-xs text-muted-foreground tabular-nums">
-                        <span>{formatTime24(s.start_time)}</span>
+                    <li
+                      key={s.id}
+                      className={`flex items-center gap-3 rounded-lg border p-2.5 ${isNow ? "border-primary/50 bg-primary/5" : ""} ${isDone ? "opacity-60" : ""}`}
+                    >
+                      <div className="flex w-12 shrink-0 flex-col text-xs leading-snug text-muted-foreground tabular-nums">
+                        <span className="font-medium text-foreground">{formatTime24(s.start_time)}</span>
                         <span>{formatTime24(s.end_time)}</span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{s.subject_name}</p>
-                        <p className="text-xs text-muted-foreground">{s.class_name}{s.room ? ` · Room ${s.room}` : ""}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="truncate text-sm font-medium">{s.subject_name}</p>
+                          {isNow && <Badge className="shrink-0">Now</Badge>}
+                          {isNext && <Badge variant="outline" className="shrink-0 border-sidebar-primary text-primary">Next</Badge>}
+                        </div>
+                        <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                          <span className="truncate">{s.class_name}</span>
+                          {s.room && (
+                            <>
+                              <span aria-hidden>·</span>
+                              <MapPin className="size-3 shrink-0" aria-hidden />
+                              <span className="truncate">{s.room}</span>
+                            </>
+                          )}
+                        </p>
                       </div>
-                      {isNow && <Badge className="shrink-0">Now</Badge>}
-                      <Link href={`/dashboard/attendance?class_id=${s.class_id}`}>
-                        <Button size="sm" variant="outline" className="shrink-0">Register</Button>
-                      </Link>
+                      {canRegister && (
+                        <Button
+                          size="sm"
+                          variant={klass?.attendance_marked_today ? "ghost" : "outline"}
+                          nativeButton={false}
+                          className="h-9 shrink-0 sm:h-7"
+                          render={
+                            <Link href={`/dashboard/attendance?class_id=${s.class_id}`}>
+                              {klass?.attendance_marked_today ? (
+                                <>
+                                  <CheckCircle2 className="text-emerald-600" /> Registered
+                                </>
+                              ) : (
+                                "Register"
+                              )}
+                            </Link>
+                          }
+                        />
+                      )}
                     </li>
                   );
                 })}
               </ol>
             ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">No lessons scheduled for {DAY_NAMES[selectedDay]}.</p>
+              <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-8 text-center">
+                <CalendarClock className="size-5 text-muted-foreground" />
+                <p className="text-sm font-medium">
+                  {timetable.length === 0 ? "No timetable has been set up for you yet" : `No lessons on ${DAY_NAMES[selectedDay]}`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {timetable.length === 0 ? "Ask your school admin to add your lessons." : "Pick another day to see your other lessons."}
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -524,57 +882,122 @@ function TeacherDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base"><BellRing className="size-4.5" /> Submission alerts</CardTitle>
-            <CardDescription>Open assignments in your classes</CardDescription>
+            <CardDescription>
+              {alerts.length > 0
+                ? `${overdueCount} overdue · ${alerts.length - overdueCount} still open`
+                : "Open assignments in your classes"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {openHomework.length ? (
-              <ul className="flex flex-col gap-4">
-                {openHomework.map((hw) => {
-                  const missing = hw.total_students - hw.submitted_count;
-                  const unmarked = hw.submitted_count - hw.reviewed_count;
-                  const pct = hw.total_students > 0 ? Math.round((hw.submitted_count / hw.total_students) * 100) : 0;
-                  return (
-                    <li key={hw.id} className="flex flex-col gap-2 rounded-lg border p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{hw.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {classNameFor(hw.class_id)} · {subjectNameFor(hw.class_id, hw.subject_id)} · due {new Date(hw.due_date + "T12:00:00").toLocaleDateString()}
-                          </p>
-                        </div>
-                        {missing > 0 ? (
-                          <Badge variant="outline" className="shrink-0 border-red-300 text-red-700 dark:border-red-900 dark:text-red-400">{missing} missing</Badge>
-                        ) : (
-                          <Badge variant="outline" className="shrink-0 border-amber-300 text-amber-700 dark:border-amber-900 dark:text-amber-400">{unmarked} to mark</Badge>
+            {failed.homework || failed.classes ? (
+              <RetryNotice message="We couldn't load your assignments." onRetry={retry} busy={retrying} />
+            ) : visibleAlerts.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                <ul className="flex flex-col gap-3">
+                  {visibleAlerts.map((a, i) => {
+                    const { hw } = a;
+                    const className = classOf(hw.class_id)?.class_name ?? "";
+                    const subject = classOf(hw.class_id)?.subjects.find((s) => s.subject_id === hw.subject_id)?.subject_name ?? "";
+                    const total = Math.max(hw.total_students, 1);
+                    const reminded = remindedIds.has(hw.id);
+                    const dueTone = a.overdue
+                      ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+                      : a.daysLeft === 0
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                      : "bg-muted text-muted-foreground";
+                    const heading = i === 0 || visibleAlerts[i - 1].overdue !== a.overdue ? (a.overdue ? "Overdue" : "Still open") : null;
+                    return (
+                      <li key={hw.id} className="flex flex-col gap-3">
+                        {heading && (
+                          <p className="text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">{heading}</p>
                         )}
-                      </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs text-muted-foreground">
-                          {hw.submitted_count}/{hw.total_students} handed in{unmarked > 0 ? ` · ${unmarked} unmarked` : ""}
-                        </p>
-                        <div className="flex gap-1.5">
-                          {missing > 0 && (
-                            <Button size="sm" variant="outline" disabled={remindingId === hw.id} onClick={() => handleRemind(hw)}>
-                              {remindingId === hw.id ? "Reminding..." : "Remind"}
-                            </Button>
-                          )}
-                          <Link href={`/dashboard/homework/${hw.id}`}><Button size="sm">Review</Button></Link>
+                        <div
+                          className={`flex flex-col gap-2.5 rounded-lg border p-3 ${
+                            a.overdue ? "border-red-200 bg-red-50/40 dark:border-red-900/50 dark:bg-red-950/10" : ""
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold">{hw.title}</p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {[className, subject].filter(Boolean).join(" · ")} · due {shortDate(hw.due_date)}
+                              </p>
+                            </div>
+                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${dueTone}`}>{dueLabel(a.daysLeft)}</span>
+                          </div>
+
+                          <div
+                            className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                            role="img"
+                            aria-label={`${a.reviewed} marked, ${a.unmarked} to mark, ${a.missing} missing`}
+                          >
+                            <div className="h-full bg-emerald-500" style={{ width: `${(a.reviewed / total) * 100}%` }} />
+                            <div className="h-full bg-amber-400" style={{ width: `${(a.unmarked / total) * 100}%` }} />
+                          </div>
+
+                          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                            <p className="text-xs text-muted-foreground">
+                              {hw.submitted_count}/{hw.total_students} handed in
+                              {a.unmarked > 0 && <span className="font-medium text-amber-700 dark:text-amber-400"> · {a.unmarked} to mark</span>}
+                              {a.missing > 0 && (
+                                <span className={a.overdue ? "font-medium text-red-700 dark:text-red-400" : ""}> · {a.missing} missing</span>
+                              )}
+                            </p>
+                            <div className="flex gap-1.5">
+                              {a.missing > 0 && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-9 sm:h-7"
+                                  disabled={remindingId === hw.id || reminded}
+                                  onClick={() => handleRemind(hw)}
+                                >
+                                  {reminded ? (
+                                    <>
+                                      <CheckCircle2 className="text-emerald-600" /> Reminded
+                                    </>
+                                  ) : remindingId === hw.id ? (
+                                    "Sending..."
+                                  ) : (
+                                    "Remind"
+                                  )}
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                nativeButton={false}
+                                className="h-9 sm:h-7"
+                                render={<Link href={`/dashboard/homework/${hw.id}`}>Review</Link>}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {alerts.length > ALERT_LIMIT && (
+                  <Link href="/dashboard/homework" className="text-xs font-medium text-primary hover:underline">
+                    View all {alerts.length} assignments →
+                  </Link>
+                )}
+              </div>
             ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">Nothing needs your attention — every assignment is handed in and marked.</p>
+              <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-8 text-center">
+                <CheckCircle2 className="size-5 text-emerald-600" />
+                <p className="text-sm font-medium">
+                  {myHomework.length === 0 ? "No assignments posted yet" : "Nothing needs your attention"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {myHomework.length === 0
+                    ? "Assignments you post for your classes will show up here."
+                    : "Every assignment is handed in and marked."}
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
-
     </div>
   );
 }
