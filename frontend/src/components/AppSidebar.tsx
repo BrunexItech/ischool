@@ -226,7 +226,7 @@ export function AppSidebar() {
           </div>
         </div>
         <p className="relative truncate px-2 text-[0.6rem] font-medium tracking-[0.12em] text-sidebar-primary uppercase group-data-[collapsible=icon]:hidden">
-          Nurturing today · Empowering tomorrow
+          Nurture with Excellence
         </p>
         <div className="relative px-2 group-data-[collapsible=icon]:hidden">
           <Search className="pointer-events-none absolute top-1/2 left-4.5 size-3.5 -translate-y-1/2 text-sidebar-foreground/40" />

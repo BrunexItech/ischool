@@ -89,7 +89,7 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
           }
           <div className="[text-shadow:0_2px_10px_rgba(0,0,0,0.65)]">
             <p className="text-2xl leading-tight font-semibold">{SCHOOL_NAME}</p>
-            <p className="mt-0.5 text-[0.7rem] tracking-widest text-[#FFA819] uppercase">Nurturing Today · Empowering Tomorrow</p>
+            <p className="mt-0.5 text-[0.7rem] tracking-widest text-[#FFA819] uppercase">Nurture with Excellence</p>
           </div>
         </div>
 
@@ -130,7 +130,7 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
             }
             <div>
               <p className="text-lg leading-tight font-semibold text-foreground">{SCHOOL_NAME}</p>
-              <p className="text-[0.65rem] tracking-widest text-primary uppercase">Nurturing Today · Empowering Tomorrow</p>
+              <p className="text-[0.65rem] tracking-widest text-primary uppercase">Nurture with Excellence</p>
             </div>
           </div>
           <div className="mb-4 hidden lg:block">
