@@ -575,52 +575,6 @@ function TeacherDashboard() {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Your classes</p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {classes.map((c) => (
-            <Link
-              key={c.class_id}
-              href={c.can_mark_attendance ? `/dashboard/attendance?class_id=${c.class_id}` : `/dashboard/students?class_id=${c.class_id}`}
-            >
-              <Card className="h-full transition-colors hover:border-primary/40 hover:bg-accent/40">
-                <CardContent className="flex flex-col gap-2 pt-6">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <GraduationCap className="size-4" />
-                      </div>
-                      <p className="truncate font-heading text-sm font-semibold">{c.class_name}</p>
-                    </div>
-                    {c.is_homeroom_teacher && <Badge className="shrink-0">Class teacher</Badge>}
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {c.subjects.map((s) => (
-                      <Badge key={s.subject_id} variant="secondary">{s.subject_name}</Badge>
-                    ))}
-                  </div>
-                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Users className="size-3" /> {c.student_count} learner{c.student_count === 1 ? "" : "s"}
-                    {c.can_mark_attendance &&
-                      (c.attendance_marked_today ? (
-                        <span className="text-emerald-600">· register marked</span>
-                      ) : (
-                        <span className="text-amber-600">· register pending</span>
-                      ))}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-          {classes.length === 0 && (
-            <Card className="sm:col-span-2 lg:col-span-3">
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                You have no class assignments yet — ask your school admin to assign you to a class.
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
