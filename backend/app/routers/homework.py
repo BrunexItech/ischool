@@ -25,6 +25,9 @@ router = APIRouter(prefix="/schools/{school_id}/homework", tags=["homework"])
 
 VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+# Posting/marking homework is the teacher's own job — leadership can view
+# it (VIEW_ROLES) but not fill it in on a teacher's behalf.
+RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.STAFF)
 
 
 def _get_homework(db: Session, school_id: int, homework_id: int) -> Homework:
@@ -81,7 +84,7 @@ def list_homework(
     "",
     response_model=HomeworkListItemOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("homework"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("homework"))],
 )
 def create_homework(
     school_id: int, payload: HomeworkCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -103,7 +106,7 @@ def create_homework(
 @router.post(
     "/{homework_id}/attachment",
     response_model=HomeworkListItemOut,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("homework"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("homework"))],
 )
 def upload_homework_attachment(
     school_id: int,
@@ -129,7 +132,7 @@ def upload_homework_attachment(
 @router.post(
     "/{homework_id}/remind",
     response_model=dict,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("homework"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("homework"))],
 )
 def remind_homework(school_id: int, homework_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Nudges every active student who hasn't submitted (or isn't marked
@@ -204,7 +207,7 @@ def get_homework(school_id: int, homework_id: int, db: Session = Depends(get_db)
 @router.patch(
     "/{homework_id}/submissions/{student_id}",
     response_model=HomeworkSubmissionOut,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("homework"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("homework"))],
 )
 def review_submission(
     school_id: int,

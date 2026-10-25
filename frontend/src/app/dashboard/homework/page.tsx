@@ -23,6 +23,7 @@ const HOMEWORK_TYPES = ["Assignment", "Project", "Classwork", "Revision", "Readi
 export default function HomeworkPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
+  const canRecord = user?.role === "super_admin" || user?.role === "teacher" || user?.role === "staff";
   const [items, setItems] = useState<HomeworkListItem[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -101,6 +102,7 @@ export default function HomeworkPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Homework" description="Post homework for a class and track who's done it." />
 
+      {canRecord && (
       <Card>
         <CardHeader><CardTitle className="text-base">Post homework</CardTitle></CardHeader>
         <CardContent>
@@ -174,6 +176,7 @@ export default function HomeworkPage() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       <div className="flex flex-col gap-3">
         {items.map((hw) => (

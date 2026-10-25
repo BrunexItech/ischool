@@ -35,6 +35,7 @@ function emptyQuestion(): DraftQuestion {
 export default function ExamsPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
+  const canRecord = user?.role === "super_admin" || user?.role === "teacher" || user?.role === "staff";
   const [exams, setExams] = useState<Exam[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -175,6 +176,7 @@ export default function ExamsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Exams" description="Set an exam, print it for a paper sitting, or publish it for students to sit online." />
 
+      {canRecord && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><Plus className="size-4.5" /> Set a new exam</CardTitle>
@@ -313,6 +315,7 @@ export default function ExamsPage() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader><CardTitle className="text-base">All exams</CardTitle></CardHeader>
@@ -335,13 +338,17 @@ export default function ExamsPage() {
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Switch checked={exam.is_published} onCheckedChange={() => handleTogglePublish(exam)} />
-                  {exam.is_published ? "Published" : "Draft"}
-                </label>
+                {canRecord ? (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Switch checked={exam.is_published} onCheckedChange={() => handleTogglePublish(exam)} />
+                    {exam.is_published ? "Published" : "Draft"}
+                  </label>
+                ) : (
+                  <Badge variant={exam.is_published ? "default" : "outline"}>{exam.is_published ? "Published" : "Draft"}</Badge>
+                )}
                 {exam.paper_file_url ? (
                   <Button variant="outline" size="sm" render={<a href={exam.paper_file_url} target="_blank" rel="noreferrer"><FileText /> View paper</a>} />
-                ) : exam.question_count === 0 ? (
+                ) : exam.question_count === 0 && canRecord ? (
                   <label className="flex cursor-pointer items-center gap-1.5 text-xs text-primary hover:underline">
                     <Upload className="size-3.5" />
                     {uploadingPaperFor === exam.id ? "Uploading..." : "Upload paper"}
@@ -353,7 +360,7 @@ export default function ExamsPage() {
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadPaper(exam, f); }}
                     />
                   </label>
-                ) : (
+                ) : exam.question_count === 0 ? null : (
                   <Button variant="outline" size="sm" render={<Link href={`/dashboard/exams/${exam.id}`}><FileText /> View / Print</Link>} />
                 )}
                 {(user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal") && (

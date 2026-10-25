@@ -19,6 +19,9 @@ router = APIRouter(prefix="/schools/{school_id}/lesson-plans", tags=["lesson-pla
 
 VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+# Writing a lesson plan is the teacher's own work — leadership can view it
+# (VIEW_ROLES) but not fill it in on a teacher's behalf.
+RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.STAFF)
 
 
 def _get_plan(db: Session, school_id: int, plan_id: int) -> LessonPlan:
@@ -68,7 +71,7 @@ def list_lesson_plans(
     "",
     response_model=LessonPlanDetailOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("lesson_plans"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("lesson_plans"))],
 )
 def create_lesson_plan(
     school_id: int, payload: LessonPlanCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -113,7 +116,7 @@ def delete_lesson_plan(school_id: int, plan_id: int, db: Session = Depends(get_d
     "/{plan_id}/entries",
     response_model=LessonPlanEntryOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("lesson_plans"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("lesson_plans"))],
 )
 def add_entry(
     school_id: int,
@@ -137,7 +140,7 @@ def add_entry(
 @router.put(
     "/{plan_id}/entries",
     response_model=LessonPlanDetailOut,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("lesson_plans"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("lesson_plans"))],
 )
 def replace_entries(
     school_id: int,
@@ -166,7 +169,7 @@ def replace_entries(
 @router.patch(
     "/{plan_id}/entries/{entry_id}",
     response_model=LessonPlanEntryOut,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("lesson_plans"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("lesson_plans"))],
 )
 def update_entry(
     school_id: int,
@@ -195,7 +198,7 @@ def update_entry(
 @router.delete(
     "/{plan_id}/entries/{entry_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("lesson_plans"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("lesson_plans"))],
 )
 def delete_entry(
     school_id: int, plan_id: int, entry_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)

@@ -156,6 +156,7 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
   const { id } = use(params);
   const router = useRouter();
   const { user, token, loading } = useAuth();
+  const canRecord = user?.role === "super_admin" || user?.role === "teacher" || user?.role === "staff";
   const [plan, setPlan] = useState<LessonPlanDetail | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [addForm, setAddForm] = useState({ label: "", scheduled_date: "", topic: "" });
@@ -223,10 +224,13 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
         description={`${plan.completed_count} of ${plan.entry_count} entries covered so far${plan.created_by_name ? ` · set up by ${plan.created_by_name}` : ""}`}
       />
 
+      {canRecord && (
       <div className="flex flex-wrap gap-3">
         <BulkFillDialog schoolId={plan.school_id} planId={plan.id} nextOrder={(plan.entries[plan.entries.length - 1]?.order ?? 0) + 1} onReplaced={handleReplaced} />
       </div>
+      )}
 
+      {canRecord && (
       <Card>
         <CardHeader><CardTitle className="text-base">Add one entry</CardTitle></CardHeader>
         <CardContent>
@@ -247,15 +251,22 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
           </form>
         </CardContent>
       </Card>
+      )}
 
       <div className="flex flex-col gap-3">
         {plan.entries.map((entry) => (
           <Card key={entry.id}>
             <CardContent className="flex flex-wrap items-start justify-between gap-3 pt-6">
               <div className="flex items-start gap-3">
-                <button type="button" onClick={() => toggleStatus(entry)} className="mt-0.5 text-primary">
-                  {entry.status === "completed" ? <CheckCircle2 className="size-5" /> : <Circle className="size-5 text-muted-foreground" />}
-                </button>
+                {canRecord ? (
+                  <button type="button" onClick={() => toggleStatus(entry)} className="mt-0.5 text-primary">
+                    {entry.status === "completed" ? <CheckCircle2 className="size-5" /> : <Circle className="size-5 text-muted-foreground" />}
+                  </button>
+                ) : (
+                  <span className="mt-0.5 text-primary">
+                    {entry.status === "completed" ? <CheckCircle2 className="size-5" /> : <Circle className="size-5 text-muted-foreground" />}
+                  </span>
+                )}
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{entry.label}</Badge>
@@ -270,10 +281,12 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
                   {entry.notes && <p className="text-sm text-muted-foreground">Notes: {entry.notes}</p>}
                 </div>
               </div>
+              {canRecord && (
               <div className="flex items-center gap-2">
                 <EditEntryDialog schoolId={plan.school_id} planId={plan.id} entry={entry} onUpdated={handleEntryUpdated} />
                 <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteEntry(entry.id)}><Trash2 /></Button>
               </div>
+              )}
             </CardContent>
           </Card>
         ))}

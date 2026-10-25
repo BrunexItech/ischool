@@ -23,6 +23,9 @@ router = APIRouter(prefix="/schools/{school_id}/exams", tags=["exams"])
 
 VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+# Setting/publishing/grading an exam is the teacher's own job — leadership
+# can view it (VIEW_ROLES) but not fill it in on a teacher's behalf.
+RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.STAFF)
 
 
 def _detail_out(exam: Exam) -> ExamDetailOut:
@@ -42,7 +45,7 @@ def list_exams(school_id: int, db: Session = Depends(get_db), current_user: User
     "",
     response_model=ExamDetailOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("exams"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("exams"))],
 )
 def create_exam(school_id: int, payload: ExamCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)
@@ -100,7 +103,7 @@ def get_exam(school_id: int, exam_id: int, db: Session = Depends(get_db), curren
 @router.patch(
     "/{exam_id}/publish",
     response_model=ExamOut,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("exams"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("exams"))],
 )
 def set_exam_published(
     school_id: int, exam_id: int, published: bool, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -119,7 +122,7 @@ def set_exam_published(
 @router.post(
     "/{exam_id}/paper",
     response_model=ExamOut,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("exams"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("exams"))],
 )
 def upload_exam_paper(
     school_id: int,
@@ -185,7 +188,7 @@ def list_submissions(school_id: int, exam_id: int, db: Session = Depends(get_db)
 @router.patch(
     "/{exam_id}/submissions/{submission_id}/answers/{answer_id}/grade",
     response_model=ExamSubmissionDetailOut,
-    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("exams"))],
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("exams"))],
 )
 def grade_answer(
     school_id: int,

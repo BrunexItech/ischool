@@ -139,6 +139,7 @@ export default function HomeworkDetailPage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const router = useRouter();
   const { user, token, loading } = useAuth();
+  const canRecord = user?.role === "super_admin" || user?.role === "teacher" || user?.role === "staff";
   const [hw, setHw] = useState<HomeworkDetail | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
@@ -177,7 +178,7 @@ export default function HomeworkDetailPage({ params }: { params: Promise<{ id: s
         <Card><CardContent className="pt-6 text-sm text-muted-foreground">{hw.instructions}</CardContent></Card>
       )}
 
-      <AttachmentCard hw={hw} onAttached={(url) => setHw((h) => (h ? { ...h, attachment_url: url } : h))} />
+      {canRecord && <AttachmentCard hw={hw} onAttached={(url) => setHw((h) => (h ? { ...h, attachment_url: url } : h))} />}
 
       <Card>
         <Table>
@@ -203,7 +204,7 @@ export default function HomeworkDetailPage({ params }: { params: Promise<{ id: s
                   <TableCell>{row.score ?? "—"}</TableCell>
                   <TableCell className="max-w-xs truncate text-muted-foreground">{row.teacher_comment ?? "—"}</TableCell>
                   <TableCell className="text-right">
-                    <ReviewDialog schoolId={hw.school_id} homeworkId={hw.id} row={row} onReviewed={handleReviewed} />
+                    {canRecord && <ReviewDialog schoolId={hw.school_id} homeworkId={hw.id} row={row} onReviewed={handleReviewed} />}
                   </TableCell>
                 </TableRow>
               );

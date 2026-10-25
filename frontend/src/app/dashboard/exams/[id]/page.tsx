@@ -33,6 +33,7 @@ export default function ExamDetailPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params);
   const router = useRouter();
   const { user, token, loading } = useAuth();
+  const canRecord = user?.role === "super_admin" || user?.role === "teacher" || user?.role === "staff";
   const [exam, setExam] = useState<ExamDetail | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [submissions, setSubmissions] = useState<ExamSubmissionDetail[]>([]);
@@ -129,10 +130,10 @@ export default function ExamDetailPage({ params }: { params: Promise<{ id: strin
                   return (
                     <div key={a.id} className="flex items-center justify-between gap-3 text-sm">
                       <span className="text-muted-foreground">{question.question_text}: {a.answer_text}</span>
-                      {question.question_type === "short_answer" ? (
+                      {question.question_type === "short_answer" && canRecord ? (
                         <GradeCell answer={a} maxMarks={question.marks} onGrade={(marks) => handleGrade(s.id, a.id, marks)} />
                       ) : (
-                        <Badge variant="outline">{a.awarded_marks}/{question.marks}</Badge>
+                        <Badge variant="outline">{a.awarded_marks ?? "—"}/{question.marks}</Badge>
                       )}
                     </div>
                   );

@@ -155,6 +155,7 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
 
   const canConfigure = user?.role === "super_admin" || user?.role === "head_of_institution" || user?.role === "group_principal";
+  const canRecord = user?.role === "super_admin" || user?.role === "teacher";
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
@@ -334,9 +335,11 @@ export default function ResultsPage() {
               <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Add a term first" className="w-44" />
             )}
           </div>
-          <Button onClick={handleSaveScores} disabled={saving || students.length === 0 || subjectId === null}>
-            <Save /> {saving ? "Saving..." : "Save grades"}
-          </Button>
+          {canRecord && (
+            <Button onClick={handleSaveScores} disabled={saving || students.length === 0 || subjectId === null}>
+              <Save /> {saving ? "Saving..." : "Save grades"}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -369,22 +372,30 @@ export default function ResultsPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={scoreValue ?? ""}
-                      onChange={(e) => setScores((sc) => ({ ...sc, [s.id]: e.target.value }))}
-                      className="w-24"
-                    />
+                    {canRecord ? (
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={scoreValue ?? ""}
+                        onChange={(e) => setScores((sc) => ({ ...sc, [s.id]: e.target.value }))}
+                        className="w-24"
+                      />
+                    ) : (
+                      <span className="text-sm">{scoreValue || "—"}</span>
+                    )}
                   </TableCell>
                   <TableCell>{level && <Badge variant="secondary">{level.level_code}</Badge>}</TableCell>
                   <TableCell>
-                    <Input
-                      value={remarks[s.id] ?? ""}
-                      onChange={(e) => setRemarks((r) => ({ ...r, [s.id]: e.target.value }))}
-                      placeholder="Optional comment"
-                    />
+                    {canRecord ? (
+                      <Input
+                        value={remarks[s.id] ?? ""}
+                        onChange={(e) => setRemarks((r) => ({ ...r, [s.id]: e.target.value }))}
+                        placeholder="Optional comment"
+                      />
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{remarks[s.id] || "—"}</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" render={<Link href={`/dashboard/report-card/${s.id}`}><FileText /> View</Link>} />

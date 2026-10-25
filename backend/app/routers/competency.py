@@ -14,7 +14,9 @@ from app.schemas.observation_note import ObservationNoteCreate, ObservationNoteO
 router = APIRouter(prefix="/schools/{school_id}", tags=["competency"])
 
 VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
-RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER)
+# Recording a competency assessment or observation is the teacher's own
+# classroom record — leadership can see it (VIEW_ROLES) but not write it.
+RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.TEACHER)
 
 
 def _student_in_class(db: Session, school_id: int, student_id: int, class_id: int) -> Student:

@@ -78,13 +78,13 @@ def test_paper_exam_cannot_be_started_online(client, db_session, school):
     assert "downloadable paper" in response.json()["detail"]
 
 
-def test_teacher_can_upload_a_pdf_as_the_exam_paper(client, db_session, school, school_admin_token):
+def test_teacher_can_upload_a_pdf_as_the_exam_paper(client, db_session, school, teacher_token):
     exam, student, _ = _make_exam_and_student(db_session, school)
 
     pdf_bytes = b"%PDF-1.4 fake pdf content"
     response = client.post(
         f"/schools/{school.id}/exams/{exam.id}/paper",
-        headers=auth_headers(school_admin_token),
+        headers=auth_headers(teacher_token),
         files={"file": ("paper.pdf", BytesIO(pdf_bytes), "application/pdf")},
     )
     assert response.status_code == 200, response.text
@@ -93,32 +93,32 @@ def test_teacher_can_upload_a_pdf_as_the_exam_paper(client, db_session, school, 
     assert body["paper_file_url"].endswith(".pdf")
 
 
-def test_uploading_a_non_pdf_as_exam_paper_is_rejected(client, db_session, school, school_admin_token):
+def test_uploading_a_non_pdf_as_exam_paper_is_rejected(client, db_session, school, teacher_token):
     exam, student, _ = _make_exam_and_student(db_session, school)
 
     response = client.post(
         f"/schools/{school.id}/exams/{exam.id}/paper",
-        headers=auth_headers(school_admin_token),
+        headers=auth_headers(teacher_token),
         files={"file": ("paper.txt", BytesIO(b"not a pdf"), "text/plain")},
     )
     assert response.status_code == 400
 
 
-def test_exam_can_be_created_with_zero_questions_for_a_paper_exam(client, school_admin_token, school, db_session):
+def test_exam_can_be_created_with_zero_questions_for_a_paper_exam(client, teacher_token, school, db_session):
     subject = Subject(school_id=school.id, name="History")
     db_session.add(subject)
     db_session.commit()
 
     response = client.post(
         f"/schools/{school.id}/exams",
-        headers=auth_headers(school_admin_token),
+        headers=auth_headers(teacher_token),
         json={"subject_id": subject.id, "title": "Paper Exam", "term": "Term 1 2026", "duration_minutes": 60, "questions": []},
     )
     assert response.status_code == 201, response.text
     assert response.json()["question_count"] == 0
 
 
-def test_exam_window_must_be_logically_ordered(client, school_admin_token, school, db_session):
+def test_exam_window_must_be_logically_ordered(client, teacher_token, school, db_session):
     subject = Subject(school_id=school.id, name="Geography")
     db_session.add(subject)
     db_session.commit()
@@ -126,7 +126,7 @@ def test_exam_window_must_be_logically_ordered(client, school_admin_token, schoo
     now = datetime.now(timezone.utc)
     response = client.post(
         f"/schools/{school.id}/exams",
-        headers=auth_headers(school_admin_token),
+        headers=auth_headers(teacher_token),
         json={
             "subject_id": subject.id,
             "title": "Bad Window Exam",
@@ -138,3 +138,16 @@ def test_exam_window_must_be_logically_ordered(client, school_admin_token, schoo
         },
     )
     assert response.status_code == 422
+
+
+def test_head_of_institution_cannot_create_an_exam(client, school_admin_token, school, db_session):
+    subject = Subject(school_id=school.id, name="Civics")
+    db_session.add(subject)
+    db_session.commit()
+
+    response = client.post(
+        f"/schools/{school.id}/exams",
+        headers=auth_headers(school_admin_token),
+        json={"subject_id": subject.id, "title": "Civics Exam", "term": "Term 1 2026", "duration_minutes": 60, "questions": []},
+    )
+    assert response.status_code == 403

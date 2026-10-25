@@ -1,7 +1,8 @@
 """Lesson plans are deliberately unstructured — a teacher can fill in one
 entry at a time as the term goes, or replace the whole set in one call to
 set up the entire term up front. Scoped by the same TeacherAssignment
-rights as grading."""
+rights as grading. Recording one is the teacher's own job — leadership
+can view it but not fill it in on a teacher's behalf."""
 
 from app.models.academics import SchoolClass
 from app.models.results import Subject
@@ -32,46 +33,56 @@ def _teacher_user(db_session, school):
     return user
 
 
-def test_create_plan_then_add_entries_one_at_a_time(client, db_session, school, school_admin_token):
-    school_class, subject = _setup_scope(db_session, school, _teacher_user(db_session, school))
+def _login(client, teacher):
+    r = client.post("/auth/login", data={"username": teacher.email, "password": "TestPass123!"})
+    return auth_headers(r.json()["access_token"])
+
+
+def test_create_plan_then_add_entries_one_at_a_time(client, db_session, school):
+    teacher = _teacher_user(db_session, school)
+    school_class, subject = _setup_scope(db_session, school, teacher)
+    headers = _login(client, teacher)
 
     plan = client.post(
         f"/schools/{school.id}/lesson-plans",
-        headers=auth_headers(school_admin_token),
+        headers=headers,
         json={"class_id": school_class.id, "subject_id": subject.id, "term": "Term 1 2026"},
     ).json()
     assert plan["entry_count"] == 0
 
     added = client.post(
         f"/schools/{school.id}/lesson-plans/{plan['id']}/entries",
-        headers=auth_headers(school_admin_token),
+        headers=headers,
         json={"order": 1, "label": "Week 1", "topic": "Intro"},
     )
     assert added.status_code == 201
     assert added.json()["status"] == "planned"
 
 
-def test_duplicate_plan_scope_is_rejected(client, db_session, school, school_admin_token):
-    school_class, subject = _setup_scope(db_session, school, _teacher_user(db_session, school))
+def test_duplicate_plan_scope_is_rejected(client, db_session, school):
+    teacher = _teacher_user(db_session, school)
+    school_class, subject = _setup_scope(db_session, school, teacher)
     payload = {"class_id": school_class.id, "subject_id": subject.id, "term": "Term 1 2026"}
-    headers = auth_headers(school_admin_token)
+    headers = _login(client, teacher)
 
     assert client.post(f"/schools/{school.id}/lesson-plans", headers=headers, json=payload).status_code == 201
     dup = client.post(f"/schools/{school.id}/lesson-plans", headers=headers, json=payload)
     assert dup.status_code == 400
 
 
-def test_replace_entries_sets_the_whole_term_in_one_call(client, db_session, school, school_admin_token):
-    school_class, subject = _setup_scope(db_session, school, _teacher_user(db_session, school))
+def test_replace_entries_sets_the_whole_term_in_one_call(client, db_session, school):
+    teacher = _teacher_user(db_session, school)
+    school_class, subject = _setup_scope(db_session, school, teacher)
+    headers = _login(client, teacher)
     plan_id = client.post(
         f"/schools/{school.id}/lesson-plans",
-        headers=auth_headers(school_admin_token),
+        headers=headers,
         json={"class_id": school_class.id, "subject_id": subject.id, "term": "Term 1 2026"},
     ).json()["id"]
 
     response = client.put(
         f"/schools/{school.id}/lesson-plans/{plan_id}/entries",
-        headers=auth_headers(school_admin_token),
+        headers=headers,
         json=[
             {"order": 1, "label": "Week 1", "topic": "A"},
             {"order": 2, "label": "Week 2", "topic": "B"},
@@ -90,8 +101,7 @@ def test_unassigned_teacher_cannot_touch_a_class_they_do_not_teach(client, db_se
     db_session.add(unassigned_class)
     db_session.commit()
 
-    login = client.post("/auth/login", data={"username": teacher.email, "password": "TestPass123!"})
-    headers = auth_headers(login.json()["access_token"])
+    headers = _login(client, teacher)
 
     response = client.post(
         f"/schools/{school.id}/lesson-plans",
@@ -102,21 +112,24 @@ def test_unassigned_teacher_cannot_touch_a_class_they_do_not_teach(client, db_se
 
 
 def test_plan_shows_who_created_it(client, db_session, school, school_admin_token):
-    school_class, subject = _setup_scope(db_session, school, _teacher_user(db_session, school))
+    teacher = _teacher_user(db_session, school)
+    school_class, subject = _setup_scope(db_session, school, teacher)
     plan = client.post(
         f"/schools/{school.id}/lesson-plans",
-        headers=auth_headers(school_admin_token),
+        headers=_login(client, teacher),
         json={"class_id": school_class.id, "subject_id": subject.id, "term": "Term 1 2026"},
     ).json()
     assert plan["created_by_name"]
 
+    # Leadership can list/view lesson plans even though they can't write them.
     listed = client.get(f"/schools/{school.id}/lesson-plans", headers=auth_headers(school_admin_token)).json()
     assert listed[0]["created_by_name"] == plan["created_by_name"]
 
 
-def test_marking_an_entry_completed_updates_the_count(client, db_session, school, school_admin_token):
-    school_class, subject = _setup_scope(db_session, school, _teacher_user(db_session, school))
-    headers = auth_headers(school_admin_token)
+def test_marking_an_entry_completed_updates_the_count(client, db_session, school):
+    teacher = _teacher_user(db_session, school)
+    school_class, subject = _setup_scope(db_session, school, teacher)
+    headers = _login(client, teacher)
     plan = client.post(
         f"/schools/{school.id}/lesson-plans",
         headers=headers,
@@ -133,9 +146,10 @@ def test_marking_an_entry_completed_updates_the_count(client, db_session, school
     assert refreshed["completed_count"] == 1
 
 
-def test_an_entry_can_be_pinned_to_an_actual_calendar_date(client, db_session, school, school_admin_token):
-    school_class, subject = _setup_scope(db_session, school, _teacher_user(db_session, school))
-    headers = auth_headers(school_admin_token)
+def test_an_entry_can_be_pinned_to_an_actual_calendar_date(client, db_session, school):
+    teacher = _teacher_user(db_session, school)
+    school_class, subject = _setup_scope(db_session, school, teacher)
+    headers = _login(client, teacher)
     plan = client.post(
         f"/schools/{school.id}/lesson-plans",
         headers=headers,
@@ -154,3 +168,15 @@ def test_an_entry_can_be_pinned_to_an_actual_calendar_date(client, db_session, s
         json={"scheduled_date": "2026-11-03"},
     ).json()
     assert updated["scheduled_date"] == "2026-11-03"
+
+
+def test_head_of_institution_cannot_create_a_lesson_plan(client, db_session, school, school_admin_token):
+    teacher = _teacher_user(db_session, school)
+    school_class, subject = _setup_scope(db_session, school, teacher)
+
+    response = client.post(
+        f"/schools/{school.id}/lesson-plans",
+        headers=auth_headers(school_admin_token),
+        json={"class_id": school_class.id, "subject_id": subject.id, "term": "Term 1 2026"},
+    )
+    assert response.status_code == 403

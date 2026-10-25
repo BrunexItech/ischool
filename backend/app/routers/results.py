@@ -21,6 +21,11 @@ router = APIRouter(prefix="/schools/{school_id}", tags=["results"])
 VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
 MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER)
+# Entering a score is the teacher's own job — leadership can view the
+# Gradebook but not fill it in; their own voice on a report card is the
+# principal's remark, handled separately above (RECORD_ROLES there is
+# fine since that endpoint enforces who may set which field itself).
+GRADE_ENTRY_ROLES = (UserRole.SUPER_ADMIN, UserRole.TEACHER)
 
 
 # --- Subjects ---
@@ -215,7 +220,7 @@ def update_report_card_remarks(
 @router.post(
     "/results",
     response_model=ResultOut,
-    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("results"))],
+    dependencies=[Depends(require_roles(*GRADE_ENTRY_ROLES)), Depends(require_feature("results"))],
 )
 def upsert_result(
     school_id: int,

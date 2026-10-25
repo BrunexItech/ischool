@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function LessonPlansPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
+  const canRecord = user?.role === "super_admin" || user?.role === "teacher" || user?.role === "staff";
   const [plans, setPlans] = useState<LessonPlan[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -75,6 +76,7 @@ export default function LessonPlansPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Lesson Plans" description="Plan a whole term — fill it in now, or build it up week by week." />
 
+      {canRecord && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><Plus className="size-4.5" /> Start a new plan</CardTitle>
@@ -109,6 +111,7 @@ export default function LessonPlansPage() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader><CardTitle className="text-base">All plans</CardTitle></CardHeader>
