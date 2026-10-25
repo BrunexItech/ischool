@@ -125,7 +125,7 @@ function BulkFillDialog({ schoolId, planId, nextOrder, onReplaced }: { schoolId:
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline"><Wand2 /> Fill the whole term at once</Button>} />
+      <DialogTrigger render={<Button variant="outline">Fill the whole term at once</Button>} />
       <DialogContent>
         <DialogHeader><DialogTitle>Fill the whole term at once</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">
