@@ -560,7 +560,7 @@ export default function AdminSchoolsPage() {
           <Button variant="outline" size="sm" disabled={sendingReports} onClick={handleSendWeeklyReports}>
             {sendingReports ? <Spinner size={14} className="text-current" /> : <Mail />} {sendingReports ? "Sending..." : "Send weekly reports now"}
           </Button>
-          <Button variant="ghost" size="sm" onClick={logout}><LogOut /> Log out</Button>
+          <Button variant="ghost" size="sm" onClick={() => logout(true)}><LogOut /> Log out</Button>
         </div>
       </header>
 

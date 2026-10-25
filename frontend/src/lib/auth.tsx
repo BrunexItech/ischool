@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { toast } from "sonner";
 import { api, School, User } from "./api";
 
 export interface SchoolOption {
@@ -28,7 +29,7 @@ interface AuthState {
   toggleEditing: () => void;
   loading: boolean;
   login: (email: string, password: string, persist?: boolean) => Promise<User>;
-  logout: () => void;
+  logout: (announce?: boolean) => void;
   setSession: (token: string, user: User) => void;
 }
 
@@ -113,7 +114,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.user;
   }
 
-  function logout() {
+  /** Toasts only when `announce` is true — the deliberate "Log out" click,
+   * not the internal cleanup when a login attempt is rejected for being
+   * the wrong portal (that path already shows its own error). */
+  function logout(announce = false) {
     setToken(null);
     setRealUser(null);
     setViewingSchoolId(null);
@@ -122,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(VIEWING_SCHOOL_KEY);
+    if (announce) toast.success("Signed out");
   }
 
   function switchSchool(schoolId: number) {

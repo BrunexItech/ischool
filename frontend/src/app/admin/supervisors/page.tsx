@@ -150,7 +150,7 @@ export default function AdminSupervisorsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link href="/admin/schools"><Button variant="outline" size="sm"><ArrowLeft /> Schools</Button></Link>
-          <Button variant="ghost" size="sm" onClick={logout}><LogOut /> Log out</Button>
+          <Button variant="ghost" size="sm" onClick={() => logout(true)}><LogOut /> Log out</Button>
         </div>
       </header>
 

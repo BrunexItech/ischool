@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { LucideIcon } from "lucide-react";
 import { ApiError, UserRole } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -57,11 +58,15 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
       if (!config.allowedRoles.includes(loggedInUser.role)) {
         logout();
         setError(config.wrongRoleMessage);
+        toast.error(config.wrongRoleMessage);
         return;
       }
+      toast.success(`Welcome back, ${loggedInUser.full_name.split(" ")[0]}`);
       router.replace(loggedInUser.must_change_password ? "/change-password" : "/dashboard");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      const message = err instanceof ApiError ? err.message : "Something went wrong. Please try again.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }

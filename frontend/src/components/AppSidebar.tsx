@@ -337,7 +337,7 @@ export function AppSidebar() {
                 }
               />
               <DropdownMenuContent side="top" align="start" className="w-56">
-                <DropdownMenuItem onClick={logout}>
+                <DropdownMenuItem onClick={() => logout(true)}>
                   <LogOut />
                   Log out
                 </DropdownMenuItem>
