@@ -3,17 +3,129 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, CheckCircle2, ChevronDown, ClipboardCheck, Clock, GraduationCap, Search, Users } from "lucide-react";
+import { BookOpen, CalendarDays, CheckCircle2, ChevronDown, ClipboardCheck, Clock, GraduationCap, Search, Users } from "lucide-react";
 import { api, MyClass, MyTimetableSlot } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+const SUBJECT_STYLES = [
+  "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100",
+  "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
+  "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100",
+  "border-violet-200 bg-violet-50 text-violet-900 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-100",
+  "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-100",
+  "border-teal-200 bg-teal-50 text-teal-900 dark:border-teal-900 dark:bg-teal-950 dark:text-teal-100",
+  "border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-900 dark:bg-orange-950 dark:text-orange-100",
+  "border-indigo-200 bg-indigo-50 text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950 dark:text-indigo-100",
+];
+
+function subjectStyle(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return SUBJECT_STYLES[hash % SUBJECT_STYLES.length];
+}
+
+function timeToMinutes(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function formatTime24(t: string) {
+  return t.slice(0, 5);
+}
+
+function WeeklyTimetable({ timetable }: { timetable: MyTimetableSlot[] }) {
+  const todayIndex = (() => {
+    const d = new Date().getDay();
+    return d === 0 ? -1 : d - 1;
+  })();
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+
+  const rows = useMemo(() => {
+    const seen = new Map<string, { start: string; end: string }>();
+    for (const slot of timetable) {
+      const key = `${slot.start_time}-${slot.end_time}`;
+      if (!seen.has(key)) seen.set(key, { start: slot.start_time, end: slot.end_time });
+    }
+    return Array.from(seen.values()).sort((a, b) => a.start.localeCompare(b.start));
+  }, [timetable]);
+
+  function slotFor(day: number, start: string, end: string) {
+    return timetable.find((s) => s.day_of_week === day && s.start_time === start && s.end_time === end);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="size-4.5" /> My Timetable</CardTitle>
+        <CardDescription>{timetable.length} lesson{timetable.length === 1 ? "" : "s"} this week, at a glance</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="sticky left-0 z-10 w-24 border-b border-r bg-muted/50 p-2.5 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  <span className="flex items-center gap-1"><Clock className="size-3" /> Time</span>
+                </th>
+                {DAY_NAMES.map((day, i) => (
+                  <th
+                    key={day}
+                    className={`min-w-36 border-b p-2.5 text-left text-xs font-semibold tracking-wide uppercase ${
+                      i === todayIndex ? "bg-primary/10 text-primary" : "text-muted-foreground"
+                    }`}
+                  >
+                    {DAYS[i]}
+                    {i === todayIndex && <span className="ml-1 font-normal normal-case opacity-70">· today</span>}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, ri) => {
+                const isNowRow = todayIndex >= 0 && timeToMinutes(row.start) <= nowMinutes && nowMinutes < timeToMinutes(row.end);
+                return (
+                  <tr key={`${row.start}-${row.end}`} className={ri % 2 === 1 ? "bg-muted/20" : ""}>
+                    <td className="sticky left-0 z-10 border-r bg-background p-2.5 align-top text-xs text-muted-foreground tabular-nums">
+                      <div className="flex flex-col">
+                        <span>{formatTime24(row.start)}</span>
+                        <span>{formatTime24(row.end)}</span>
+                      </div>
+                    </td>
+                    {DAY_NAMES.map((_, di) => {
+                      const slot = slotFor(di, row.start, row.end);
+                      const isNow = isNowRow && di === todayIndex;
+                      return (
+                        <td key={di} className={`p-1.5 align-top ${di === todayIndex ? "bg-primary/5" : ""}`}>
+                          {slot ? (
+                            <div className={`rounded-lg border p-2 ${subjectStyle(slot.subject_name)} ${isNow ? "ring-2 ring-primary" : ""}`}>
+                              <p className="truncate text-xs font-semibold">{slot.subject_name}</p>
+                              <p className="truncate text-[0.7rem] opacity-80">{slot.class_name}{slot.room ? ` · ${slot.room}` : ""}</p>
+                            </div>
+                          ) : (
+                            <div className="h-full min-h-10" />
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function ClassCard({ c }: { c: MyClass }) {
   const [open, setOpen] = useState(false);
@@ -167,30 +279,7 @@ export default function MyClassesPage() {
         <p className="py-8 text-center text-sm text-muted-foreground">No classes match your search.</p>
       )}
 
-      {timetable.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Clock className="size-4.5" /> My timetable this week</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {DAYS.map((day, i) => {
-                const slots = timetable.filter((s) => s.day_of_week === i).sort((a, b) => a.start_time.localeCompare(b.start_time));
-                return (
-                  <div key={day} className="flex flex-col gap-2">
-                    <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{day}</p>
-                    {slots.map((s) => (
-                      <div key={s.id} className="rounded-lg border p-2.5 text-xs">
-                        <p className="font-medium">{s.subject_name}</p>
-                        <p className="text-muted-foreground">{s.class_name} · {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}</p>
-                      </div>
-                    ))}
-                    {slots.length === 0 && <p className="text-xs text-muted-foreground">Free</p>}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {timetable.length > 0 && <WeeklyTimetable timetable={timetable} />}
     </div>
   );
 }
