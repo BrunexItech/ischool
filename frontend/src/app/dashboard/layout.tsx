@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger className="size-9 rounded-lg border border-border bg-background shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary" />
           <Separator orientation="vertical" className="mr-2 h-4" />

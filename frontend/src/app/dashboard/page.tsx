@@ -433,7 +433,7 @@ function TeacherStat({
   href?: string;
 }) {
   const card = (
-    <Card className={`h-full min-h-32 ${href ? "transition-colors hover:border-primary/40 hover:bg-accent/40" : ""}`}>
+    <Card className={`h-full sm:min-h-32 ${href ? "transition-colors hover:border-primary/40 hover:bg-accent/40" : ""}`}>
       <CardContent className="flex h-full flex-col gap-3">
         <div className="flex items-center gap-2.5">
           <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${STAT_TONES[tone]}`}>
@@ -442,7 +442,7 @@ function TeacherStat({
           <span className="truncate text-sm font-medium text-muted-foreground">{label}</span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="font-heading text-3xl leading-none font-semibold tabular-nums">{value}</span>
+          <span className="font-heading text-2xl leading-none font-semibold tabular-nums sm:text-3xl">{value}</span>
           <span className="text-xs text-muted-foreground">{sub}</span>
         </div>
         {meter && (
@@ -719,7 +719,7 @@ function TeacherDashboard() {
               : failed.register
               ? "Couldn't load today's register"
               : register && !register.marked
-              ? `Register not taken yet · ${register.total} learner${register.total === 1 ? "" : "s"}`
+              ? `Take today's register · ${register.total} learner${register.total === 1 ? "" : "s"}`
               : register
               ? `${register.present} of ${register.total} present${register.absent ? ` · ${register.absent} absent` : ""}${register.late ? ` · ${register.late} late` : ""}`
               : "—"
@@ -913,8 +913,8 @@ function TeacherDashboard() {
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold">{hw.title}</p>
-                              <p className="truncate text-xs text-muted-foreground">
+                              <p className="line-clamp-2 text-sm font-semibold">{hw.title}</p>
+                              <p className="text-xs text-muted-foreground">
                                 {[className, subject].filter(Boolean).join(" · ")} · due {shortDate(hw.due_date)}
                               </p>
                             </div>

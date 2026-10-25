@@ -129,10 +129,12 @@ interface ClassModel {
   level: LevelGroup | null;
   next: NextLesson | null;
   progress: { done: number; total: number } | null;
+  /** The class's grade in curriculum order (PP1, PP2, Grade 1...), for sorting. */
+  order: number;
 }
 
 function SubjectChips({ subjects, limit }: { subjects: MyClass["subjects"]; limit: number }) {
-  if (subjects.length === 0) return <span className="text-xs text-muted-foreground">Class teacher only — no subjects assigned</span>;
+  if (subjects.length === 0) return <span className="text-xs text-muted-foreground">No subjects assigned to you here</span>;
   const shown = subjects.slice(0, limit);
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -283,8 +285,8 @@ function ClassCard({ model, timetable, plansLoaded }: { model: ClassModel; timet
   const { c, level, next, progress } = model;
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md">
-      <div className={`relative h-24 bg-gradient-to-br ${level ? LEVEL_BANNER[level] : "from-primary to-[#6e1316]"}`}>
-        <BookOpen className="pointer-events-none absolute -right-3 -bottom-5 size-24 text-white/10" strokeWidth={1} aria-hidden />
+      <div className={`relative h-16 bg-gradient-to-br ${level ? LEVEL_BANNER[level] : "from-primary to-[#6e1316]"}`}>
+        <BookOpen className="pointer-events-none absolute -right-3 -bottom-6 size-20 text-white/10" strokeWidth={1} aria-hidden />
         <span className="absolute inset-x-0 bottom-0 h-0.5 bg-sidebar-primary/70" aria-hidden />
         <div className="relative flex items-start justify-between gap-2 p-3">
           {level ? (
@@ -313,7 +315,7 @@ function ClassCard({ model, timetable, plansLoaded }: { model: ClassModel; timet
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 border-y py-3">
+        <div className="grid min-h-20 grid-cols-2 gap-3 border-y py-3">
           <div className="flex items-start gap-2.5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
               <Users className="size-4" />
@@ -390,16 +392,16 @@ function StatCard({
   href?: string;
 }) {
   const body = (
-    <div className={`flex h-full items-center gap-3 rounded-xl border bg-card p-3.5 sm:gap-4 sm:p-4 ${href ? "transition-colors hover:border-primary/40 hover:bg-accent/40" : ""}`}>
-      <span className={`flex size-11 shrink-0 items-center justify-center rounded-full sm:size-12 ${tone}`}>
+    <div className={`flex h-full flex-col items-start gap-2.5 rounded-xl border bg-card p-3.5 sm:flex-row sm:items-center sm:gap-4 sm:p-4 ${href ? "transition-colors hover:border-primary/40 hover:bg-accent/40" : ""}`}>
+      <span className={`flex size-10 shrink-0 items-center justify-center rounded-full sm:size-12 ${tone}`}>
         <Icon className="size-5 sm:size-6" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-muted-foreground">{label}</p>
+        <p className="text-sm leading-tight text-muted-foreground sm:truncate">{label}</p>
         <p className="font-heading text-2xl leading-tight font-semibold tabular-nums">{value}</p>
-        <p className="truncate text-xs text-muted-foreground">{sub}</p>
+        <p className="text-xs leading-tight text-muted-foreground sm:truncate">{sub}</p>
       </div>
-      {href && <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+      {href && <ChevronRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden />}
     </div>
   );
   return href ? (
@@ -572,10 +574,18 @@ export default function MyClassesPage() {
 
   const models = useMemo<ClassModel[]>(() => {
     const groupByGrade: Record<number, LevelGroup> = {};
-    for (const g of grades) groupByGrade[g.id] = g.level_group;
+    const orderByGrade: Record<number, number> = {};
+    for (const g of grades) {
+      groupByGrade[g.id] = g.level_group;
+      orderByGrade[g.id] = g.sort_order;
+    }
     const levelByClass: Record<number, LevelGroup> = {};
+    const orderByClass: Record<number, number> = {};
     for (const sc of schoolClasses) {
-      if (sc.grade_level_id != null && groupByGrade[sc.grade_level_id]) levelByClass[sc.id] = groupByGrade[sc.grade_level_id];
+      if (sc.grade_level_id != null && groupByGrade[sc.grade_level_id]) {
+        levelByClass[sc.id] = groupByGrade[sc.grade_level_id];
+        orderByClass[sc.id] = orderByGrade[sc.grade_level_id];
+      }
     }
 
     // Coverage of this term's lesson plans for the subjects the teacher teaches in each class.
@@ -598,11 +608,13 @@ export default function MyClassesPage() {
           level: levelByClass[c.class_id] ?? null,
           next: nextLessonFor(c.class_id, timetable, now),
           progress: total > 0 ? { done, total } : null,
+          order: orderByClass[c.class_id] ?? Number.MAX_SAFE_INTEGER,
         };
       })
       .sort((a, b) => {
         if (a.c.is_homeroom_teacher !== b.c.is_homeroom_teacher) return a.c.is_homeroom_teacher ? -1 : 1;
-        return a.c.class_name.localeCompare(b.c.class_name);
+        if (a.order !== b.order) return a.order - b.order;
+        return a.c.class_name.localeCompare(b.c.class_name, undefined, { numeric: true });
       });
   }, [classes, timetable, schoolClasses, grades, plans, terms, now]);
 

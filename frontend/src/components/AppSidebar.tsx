@@ -329,7 +329,7 @@ export function AppSidebar() {
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-medium">{user.full_name}</span>
                       <span className="truncate text-xs text-sidebar-foreground/60 capitalize">
-                        {user.role.replace("_", " ")}
+                        {user.role.replace(/_/g, " ")}
                       </span>
                     </div>
                     <ChevronRight className="ml-auto size-4 opacity-50" />
