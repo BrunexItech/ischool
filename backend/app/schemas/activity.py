@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -8,6 +9,8 @@ class ActivityCreate(BaseModel):
     category: str | None = None
     date: date
     description: str | None = None
+    scope: Literal["school", "class", "invited"] = "school"
+    class_id: int | None = None
 
 
 class ActivityOut(BaseModel):
@@ -20,6 +23,11 @@ class ActivityOut(BaseModel):
     date: date
     description: str | None
     participant_count: int
+    created_by: int | None = None
+    created_by_name: str | None = None
+    scope: str = "school"
+    class_id: int | None = None
+    class_name: str | None = None
 
 
 class ParticipantAdd(BaseModel):
@@ -46,3 +54,15 @@ class StudentActivityOut(BaseModel):
     category: str | None
     date: date
     role: str | None
+
+
+class ActivityAwardItem(BaseModel):
+    student_id: int
+    title: str
+    description: str | None = None
+    category: str | None = None
+
+
+class ActivityAwardsCreate(BaseModel):
+    awards: list[ActivityAwardItem]
+    notify_guardian: bool = True

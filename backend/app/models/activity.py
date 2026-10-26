@@ -21,12 +21,27 @@ class Activity(Base):
     date: Mapped[date_] = mapped_column(Date, nullable=False)
     description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
+    # Who runs it, and who it is for: the whole school, one class, or invited learners.
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    scope: Mapped[str] = mapped_column(String(10), nullable=False, default="school", server_default="school")
+    class_id: Mapped[int | None] = mapped_column(ForeignKey("school_classes.id", ondelete="SET NULL"), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     school: Mapped["School"] = relationship("School")
+    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])
+    school_class: Mapped["SchoolClass | None"] = relationship("SchoolClass", foreign_keys=[class_id])
     participants: Mapped[list["ActivityParticipant"]] = relationship(
         "ActivityParticipant", back_populates="activity", cascade="all, delete-orphan"
     )
+
+    @property
+    def created_by_name(self) -> str | None:
+        return self.creator.full_name if self.creator is not None else None
+
+    @property
+    def class_name(self) -> str | None:
+        return self.school_class.name if self.school_class is not None else None
 
     @property
     def participant_count(self) -> int:

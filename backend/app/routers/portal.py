@@ -217,7 +217,17 @@ def get_child_meal_menu(
 )
 def get_child_awards(student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     student = _owned_student(db, current_user, student_id)
-    return db.query(Award).filter_by(student_id=student.id).order_by(Award.date_awarded.desc()).all()
+    from sqlalchemy import or_
+
+    shared = Award.scope == "school"
+    if student.class_id is not None:
+        shared = or_(shared, (Award.scope == "class") & (Award.class_id == student.class_id))
+    return (
+        db.query(Award)
+        .filter(Award.school_id == student.school_id, or_(Award.student_id == student.id, shared))
+        .order_by(Award.date_awarded.desc(), Award.id.desc())
+        .all()
+    )
 
 
 @router.get(
