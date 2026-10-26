@@ -153,13 +153,12 @@ function SubjectChips({ subjects, limit }: { subjects: MyClass["subjects"]; limi
 function ProgressBar({ progress, loaded }: { progress: ClassModel["progress"]; loaded: boolean }) {
   const pct = progress ? Math.round((progress.done / progress.total) * 100) : 0;
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Lesson plan covered</span>
-        <span className="font-medium tabular-nums">{progress ? `${pct}%` : loaded ? "No plan yet" : "—"}</span>
-      </div>
+    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1.5 text-xs sm:grid-cols-2">
+      <span className="text-muted-foreground">
+        Lesson plan<span className="hidden sm:inline"> covered</span>
+      </span>
       <div
-        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+        className="h-1.5 w-full overflow-hidden rounded-full bg-muted sm:order-last sm:col-span-2"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -169,6 +168,7 @@ function ProgressBar({ progress, loaded }: { progress: ClassModel["progress"]; l
       >
         <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
       </div>
+      <span className="text-right font-medium tabular-nums">{progress ? `${pct}%` : loaded ? "No plan yet" : "—"}</span>
     </div>
   );
 }
@@ -196,7 +196,7 @@ function ClassDetails({ model, timetable }: { model: ClassModel; timetable: MyTi
     <Dialog>
       <DialogTrigger
         render={
-          <Button variant="outline" className="h-10 flex-1 sm:h-9">
+          <Button variant="outline" className="h-10 w-full sm:h-8">
             <Info /> Class details
           </Button>
         }
@@ -234,7 +234,7 @@ function ClassDetails({ model, timetable }: { model: ClassModel; timetable: MyTi
                   <span className="w-24 shrink-0 text-xs text-muted-foreground tabular-nums">
                     {formatTime24(s.start_time)} – {formatTime24(s.end_time)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate">{s.subject_name}</span>
+                  <span className="min-w-0 flex-1 break-words">{s.subject_name}</span>
                   {s.room && <span className="shrink-0 text-xs text-muted-foreground">{s.room}</span>}
                 </li>
               ))}
@@ -258,23 +258,19 @@ function ClassDetails({ model, timetable }: { model: ClassModel; timetable: MyTi
 
 function NextLessonBlock({ next }: { next: NextLesson | null }) {
   return (
-    <div className="flex min-w-0 items-start gap-2.5">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <CalendarClock className="size-4" />
+    <div className="flex items-start gap-2.5 rounded-lg bg-muted/50 px-2.5 py-2">
+      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <CalendarClock className="size-3.5" />
       </span>
-      <div className="min-w-0">
-        <p className="text-[0.7rem] text-muted-foreground">Next lesson</p>
+      <div className="min-w-0 flex-1 text-sm leading-snug">
+        <p className="text-[0.7rem] text-muted-foreground">Next lesson{next ? ` · ${nextLessonDay(next)}` : ""}</p>
         {next ? (
-          <>
-            <p className="text-sm leading-tight font-semibold tabular-nums">
-              {formatTime24(next.slot.start_time)} – {formatTime24(next.slot.end_time)}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {next.slot.subject_name} · {nextLessonDay(next)}
-            </p>
-          </>
+          <p className="font-semibold tabular-nums break-words">
+            {formatTime24(next.slot.start_time)} – {formatTime24(next.slot.end_time)}
+            <span className="font-normal text-muted-foreground"> · {next.slot.subject_name}</span>
+          </p>
         ) : (
-          <p className="text-sm text-muted-foreground">None scheduled</p>
+          <p className="text-muted-foreground">None scheduled</p>
         )}
       </div>
     </div>
@@ -285,12 +281,13 @@ function ClassCard({ model, timetable, plansLoaded }: { model: ClassModel; timet
   const { c, level, next, progress } = model;
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md">
-      <div className={`relative h-16 bg-gradient-to-br ${level ? LEVEL_BANNER[level] : "from-primary to-[#6e1316]"}`}>
-        <BookOpen className="pointer-events-none absolute -right-3 -bottom-6 size-20 text-white/10" strokeWidth={1} aria-hidden />
-        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-sidebar-primary/70" aria-hidden />
-        <div className="relative flex items-start justify-between gap-2 p-3">
+      {/* A slim brand bar on phones; a short banner carrying the level and register status from sm up. */}
+      <div className={`relative h-1.5 bg-gradient-to-r sm:h-10 sm:bg-gradient-to-br ${level ? LEVEL_BANNER[level] : "from-primary to-[#6e1316]"}`}>
+        <BookOpen className="pointer-events-none absolute -right-2 -bottom-4 hidden size-14 text-white/10 sm:block" strokeWidth={1} aria-hidden />
+        <span className="absolute inset-x-0 bottom-0 hidden h-0.5 bg-sidebar-primary/70 sm:block" aria-hidden />
+        <div className="relative hidden h-full items-center justify-between gap-2 px-3 sm:flex">
           {level ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[0.7rem] font-semibold text-primary">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-0.5 text-[0.7rem] font-semibold text-primary">
               <GraduationCap className="size-3.5" /> {LEVEL_BADGE[level]}
             </span>
           ) : (
@@ -300,38 +297,38 @@ function ClassCard({ model, timetable, plansLoaded }: { model: ClassModel; timet
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-3.5 p-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-heading text-lg leading-tight font-semibold">{c.class_name}</h3>
-            {c.is_homeroom_teacher && (
-              <Badge className="gap-1">
-                <GraduationCap className="size-3" /> Class teacher
-              </Badge>
-            )}
+      <div className="flex flex-1 flex-col gap-2.5 p-3 sm:p-3.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h3 className="font-heading text-base leading-tight font-semibold">{c.class_name}</h3>
+              {c.is_homeroom_teacher && (
+                <Badge className="gap-1">
+                  <GraduationCap className="size-3" /> Class teacher
+                </Badge>
+              )}
+            </div>
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Users className="size-3.5 shrink-0" />
+              <span>
+                {c.student_count} learner{c.student_count === 1 ? "" : "s"}
+                <span className="sm:hidden">{level ? ` · ${LEVEL_BADGE[level]}` : ""}</span>
+              </span>
+            </p>
           </div>
-          <div className="mt-2">
-            <SubjectChips subjects={c.subjects} limit={3} />
+          <div className="shrink-0 sm:hidden">
+            <RegisterPill c={c} />
           </div>
         </div>
 
-        <div className="grid min-h-20 grid-cols-2 gap-3 border-y py-3">
-          <div className="flex items-start gap-2.5">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-              <Users className="size-4" />
-            </span>
-            <div>
-              <p className="text-sm leading-tight font-semibold tabular-nums">{c.student_count}</p>
-              <p className="text-xs text-muted-foreground">Learner{c.student_count === 1 ? "" : "s"}</p>
-            </div>
-          </div>
-          <NextLessonBlock next={next} />
-        </div>
+        <SubjectChips subjects={c.subjects} limit={3} />
+
+        <NextLessonBlock next={next} />
 
         <ProgressBar progress={progress} loaded={plansLoaded} />
 
-        <div className="mt-auto flex flex-col gap-2 sm:flex-row">
-          <Button className="h-10 flex-1 sm:h-9" nativeButton={false} render={<Link href={`/dashboard/students?class_id=${c.class_id}`}>View class <ArrowRight /></Link>} />
+        <div className="mt-auto grid grid-cols-2 gap-2">
+          <Button className="h-10 sm:h-8" nativeButton={false} render={<Link href={`/dashboard/students?class_id=${c.class_id}`}>View class <ArrowRight /></Link>} />
           <ClassDetails model={model} timetable={timetable} />
         </div>
       </div>
@@ -342,9 +339,9 @@ function ClassCard({ model, timetable, plansLoaded }: { model: ClassModel; timet
 function ClassRow({ model, timetable, plansLoaded }: { model: ClassModel; timetable: MyTimetableSlot[]; plansLoaded: boolean }) {
   const { c, level, next, progress } = model;
   return (
-    <article className="grid items-center gap-x-6 gap-y-3 rounded-xl border bg-card p-4 transition-shadow hover:shadow-md lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+    <article className="grid items-center gap-x-6 gap-y-3 rounded-xl border bg-card p-3 transition-shadow hover:shadow-md sm:p-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
       <div className="flex min-w-0 items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground sm:size-10">
           <GraduationCap className="size-5" />
         </span>
         <div className="min-w-0">
@@ -359,7 +356,7 @@ function ClassRow({ model, timetable, plansLoaded }: { model: ClassModel; timeta
           </div>
         </div>
       </div>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 text-sm">
           <Users className="size-4 text-amber-600" />
           <span className="font-semibold tabular-nums">{c.student_count}</span>
@@ -368,8 +365,8 @@ function ClassRow({ model, timetable, plansLoaded }: { model: ClassModel; timeta
         <NextLessonBlock next={next} />
       </div>
       <ProgressBar progress={progress} loaded={plansLoaded} />
-      <div className="flex flex-col gap-2 sm:flex-row lg:min-w-64">
-        <Button className="h-10 flex-1 sm:h-9" nativeButton={false} render={<Link href={`/dashboard/students?class_id=${c.class_id}`}>View class <ArrowRight /></Link>} />
+      <div className="grid grid-cols-2 gap-2 lg:min-w-64">
+        <Button className="h-10 sm:h-8" nativeButton={false} render={<Link href={`/dashboard/students?class_id=${c.class_id}`}>View class <ArrowRight /></Link>} />
         <ClassDetails model={model} timetable={timetable} />
       </div>
     </article>
@@ -392,14 +389,17 @@ function StatCard({
   href?: string;
 }) {
   const body = (
-    <div className={`flex h-full flex-col items-start gap-2.5 rounded-xl border bg-card p-3.5 sm:flex-row sm:items-center sm:gap-4 sm:p-4 ${href ? "transition-colors hover:border-primary/40 hover:bg-accent/40" : ""}`}>
-      <span className={`flex size-10 shrink-0 items-center justify-center rounded-full sm:size-12 ${tone}`}>
-        <Icon className="size-5 sm:size-6" />
-      </span>
+    <div className={`flex h-full flex-col gap-1.5 rounded-xl border bg-card p-3 sm:flex-row sm:items-center sm:gap-4 sm:p-4 ${href ? "transition-colors hover:border-primary/40 hover:bg-accent/40" : ""}`}>
+      <div className="flex items-center gap-2 sm:contents">
+        <span className={`flex size-8 shrink-0 items-center justify-center rounded-full sm:size-12 ${tone}`}>
+          <Icon className="size-4 sm:size-6" />
+        </span>
+        <p className="text-sm leading-tight text-muted-foreground sm:hidden">{label}</p>
+      </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm leading-tight text-muted-foreground sm:truncate">{label}</p>
+        <p className="hidden text-sm text-muted-foreground sm:block">{label}</p>
         <p className="font-heading text-2xl leading-tight font-semibold tabular-nums">{value}</p>
-        <p className="text-xs leading-tight text-muted-foreground sm:truncate">{sub}</p>
+        <p className="text-xs leading-tight text-muted-foreground">{sub}</p>
       </div>
       {href && <ChevronRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden />}
     </div>
@@ -478,8 +478,8 @@ function WeeklyTimetable({ timetable }: { timetable: MyTimetableSlot[] }) {
                         <td key={di} className={`p-1.5 align-top ${di === todayIndex ? "bg-primary/5" : ""}`}>
                           {slot ? (
                             <div className={`rounded-lg border p-2 ${subjectStyle(slot.subject_name)} ${isNow ? "ring-2 ring-primary" : ""}`}>
-                              <p className="truncate text-xs font-semibold">{slot.subject_name}</p>
-                              <p className="truncate text-[0.7rem] opacity-80">{slot.class_name}{slot.room ? ` · ${slot.room}` : ""}</p>
+                              <p className="text-xs font-semibold break-words">{slot.subject_name}</p>
+                              <p className="text-[0.7rem] break-words opacity-80">{slot.class_name}{slot.room ? ` · ${slot.room}` : ""}</p>
                             </div>
                           ) : (
                             <div className="h-full min-h-10" />

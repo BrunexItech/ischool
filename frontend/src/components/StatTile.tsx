@@ -35,17 +35,20 @@ export function StatTile({
   const interactive = Boolean(onClick || href);
   const body = (
     <div
-      className={`flex h-full flex-col items-start gap-2.5 rounded-xl border bg-card p-3.5 text-left sm:flex-row sm:items-center sm:gap-4 sm:p-4 ${
+      className={`flex h-full flex-col gap-1.5 rounded-xl border bg-card p-3 text-left sm:flex-row sm:items-center sm:gap-4 sm:p-4 ${
         interactive ? "transition-colors hover:border-primary/40 hover:bg-accent/40" : ""
       } ${active ? "border-primary ring-1 ring-primary" : ""}`}
     >
-      <span className={`flex size-10 shrink-0 items-center justify-center rounded-full sm:size-12 ${TONES[tone]}`}>
-        <Icon className="size-5 sm:size-6" />
-      </span>
+      <div className="flex items-center gap-2 sm:contents">
+        <span className={`flex size-8 shrink-0 items-center justify-center rounded-full sm:size-12 ${TONES[tone]}`}>
+          <Icon className="size-4 sm:size-6" />
+        </span>
+        <p className="text-sm leading-tight text-muted-foreground sm:hidden">{label}</p>
+      </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm leading-tight text-muted-foreground sm:truncate">{label}</p>
+        <p className="hidden text-sm text-muted-foreground sm:block">{label}</p>
         <p className="font-heading text-2xl leading-tight font-semibold tabular-nums">{value}</p>
-        <p className="text-xs leading-tight text-muted-foreground sm:truncate">{sub}</p>
+        <p className="text-xs leading-tight text-muted-foreground">{sub}</p>
       </div>
       {interactive && <ChevronRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden />}
     </div>
