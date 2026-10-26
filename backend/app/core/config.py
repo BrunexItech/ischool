@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     livekit_api_key: str = "devkey"
     livekit_api_secret: str = "secret"
     livekit_url: str = "ws://localhost:7880"
+    # Where this server reaches LiveKit for room controls. Empty = derive it from livekit_url.
+    livekit_api_url: str = ""
 
     # Email — unset by default; the mailer logs instead of sending until these are provided.
     smtp_host: str | None = None

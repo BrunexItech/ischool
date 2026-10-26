@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.mailer import send_email
 from app.core.mobilesasa import MobileSasaError, get_balance, send_bulk_sms
+from app.core.awards import teacher_class_ids
 from app.core.notify import notify
 from app.core.phone import normalize_kenyan_phone
 from app.models.academics import Student
@@ -43,13 +44,38 @@ ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROU
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("communication"))],
 )
 def list_announcements(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Leadership sees everything. Everyone else sees only what was addressed to
+    them: the whole school, their own group, and (for a class announcement)
+    their own class or child's class."""
     ensure_school_access(db, current_user, school_id)
-    return (
-        db.query(Announcement)
-        .filter_by(school_id=school_id)
-        .order_by(Announcement.created_at.desc())
-        .all()
-    )
+    rows = db.query(Announcement).filter_by(school_id=school_id).order_by(Announcement.created_at.desc()).all()
+    if current_user.role in ADMIN_ROLES:
+        return rows
+
+    own_role = {
+        UserRole.TEACHER: AnnouncementAudience.TEACHERS,
+        UserRole.STAFF: AnnouncementAudience.STAFF,
+        UserRole.STUDENT: AnnouncementAudience.STUDENTS,
+        UserRole.PARENT: AnnouncementAudience.PARENTS,
+    }.get(current_user.role)
+    my_classes: set[int] = set()
+    if current_user.role == UserRole.TEACHER:
+        my_classes = teacher_class_ids(db, school_id, current_user)
+    elif current_user.role in (UserRole.STUDENT, UserRole.PARENT):
+        link = Student.user_id if current_user.role == UserRole.STUDENT else Student.guardian_user_id
+        my_classes = {cid for (cid,) in db.query(Student.class_id).filter(Student.school_id == school_id, link == current_user.id, Student.class_id.isnot(None))}
+
+    def can_see(a: Announcement) -> bool:
+        if a.created_by == current_user.id:
+            return True
+        addressed = a.audience == AnnouncementAudience.ALL or a.audience == own_role
+        colleagues_class = current_user.role == UserRole.TEACHER and a.audience in (AnnouncementAudience.STUDENTS, AnnouncementAudience.PARENTS)
+        if not (addressed or colleagues_class):
+            return False
+        class_narrowed = a.class_id is not None and a.audience in (AnnouncementAudience.STUDENTS, AnnouncementAudience.PARENTS)
+        return a.class_id in my_classes if class_narrowed else True
+
+    return [a for a in rows if can_see(a)]
 
 
 @router.post(
@@ -65,6 +91,12 @@ def create_announcement(
     current_user: User = Depends(get_current_user),
 ):
     ensure_school_access(db, current_user, school_id)
+    if current_user.role == UserRole.TEACHER:
+        # A teacher writes to the learners or parents of a class they teach, not to the whole school or to staff.
+        if payload.audience not in (AnnouncementAudience.STUDENTS, AnnouncementAudience.PARENTS):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Teachers can announce to the learners or parents of their own classes. School-wide announcements are made by the head of institution.")
+        if payload.class_id is None or payload.class_id not in teacher_class_ids(db, school_id, current_user):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Choose one of your own classes")
     if payload.class_id is not None:
         class_exists = db.query(Student.id).filter_by(school_id=school_id, class_id=payload.class_id).first()
         if class_exists is None:

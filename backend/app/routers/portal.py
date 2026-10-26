@@ -12,6 +12,7 @@ from app.core.mpesa import MpesaError, initiate_stk_push, query_stk_status
 from app.core.payments import apply_payment
 from app.core.pesapal import PesapalError, get_transaction_status, submit_order
 from app.core.livekit import generate_room_token
+from app.routers.live_classes import record_join
 from app.core.phone import normalize_kenyan_phone
 from app.core.report_card import build_report_card
 from app.core.uploads import save_image
@@ -849,6 +850,8 @@ def get_child_live_class_join_token(
         name=current_user.full_name,
         can_publish=False,
     )
+    record_join(db, live_class.id, f"student-{current_user.id}", current_user.full_name, "student")
+    db.commit()
     return JoinTokenOut(token=token, url=settings.livekit_url, room_name=live_class.room_name, class_title=live_class.title)
 
 

@@ -117,8 +117,37 @@ def test_trip_status_lifecycle(client, school_admin_token, school, db_session):
     assert complete.json()["status"] == "completed"
 
 
+def _teacher_class_students(db_session, school, n=3):
+    """The fixture teacher's own class, with `n` learners in it."""
+    from app.models.academics import SchoolClass
+    from app.models.user import User
+
+    teacher = db_session.query(User).filter_by(email="teacher@test-academy.test").one()
+    cls = SchoolClass(school_id=school.id, name="Grade 6 North", homeroom_teacher_id=teacher.id)
+    db_session.add(cls)
+    db_session.flush()
+    students = _students(db_session, school.id, n)
+    for st in students:
+        st.class_id = cls.id
+    db_session.commit()
+    return students
+
+
+def test_teacher_can_only_take_learners_from_their_own_classes_and_sees_only_their_trips(client, teacher_token, school_admin_token, school, db_session):
+    mine = _teacher_class_students(db_session, school)
+    strangers = _students(db_session, school.id, 3)
+    refused = client.post(f"/schools/{school.id}/trips", headers=auth_headers(teacher_token), json=_trip_payload([s.id for s in strangers]))
+    assert refused.status_code == 403
+    ok = client.post(f"/schools/{school.id}/trips", headers=auth_headers(teacher_token), json=_trip_payload([s.id for s in mine]))
+    assert ok.status_code == 201
+    client.post(f"/schools/{school.id}/trips", headers=auth_headers(school_admin_token), json=_trip_payload([s.id for s in strangers]))
+    mine_list = client.get(f"/schools/{school.id}/trips", headers=auth_headers(teacher_token)).json()
+    assert [t["id"] for t in mine_list] == [ok.json()["id"]]
+    assert len(client.get(f"/schools/{school.id}/trips", headers=auth_headers(school_admin_token)).json()) == 2
+
+
 def test_teacher_can_request_but_not_approve(client, teacher_token, school, db_session):
-    students = _students(db_session, school.id, 3)
+    students = _teacher_class_students(db_session, school)
     create = client.post(
         f"/schools/{school.id}/trips", headers=auth_headers(teacher_token), json=_trip_payload([s.id for s in students])
     )

@@ -3,10 +3,12 @@ import math
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.awards import teacher_class_ids
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.models.transport import Vehicle
 from app.models.trip import Trip, TripStatus
+from app.models.academics import Student
 from app.models.user import User, UserRole
 from app.schemas.trip import TripApprove, TripCreate, TripOut
 
@@ -37,8 +39,12 @@ def _trip_or_404(db: Session, school_id: int, trip_id: int) -> Trip:
     dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("trips"))],
 )
 def list_trips(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Leadership sees every trip; a teacher sees the trips they asked for."""
     ensure_school_access(db, current_user, school_id)
-    return db.query(Trip).filter_by(school_id=school_id).order_by(Trip.created_at.desc()).all()
+    query = db.query(Trip).filter_by(school_id=school_id)
+    if current_user.role == UserRole.TEACHER:
+        query = query.filter(Trip.requested_by == current_user.id)
+    return query.order_by(Trip.created_at.desc()).all()
 
 
 @router.post(
@@ -51,6 +57,13 @@ def request_trip(
     school_id: int, payload: TripCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     ensure_school_access(db, current_user, school_id)
+
+    if current_user.role == UserRole.TEACHER:
+        allowed = teacher_class_ids(db, school_id, current_user)
+        classes = {cid for (cid,) in db.query(Student.class_id).filter(Student.school_id == school_id, Student.id.in_(payload.student_ids))}
+        found = db.query(Student.id).filter(Student.school_id == school_id, Student.id.in_(payload.student_ids)).count()
+        if found != len(set(payload.student_ids)) or not classes <= allowed:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only take learners from classes you teach")
 
     needed_staff = math.ceil(len(payload.student_ids) / 15)
     if payload.staff_count < needed_staff:

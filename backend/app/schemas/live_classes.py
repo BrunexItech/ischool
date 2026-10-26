@@ -28,3 +28,39 @@ class JoinTokenOut(BaseModel):
     url: str
     room_name: str
     class_title: str
+
+
+class GuestRequestCreate(BaseModel):
+    name: str
+
+
+class GuestRequestOut(BaseModel):
+    request_code: str
+    status: str
+
+
+class GuestStatusOut(BaseModel):
+    status: str
+    join: JoinTokenOut | None = None
+
+
+class PendingGuestOut(BaseModel):
+    id: int
+    name: str
+    requested_at: datetime
+
+
+class JoinRecordOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    kind: str
+    joined_at: datetime
+
+
+class SpeakingSet(BaseModel):
+    allowed: bool
+
+
+class ControlResult(BaseModel):
+    affected: int
