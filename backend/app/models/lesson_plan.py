@@ -42,6 +42,12 @@ class LessonPlan(Base):
         return len(self.entries)
 
     @property
+    def next_topic(self) -> str | None:
+        """The first topic not yet covered — what the teacher teaches next."""
+        nxt = next((e for e in self.entries if e.status == LessonPlanEntryStatus.PLANNED), None)
+        return nxt.topic if nxt else None
+
+    @property
     def completed_count(self) -> int:
         return sum(1 for e in self.entries if e.status == LessonPlanEntryStatus.COMPLETED)
 

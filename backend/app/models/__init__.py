@@ -2,6 +2,7 @@ from app.models.school import School, SubscriptionStatus
 from app.models.plan import Plan, BillingPeriod
 from app.models.communication_config import SchoolCommunicationConfig
 from app.models.lesson_plan import LessonPlan, LessonPlanEntry, LessonPlanEntryStatus
+from app.models.lesson_delivery import LessonDelivery
 from app.models.module import SchoolModule, MODULE_KEYS
 from app.models.user import User, UserRole
 from app.models.academics import SchoolClass, Student, StaffProfile

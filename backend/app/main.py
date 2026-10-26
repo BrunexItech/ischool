@@ -46,6 +46,7 @@ from app.routers import (
     homework,
     leads,
     ledger,
+    lesson_deliveries,
     lesson_plans,
     live_classes,
     meals,
@@ -109,6 +110,7 @@ app.include_router(pickup_dropoff.router)
 app.include_router(exams.router)
 app.include_router(plans.router)
 app.include_router(lesson_plans.router)
+app.include_router(lesson_deliveries.router)
 app.include_router(leads.router)
 app.include_router(calendar_events.router)
 app.include_router(dashboard.router)

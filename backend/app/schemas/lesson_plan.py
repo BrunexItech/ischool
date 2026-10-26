@@ -61,6 +61,7 @@ class LessonPlanOut(BaseModel):
     updated_at: datetime
     entry_count: int
     completed_count: int
+    next_topic: str | None = None
 
 
 class LessonPlanDetailOut(LessonPlanOut):

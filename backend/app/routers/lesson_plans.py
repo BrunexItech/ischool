@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.teaching import ensure_can_grade
-from app.models.lesson_plan import LessonPlan, LessonPlanEntry
+from app.models.lesson_plan import LessonPlan, LessonPlanEntry, LessonPlanEntryStatus
 from app.models.user import User, UserRole
 from app.schemas.lesson_plan import (
     LessonPlanCreate,
@@ -14,6 +14,7 @@ from app.schemas.lesson_plan import (
     LessonPlanEntryUpdate,
     LessonPlanOut,
 )
+from app.schemas.lesson_delivery import DuplicatePayload, ReorderPayload
 
 router = APIRouter(prefix="/schools/{school_id}/lesson-plans", tags=["lesson-plans"])
 
@@ -164,6 +165,74 @@ def replace_entries(
     db.commit()
     db.refresh(plan)
     return _plan_out(db, plan, model=LessonPlanDetailOut)
+
+
+@router.patch(
+    "/{plan_id}/entries/reorder",
+    response_model=LessonPlanDetailOut,
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("lesson_plans"))],
+)
+def reorder_entries(
+    school_id: int,
+    plan_id: int,
+    payload: ReorderPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Sets the order of the plan's entries — a postponed topic can move
+    without retyping anything."""
+    ensure_school_access(db, current_user, school_id)
+    plan = _get_plan(db, school_id, plan_id)
+    ensure_can_grade(db, current_user, plan.class_id, plan.subject_id)
+    by_id = {e.id: e for e in plan.entries}
+    if sorted(payload.entry_ids) != sorted(by_id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The new order must list every entry of the plan exactly once")
+    for position, entry_id in enumerate(payload.entry_ids, start=1):
+        by_id[entry_id].order = position
+    db.commit()
+    db.refresh(plan)
+    return _plan_out(db, plan, model=LessonPlanDetailOut)
+
+
+@router.post(
+    "/{plan_id}/duplicate",
+    response_model=LessonPlanDetailOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("lesson_plans"))],
+)
+def duplicate_plan(
+    school_id: int,
+    plan_id: int,
+    payload: DuplicatePayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Copies a plan's topics into another class, subject or term. Dates and
+    covered-marks are not carried over — the copy starts fresh."""
+    ensure_school_access(db, current_user, school_id)
+    source = _get_plan(db, school_id, plan_id)
+    ensure_can_grade(db, current_user, payload.class_id, payload.subject_id)
+    if db.query(LessonPlan).filter_by(school_id=school_id, class_id=payload.class_id, subject_id=payload.subject_id, term=payload.term).first():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "A lesson plan already exists for this class, subject, and term")
+    copy = LessonPlan(school_id=school_id, created_by=current_user.id, class_id=payload.class_id, subject_id=payload.subject_id, term=payload.term)
+    db.add(copy)
+    db.flush()
+    for e in source.entries:
+        db.add(
+            LessonPlanEntry(
+                lesson_plan_id=copy.id,
+                order=e.order,
+                label=e.label,
+                topic=e.topic,
+                objectives=e.objectives,
+                resources=e.resources,
+                notes=e.notes,
+                status=LessonPlanEntryStatus.PLANNED,
+            )
+        )
+    db.commit()
+    db.refresh(copy)
+    return _plan_out(db, copy, model=LessonPlanDetailOut)
 
 
 @router.patch(
