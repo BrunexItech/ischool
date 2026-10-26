@@ -178,9 +178,42 @@ export interface Result {
   student_id: number;
   subject_id: number;
   term: string;
+  exam_type: string;
   score: number;
   grade: string | null;
   remarks: string | null;
+  recorded_by: number | null;
+}
+
+export interface BoardSubject {
+  id: number;
+  name: string;
+}
+
+export interface BoardStudent {
+  student_id: number;
+  name: string;
+  admission_number: string;
+  scores: Record<string, number | null>;
+  levels: Record<string, string | null>;
+  total: number;
+  average: number | null;
+  level: string | null;
+  subjects_marked: number;
+  rank: number | null;
+}
+
+export interface ResultsBoard {
+  class_id: number;
+  class_name: string;
+  term: string;
+  selected_exam_types: string[];
+  available_exam_types: string[];
+  subjects: BoardSubject[];
+  students: BoardStudent[];
+  bands: { level_code: string; label: string; min_score: number; max_score: number }[];
+  ranked: boolean;
+  class_average: number | null;
 }
 
 export interface GradingBand {
@@ -1625,15 +1658,29 @@ export const api = {
       token
     ),
 
-  listResults: (token: string, schoolId: number, params: { student_id?: number; subject_id?: number; term?: string }) => {
+  listResults: (token: string, schoolId: number, params: { student_id?: number; subject_id?: number; term?: string; exam_type?: string }) => {
     const qs = new URLSearchParams(
       Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))
     ).toString();
     return request<Result[]>(`/schools/${schoolId}/results${qs ? `?${qs}` : ""}`, {}, token);
   },
 
-  getReportCard: (token: string, schoolId: number, studentId: number, term: string) =>
-    request<ReportCard>(`/schools/${schoolId}/students/${studentId}/report-card?term=${encodeURIComponent(term)}`, {}, token),
+  getReportCard: (token: string, schoolId: number, studentId: number, term: string, examTypes: string[] = []) =>
+    request<ReportCard>(
+      `/schools/${schoolId}/students/${studentId}/report-card?term=${encodeURIComponent(term)}${examTypes.length ? `&exam_types=${encodeURIComponent(examTypes.join(","))}` : ""}`,
+      {},
+      token
+    ),
+
+  listClassSubjects: (token: string, schoolId: number, classId: number) =>
+    request<Subject[]>(`/schools/${schoolId}/classes/${classId}/subjects`, {}, token),
+
+  getResultsBoard: (token: string, schoolId: number, classId: number, term: string, examTypes: string[] = []) =>
+    request<ResultsBoard>(
+      `/schools/${schoolId}/classes/${classId}/results-board?term=${encodeURIComponent(term)}${examTypes.length ? `&exam_types=${encodeURIComponent(examTypes.join(","))}` : ""}`,
+      {},
+      token
+    ),
 
   getChildReportCard: (token: string, studentId: number, term: string) =>
     request<ReportCard>(`/portal/students/${studentId}/report-card?term=${encodeURIComponent(term)}`, {}, token),
@@ -1809,7 +1856,7 @@ export const api = {
   upsertResult: (
     token: string,
     schoolId: number,
-    payload: { student_id: number; subject_id: number; term: string; score: number; remarks?: string }
+    payload: { student_id: number; subject_id: number; term: string; exam_type: string; score: number; remarks?: string }
   ) =>
     request<Result>(
       `/schools/${schoolId}/results`,

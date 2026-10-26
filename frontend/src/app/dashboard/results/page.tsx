@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { api, AcademicTerm, ApiError, GradingBand, SchoolClass, Student, Subject } from "@/lib/api";
+import { api, AcademicTerm, ApiError, GradingBand, MyClass, SchoolClass, Student, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
@@ -15,8 +15,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Pencil, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import { FileText, LayoutList, Lock, Pencil, Plus, Save, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
+
+const EXAM_TYPES = ["Opener", "CAT 1", "CAT 2", "Mid Term", "End Term", "Mock", "Other"];
 
 const BAND_STYLES = [
   "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
@@ -139,84 +141,135 @@ function GradingBandsDialog({ bands, onSaved }: { bands: GradingBand[]; onSaved:
 export default function ResultsPage() {
   const { user, token } = useAuth();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [myClasses, setMyClasses] = useState<MyClass[]>([]);
+  const [classSubjects, setClassSubjects] = useState<Subject[]>([]);
+  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
   const [classId, setClassId] = useState<number | null>(null);
-  const [subjectId, setSubjectId] = useState<number | null>(null);
+  const [pickedSubject, setPickedSubject] = useState<number | null>(null);
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
   const [term, setTerm] = useState("");
+  const [examType, setExamType] = useState("Opener");
+  const [customType, setCustomType] = useState("");
   const [bands, setBands] = useState<GradingBand[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [canSeedPrePrimary, setCanSeedPrePrimary] = useState(false);
   const [scores, setScores] = useState<Record<number, string>>({});
+  const [original, setOriginal] = useState<Record<number, string>>({});
   const [remarks, setRemarks] = useState<Record<number, string>>({});
+  const [lockedIds, setLockedIds] = useState<Set<number>>(new Set());
   const [newSubject, setNewSubject] = useState("");
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const isTeacher = user?.role === "teacher";
   const canConfigure = user?.role === "super_admin" || user?.role === "head_of_institution" || user?.role === "group_principal";
-  const canRecord = user?.role === "super_admin" || user?.role === "teacher";
+  const canRecord = user?.role === "super_admin" || isTeacher;
+  const activeType = examType === "Other" ? customType.trim() : examType;
+
+  // Teachers grade only the classes and subjects they are allocated; leadership sees every class.
+  const classOptions: { id: number; name: string }[] = isTeacher
+    ? myClasses.filter((c) => c.subjects.length > 0).map((c) => ({ id: c.class_id, name: c.class_name }))
+    : classes.map((c) => ({ id: c.id, name: c.name }));
+  const subjectOptions: Subject[] = isTeacher
+    ? (myClasses.find((c) => c.class_id === classId)?.subjects ?? []).map((s) => ({ id: s.subject_id, school_id: user?.school_id ?? 0, name: s.subject_name }))
+    : classSubjects;
+  const subjectId = subjectOptions.some((s) => s.id === pickedSubject) ? pickedSubject : (subjectOptions[0]?.id ?? null);
+  const isClassTeacherHere = isTeacher && myClasses.some((c) => c.class_id === classId && c.is_homeroom_teacher);
+  const showBoardLink = canConfigure || myClasses.some((c) => c.is_homeroom_teacher);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
+    let cancelled = false;
     Promise.all([
-      api.listClasses(token, user.school_id).then((cs) => {
+      api.listClasses(token, user.school_id),
+      user.role === "teacher" ? api.listMyClasses(token, user.school_id).catch(() => [] as MyClass[]) : Promise.resolve([] as MyClass[]),
+      api.listSubjects(token, user.school_id),
+      api.listAcademicTerms(token, user.school_id),
+      api.listGradingBands(token, user.school_id),
+    ])
+      .then(([cs, mine, ss, ts, bs]) => {
+        if (cancelled) return;
         setClasses(cs);
-        if (cs.length > 0) setClassId(cs[0].id);
-      }),
-      api.listSubjects(token, user.school_id).then((ss) => {
-        setSubjects(ss);
-        if (ss.length > 0) setSubjectId(ss[0].id);
-      }),
-      api.listAcademicTerms(token, user.school_id).then((ts) => {
+        setMyClasses(mine);
+        setAllSubjects(ss);
         setTerms(ts);
+        setBands(bs);
         const current = ts.find((t) => t.is_current) ?? ts[0];
         if (current) setTerm(current.name);
-      }),
-      api.listGradingBands(token, user.school_id).then(setBands),
-    ]).finally(() => setLoading(false));
-  }, [token, user?.school_id]);
+        const first = user.role === "teacher" ? mine.find((c) => c.subjects.length > 0)?.class_id : cs[0]?.id;
+        if (first !== undefined) setClassId(first);
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.school_id, user?.role]);
 
+  // Subjects follow the class: every learner in a class takes the subjects allocated to it.
   useEffect(() => {
     if (!token || !user?.school_id || classId === null) return;
-    api.listStudents(token, user.school_id, classId).then(setStudents);
-  }, [token, user?.school_id, classId]);
+    let cancelled = false;
+    if (user.role !== "teacher") {
+      api
+        .listClassSubjects(token, user.school_id, classId)
+        .catch(() => [] as Subject[])
+        .then((ss) => {
+          if (cancelled) return;
+          setClassSubjects(ss);
+        });
+    }
+    api.listStudents(token, user.school_id, classId).then((r) => !cancelled && setStudents(r));
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.school_id, user?.role, classId]);
 
   useEffect(() => {
     if (!token || !user?.school_id || user.role !== "teacher" || classes.length === 0) return;
     Promise.all([api.listMyClasses(token, user.school_id), api.listGradeLevels(token)])
-      .then(([myClasses, grades]) => {
+      .then(([mine, grades]) => {
         const prePrimaryGradeIds = new Set(grades.filter((g) => g.level_group === "pre_primary").map((g) => g.id));
-        const myClassIds = new Set(myClasses.map((c) => c.class_id));
+        const myClassIds = new Set(mine.map((c) => c.class_id));
         const teaches = classes.some((c) => myClassIds.has(c.id) && c.grade_level_id !== null && prePrimaryGradeIds.has(c.grade_level_id));
         setCanSeedPrePrimary(teaches);
       })
       .catch(() => setCanSeedPrePrimary(false));
   }, [token, user?.school_id, user?.role, classes]);
 
+  // The marks for the chosen subject, term and exam type.
   useEffect(() => {
-    if (!token || !user?.school_id || subjectId === null || !term) return;
-    api.listResults(token, user.school_id, { subject_id: subjectId, term }).then((results) => {
+    if (!token || !user?.school_id || subjectId === null || !term || !activeType) return;
+    let cancelled = false;
+    api.listResults(token, user.school_id, { subject_id: subjectId, term, exam_type: activeType }).then((results) => {
+      if (cancelled) return;
       const scoreMap: Record<number, string> = {};
       const remarkMap: Record<number, string> = {};
+      const locked = new Set<number>();
       for (const r of results) {
         scoreMap[r.student_id] = String(r.score);
         if (r.remarks) remarkMap[r.student_id] = r.remarks;
+        // A class teacher can see everyone's marks but not change another teacher's.
+        if (isClassTeacherHere && r.recorded_by !== null && r.recorded_by !== user.id) locked.add(r.student_id);
       }
       setScores(scoreMap);
+      setOriginal(scoreMap);
       setRemarks(remarkMap);
+      setLockedIds(locked);
     });
-  }, [token, user?.school_id, subjectId, term]);
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.school_id, user?.id, subjectId, term, activeType, isClassTeacherHere]);
 
   async function handleAddSubject(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !user?.school_id || !newSubject.trim()) return;
     try {
       const subject = await api.createSubject(token, user.school_id, newSubject.trim());
-      setSubjects((s) => [...s, subject]);
-      setSubjectId(subject.id);
+      setAllSubjects((s) => [...s, subject]);
       setNewSubject("");
-      toast.success(`${subject.name} added`);
+      toast.success(`${subject.name} added. Allocate it to a class under Teaching Assignments.`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to add subject");
     }
@@ -227,7 +280,7 @@ export default function ResultsPage() {
     setSeeding(true);
     try {
       const seeded = await api.seedPrePrimaryLearningAreas(token, user.school_id);
-      setSubjects((s) => {
+      setAllSubjects((s) => {
         const existingNames = new Set(s.map((x) => x.name));
         return [...s, ...seeded.filter((x) => !existingNames.has(x.name))];
       });
@@ -241,25 +294,51 @@ export default function ResultsPage() {
 
   async function handleSaveScores() {
     if (!token || !user?.school_id || subjectId === null) return;
+    if (!activeType) {
+      toast.error("Type the name of the exam first");
+      return;
+    }
     setSaving(true);
     try {
-      const entries = Object.entries(scores).filter(([, v]) => v !== "");
+      // Only what changed is sent, so marks other teachers entered are never re-submitted.
+      const entries = Object.entries(scores).filter(([id, v]) => v !== "" && v !== original[Number(id)] && !lockedIds.has(Number(id)));
       for (const [studentId, score] of entries) {
         await api.upsertResult(token, user.school_id, {
           student_id: Number(studentId),
           subject_id: subjectId,
           term,
+          exam_type: activeType,
           score: Number(score),
           remarks: remarks[Number(studentId)] || undefined,
         });
       }
-      toast.success("Grades saved");
+      setOriginal({ ...scores });
+      toast.success(entries.length ? `${activeType} marks saved` : "Nothing new to save");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to save grades");
     } finally {
       setSaving(false);
     }
   }
+
+  const levelCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const nums: number[] = [];
+    for (const s of students) {
+      const v = scores[s.id];
+      if (v === undefined || v === "" || Number.isNaN(Number(v))) continue;
+      nums.push(Number(v));
+      const level = levelForScore(Number(v), bands);
+      if (level) counts[level.level_code] = (counts[level.level_code] ?? 0) + 1;
+    }
+    return {
+      counts,
+      entered: nums.length,
+      average: nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null,
+      highest: nums.length ? Math.max(...nums) : null,
+      lowest: nums.length ? Math.min(...nums) : null,
+    };
+  }, [students, scores, bands]);
 
   if (loading) {
     return (
@@ -275,14 +354,26 @@ export default function ResultsPage() {
       <PageHeader
         title="Grading"
         description={`CBC Assessment · ${term || "No term set"}`}
-        action={canConfigure && <GradingBandsDialog bands={bands} onSaved={setBands} />}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {showBoardLink && (
+              <Button nativeButton={false} render={<Link href={classId ? `/dashboard/results/board?class_id=${classId}` : "/dashboard/results/board"}><LayoutList /> Class results board</Link>} />
+            )}
+            {canConfigure && <GradingBandsDialog bands={bands} onSaved={setBands} />}
+          </div>
+        }
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {bands.map((b, i) => (
           <Card key={b.id} className={`border ${BAND_STYLES[i % BAND_STYLES.length]}`}>
             <CardContent className="flex flex-col gap-1 pt-4">
-              <span className="text-xs font-semibold tracking-wide uppercase opacity-70">{b.level_code}</span>
+              <span className="flex items-center justify-between text-xs font-semibold tracking-wide uppercase opacity-70">
+                {b.level_code}
+                <span className="rounded-full bg-background/60 px-2 py-0.5 text-[11px] tabular-nums normal-case" title="Learners at this level for the marks shown below">
+                  {levelCounts.counts[b.level_code] ?? 0} learner{(levelCounts.counts[b.level_code] ?? 0) === 1 ? "" : "s"}
+                </span>
+              </span>
               <span className="text-sm font-medium">{b.label}</span>
               <span className="text-xs opacity-80">
                 {Number(b.min_score)}–{Number(b.max_score)} · {b.points} pts
@@ -309,44 +400,90 @@ export default function ResultsPage() {
               <Sparkles /> {seeding ? "Adding..." : "Add official PP1/PP2 learning areas"}
             </Button>
           )}
+          {canConfigure && allSubjects.length > 0 && (
+            <p className="basis-full text-xs text-muted-foreground">{allSubjects.length} subjects in the school. A subject appears in a class&apos;s gradebook once it is allocated to that class under Teaching Assignments.</p>
+          )}
         </CardContent>
       </Card>
       )}
 
       <Card>
         <CardHeader><CardTitle>Gradebook</CardTitle></CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-3">
-          <div className="grid gap-1.5">
-            <Label>Class</Label>
-            <Select value={classId ? String(classId) : ""} onValueChange={(v) => v && setClassId(Number(v))}>
-              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-              <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-1.5">
-            <Label>Subject</Label>
-            <Select value={subjectId ? String(subjectId) : ""} onValueChange={(v) => v && setSubjectId(Number(v))}>
-              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-              <SelectContent>{subjects.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-1.5">
-            <Label>Assessment</Label>
-            {terms.length > 0 ? (
-              <Select value={term} onValueChange={(v) => v && setTerm(v)}>
-                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {terms.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
-                </SelectContent>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="grid gap-1.5">
+              <Label>Class</Label>
+              <Select value={classId ? String(classId) : ""} onValueChange={(v) => v && setClassId(Number(v))}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="Choose a class" /></SelectTrigger>
+                <SelectContent>{classOptions.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
-            ) : (
-              <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Add a term first" className="w-44" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Subject</Label>
+              <Select value={subjectId ? String(subjectId) : ""} onValueChange={(v) => v && setPickedSubject(Number(v))}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="No subjects" /></SelectTrigger>
+                <SelectContent>{subjectOptions.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Term</Label>
+              {terms.length > 0 ? (
+                <Select value={term} onValueChange={(v) => v && setTerm(v)}>
+                  <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {terms.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Add a term first" className="w-44" />
+              )}
+            </div>
+            {canRecord && (
+              <Button onClick={handleSaveScores} disabled={saving || students.length === 0 || subjectId === null}>
+                <Save /> {saving ? "Saving..." : "Save grades"}
+              </Button>
             )}
           </div>
-          {canRecord && (
-            <Button onClick={handleSaveScores} disabled={saving || students.length === 0 || subjectId === null}>
-              <Save /> {saving ? "Saving..." : "Save grades"}
-            </Button>
+
+          <div className="grid gap-1.5">
+            <Label>Exam</Label>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Exam type">
+              {EXAM_TYPES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={examType === t}
+                  onClick={() => setExamType(t)}
+                  className={`inline-flex h-10 items-center rounded-full border px-4 text-sm font-medium transition-colors sm:h-9 ${examType === t ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                >
+                  {t}
+                </button>
+              ))}
+              {examType === "Other" && <Input value={customType} onChange={(e) => setCustomType(e.target.value)} placeholder="Name of the exam" className="h-10 w-44 sm:h-9" />}
+            </div>
+            <p className="text-xs text-muted-foreground">Switch between exams to see how the class did in each. Marks are saved against the exam you have selected.</p>
+          </div>
+
+          {classOptions.length === 0 ? (
+            <p className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              {isTeacher ? "You have not been allocated any subject to teach yet." : "No classes yet."}
+            </p>
+          ) : subjectOptions.length === 0 ? (
+            <p className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              No subjects have been allocated to this class yet. The head of institution allocates them under Teaching Assignments, and every learner in the class then takes them automatically.
+            </p>
+          ) : (
+            levelCounts.entered > 0 && (
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+                <span>Marked: <strong className="text-foreground">{levelCounts.entered}</strong> of {students.length}</span>
+                <span>Average: <strong className="text-foreground">{levelCounts.average?.toFixed(1)}</strong></span>
+                <span>Highest: <strong className="text-foreground">{levelCounts.highest}</strong></span>
+                <span>Lowest: <strong className="text-foreground">{levelCounts.lowest}</strong></span>
+              </div>
+            )
+          )}
+          {isClassTeacherHere && (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground"><Lock className="size-3.5" /> As class teacher you can see every mark, but marks entered by another subject teacher are locked.</p>
           )}
         </CardContent>
       </Card>
@@ -366,6 +503,7 @@ export default function ResultsPage() {
             {students.map((s) => {
               const scoreValue = scores[s.id];
               const level = scoreValue !== undefined && scoreValue !== "" ? levelForScore(Number(scoreValue), bands) : null;
+              const locked = lockedIds.has(s.id);
               return (
                 <TableRow key={s.id}>
                   <TableCell>
@@ -380,7 +518,7 @@ export default function ResultsPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {canRecord ? (
+                    {canRecord && !locked ? (
                       <Input
                         type="number"
                         min={0}
@@ -390,12 +528,12 @@ export default function ResultsPage() {
                         className="w-24"
                       />
                     ) : (
-                      <span className="text-sm">{scoreValue || "—"}</span>
+                      <span className="inline-flex items-center gap-1.5 text-sm">{locked && <Lock className="size-3.5 text-muted-foreground" aria-label="Entered by the subject teacher" />}{scoreValue || "—"}</span>
                     )}
                   </TableCell>
                   <TableCell>{level && <Badge variant="secondary">{level.level_code}</Badge>}</TableCell>
                   <TableCell>
-                    {canRecord ? (
+                    {canRecord && !locked ? (
                       <Input
                         value={remarks[s.id] ?? ""}
                         onChange={(e) => setRemarks((r) => ({ ...r, [s.id]: e.target.value }))}
@@ -406,7 +544,7 @@ export default function ResultsPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" render={<Link href={`/dashboard/report-card/${s.id}`}><FileText /> View</Link>} />
+                    <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/dashboard/report-card/${s.id}`}><FileText /> View</Link>} />
                   </TableCell>
                 </TableRow>
               );

@@ -1,9 +1,9 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, use, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarCheck2, GraduationCap, Printer, Save, Trophy } from "lucide-react";
+import { CalendarCheck2, Printer, Save, Trophy } from "lucide-react";
 import { api, AcademicTerm, ApiError, ReportCard } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageLoader, Spinner } from "@/components/Spinner";
@@ -92,8 +92,19 @@ function RemarkBlock({
 }
 
 export default function ReportCardPage({ params }: { params: Promise<{ studentId: string }> }) {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <ReportCardView params={params} />
+    </Suspense>
+  );
+}
+
+function ReportCardView({ params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const examTypesParam = searchParams.get("exam_types") ?? "";
+  const examTypes = useMemo(() => examTypesParam.split(",").map((t) => t.trim()).filter(Boolean), [examTypesParam]);
   const { user, token, loading } = useAuth();
   const isStaff = !!user && STAFF_ROLES.includes(user.role);
   const canEditPrincipalRemark = user?.role === "head_of_institution" || user?.role === "super_admin";
@@ -134,18 +145,19 @@ export default function ReportCardPage({ params }: { params: Promise<{ studentId
   function loadCard() {
     if (!token || !term) return;
     const fetcher = isStaff && user?.school_id
-      ? api.getReportCard(token, user.school_id, Number(studentId), term)
+      ? api.getReportCard(token, user.school_id, Number(studentId), term, examTypes)
       : api.getChildReportCard(token, Number(studentId), term);
     fetcher.then(setCard).catch(() => setCard(null));
   }
 
-  useEffect(loadCard, [token, term, isStaff, user?.school_id, studentId]);
+  useEffect(loadCard, [token, term, isStaff, user?.school_id, studentId, examTypes]);
 
   async function saveRemark(field: "class_teacher_remark" | "principal_remark", text: string) {
     if (!token || !user?.school_id) return;
     try {
       const updated = await api.updateReportCardRemarks(token, user.school_id, Number(studentId), term, { [field]: text });
-      setCard(updated);
+      // Keep the compiled marks on screen; only the remark text changes.
+      setCard((c) => (c ? { ...c, class_teacher_remark: updated.class_teacher_remark, principal_remark: updated.principal_remark } : updated));
       toast.success("Remark saved");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to save remark");
@@ -179,17 +191,15 @@ export default function ReportCardPage({ params }: { params: Promise<{ studentId
           <div className="flex flex-col gap-6 p-8 sm:p-10">
             {/* Letterhead */}
             <div className="flex flex-col items-center gap-3 border-b border-border pb-6 text-center">
-              {card.school_logo_url ? (
+              {
+                // The school's official logo, shipped with the app.
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={card.school_logo_url} alt={card.school_name} className="size-16 rounded-full object-cover ring-2 ring-offset-2" style={{ ["--tw-ring-color" as string]: accent }} />
-              ) : (
-                <div className="flex size-16 items-center justify-center rounded-full" style={{ backgroundColor: accent }}>
-                  <GraduationCap className="size-8 text-white" />
-                </div>
-              )}
+                <img src="/Milai-School-Logo.svg" alt={card.school_name} className="h-20 w-auto" />
+              }
               <div>
                 <h1 className="font-heading text-xl font-bold tracking-tight">{card.school_name}</h1>
                 <p className="mt-1 text-xs font-semibold tracking-[0.15em] text-muted-foreground uppercase">Official Academic Report</p>
+                {examTypes.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Compiled from: {examTypes.join(", ")}</p>}
               </div>
             </div>
 
