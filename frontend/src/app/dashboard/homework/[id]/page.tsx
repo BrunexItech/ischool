@@ -7,6 +7,7 @@ import { CheckCircle2, Circle, Clock, ExternalLink, FileUp } from "lucide-react"
 import { api, ApiError, HomeworkDetail, HomeworkSubmissionRow } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { BackButton } from "@/components/BackButton";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -166,10 +167,18 @@ export default function HomeworkDetailPage({ params }: { params: Promise<{ id: s
   }
 
   if (loading || dataLoading) return <PageLoader />;
-  if (!hw) return <p className="text-sm text-muted-foreground">Homework not found.</p>;
+  if (!hw) {
+    return (
+      <div className="flex flex-col gap-4">
+        <BackButton fallback="/dashboard/homework" label="All homework" />
+        <p className="text-sm text-muted-foreground">Homework not found.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
+      <BackButton fallback="/dashboard/homework" label="All homework" />
       <PageHeader
         title={hw.title}
         description={`${hw.homework_type} · Due ${new Date(hw.due_date + "T12:00:00").toLocaleDateString()} · ${hw.submitted_count} of ${hw.total_students} submitted, ${hw.reviewed_count} reviewed`}

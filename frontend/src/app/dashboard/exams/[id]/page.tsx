@@ -7,6 +7,7 @@ import { CheckCircle2, Printer } from "lucide-react";
 import { api, ApiError, ExamDetail, ExamSubmissionDetail, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { BackButton } from "@/components/BackButton";
 import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ export default function ExamDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="flex flex-col gap-6">
+      <BackButton fallback="/dashboard/exams" label="All exams" />
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <PageHeader title={exam.title} description={`${subjectName} · ${exam.term} · ${exam.duration_minutes} minutes · ${exam.total_marks} marks`} />
         <div className="flex items-center gap-3">

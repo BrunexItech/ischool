@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GraduationCap } from "lucide-react";
+import { BackButton } from "@/components/BackButton";
 
 export const metadata = { title: "Terms of Service — Milai School" };
 
@@ -26,6 +27,7 @@ export default function TermsPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-12">
+        <BackButton fallback="/" className="mb-4 -ml-2" />
         <h1 className="mb-2 text-2xl font-semibold tracking-tight">Terms of Service</h1>
         <p className="mb-8 text-sm text-muted-foreground">Last updated: [Date] · [Your Company Legal Name] (&quot;Milai School&quot;, &quot;we&quot;, &quot;us&quot;)</p>
 

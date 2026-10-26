@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { BackButton } from "@/components/BackButton";
 import { PageLoader } from "@/components/Spinner";
 import { StudentRecordView } from "@/components/StudentRecordView";
 
@@ -29,6 +30,7 @@ export default function ChildDetailPage({ params }: { params: Promise<{ id: stri
   if (dataLoading) {
     return (
       <div className="flex flex-col gap-6">
+        <BackButton fallback="/dashboard/children" label="My children" />
         <PageHeader title="My Children" />
         <PageLoader />
       </div>
@@ -37,6 +39,7 @@ export default function ChildDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="flex flex-col gap-6">
+      <BackButton fallback="/dashboard/children" label="My children" />
       <PageHeader
         title={child ? `${child.first_name} ${child.last_name}` : "Student not found"}
         description={child ? `Admission #${child.admission_number}` : undefined}

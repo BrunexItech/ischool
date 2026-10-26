@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
+import { BackButton } from "@/components/BackButton";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -58,6 +59,7 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
+          <BackButton fallback="/login" label="Back to sign in" className="-ml-2 self-start" />
           <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <KeyRound className="size-5" />
           </div>

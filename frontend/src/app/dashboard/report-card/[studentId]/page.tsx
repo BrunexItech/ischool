@@ -8,6 +8,7 @@ import { api, AcademicTerm, ApiError, ReportCard } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
@@ -158,6 +159,7 @@ export default function ReportCardPage({ params }: { params: Promise<{ studentId
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 print:max-w-none">
+      <BackButton fallback="/dashboard" label="Back" />
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Select value={term} onValueChange={(v) => v && setTerm(v)}>
           <SelectTrigger className="w-56"><SelectValue placeholder="Choose a term" /></SelectTrigger>

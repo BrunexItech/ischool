@@ -7,6 +7,7 @@ import { CheckCircle2, Circle, Plus, Trash2, Wand2 } from "lucide-react";
 import { api, ApiError, LessonPlanDetail, LessonPlanEntry } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { BackButton } from "@/components/BackButton";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -215,10 +216,18 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
   }
 
   if (loading || dataLoading) return <PageLoader />;
-  if (!plan) return <p className="text-sm text-muted-foreground">Lesson plan not found.</p>;
+  if (!plan) {
+    return (
+      <div className="flex flex-col gap-4">
+        <BackButton fallback="/dashboard/lesson-plans" label="All lesson plans" />
+        <p className="text-sm text-muted-foreground">Lesson plan not found.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
+      <BackButton fallback="/dashboard/lesson-plans" label="All lesson plans" />
       <PageHeader
         title={plan.term}
         description={`${plan.completed_count} of ${plan.entry_count} entries covered so far${plan.created_by_name ? ` · set up by ${plan.created_by_name}` : ""}`}
