@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   api,
@@ -14,9 +14,7 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { localDateStr } from "@/lib/dates";
-import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, ClipboardList, NotebookPen } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ChevronDown, ChevronRight, ClipboardList, NotebookPen, RotateCw, Search, UserRound, Users } from "lucide-react";
 
 const LEVEL_LABELS: Record<PerformanceLevel, string> = {
   exceeding_expectation: "Exceeding Expectation",
@@ -88,7 +86,7 @@ function CompetencyDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm"><ClipboardList /> Record assessment</Button>} />
+      <DialogTrigger render={<Button size="sm" className="h-10 sm:h-8"><ClipboardList /> Record assessment</Button>} />
       <DialogContent>
         <DialogHeader><DialogTitle>Record a competency assessment — {student.first_name} {student.last_name}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
@@ -173,7 +171,7 @@ function ObservationDialog({ student, classId, onSaved }: { student: Student; cl
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" variant="outline"><NotebookPen /> Add observation</Button>} />
+      <DialogTrigger render={<Button size="sm" variant="outline" className="h-10 sm:h-8"><NotebookPen /> Add observation</Button>} />
       <DialogContent>
         <DialogHeader><DialogTitle>Observation note — {student.first_name} {student.last_name}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -236,21 +234,88 @@ function StudentHistory({ studentId, refreshKey }: { studentId: number; refreshK
   );
 }
 
+const AVATAR_TONES = [
+  "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+  "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+  "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+  "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300",
+];
+
+function initials(s: Student) {
+  return `${s.first_name.charAt(0)}${s.last_name.charAt(0)}`.toUpperCase();
+}
+
+function Banner({ title, subtitle, children }: { title: string; subtitle: string; children?: React.ReactNode }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[#6e1316] px-5 py-4 text-primary-foreground shadow-sm sm:px-6 sm:py-5">
+      <span className="absolute inset-y-0 left-0 w-1 bg-sidebar-primary" aria-hidden />
+      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/15 sm:size-14">
+            <NotebookPen className="size-6 sm:size-7" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="font-heading text-2xl font-semibold tracking-tight break-words sm:text-3xl">{title}</h1>
+            <p className="text-sm text-primary-foreground/80">{subtitle}</p>
+          </div>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function StudentActions({ s, classId, subjects, expanded, onToggle, onSaved }: { s: Student; classId: number; subjects: Subject[]; expanded: boolean; onToggle: () => void; onSaved: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <CompetencyDialog student={s} classId={classId} subjects={subjects} onSaved={onSaved} />
+      <ObservationDialog student={s} classId={classId} onSaved={onSaved} />
+      <Button size="sm" variant="ghost" className="h-10 sm:h-8" onClick={onToggle} aria-expanded={expanded}>
+        <ChevronDown className={expanded ? "rotate-180" : ""} /> {expanded ? "Hide history" : "View history"}
+      </Button>
+    </div>
+  );
+}
+
 function ClassCompetencyView({ classInfo, onBack }: { classInfo: MyClass; onBack: () => void }) {
   const { user, token } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [refreshKeys, setRefreshKeys] = useState<Record<number, number>>({});
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
+    let cancelled = false;
     Promise.all([
-      api.listStudents(token, user.school_id, classInfo.class_id).then(setStudents),
-      api.listSubjects(token, user.school_id).then(setSubjects),
-    ]).finally(() => setLoading(false));
-  }, [token, user?.school_id, classInfo.class_id]);
+      api.listStudents(token, user.school_id, classInfo.class_id).then((r) => ({ ok: true, r })).catch(() => ({ ok: false, r: [] as Student[] })),
+      api.listSubjects(token, user.school_id).catch(() => [] as Subject[]),
+    ]).then(([st, ss]) => {
+      if (cancelled) return;
+      setStudents(st.r);
+      setSubjects(ss);
+      setFailed(!st.ok);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.school_id, classInfo.class_id, reloadKey]);
+
+  // Serial numbers follow the alphabetical roll so they stay stable while searching.
+  const roll = useMemo(
+    () =>
+      [...students]
+        .sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`))
+        .map((s, i) => ({ s, no: i + 1 })),
+    [students],
+  );
 
   function bump(studentId: number) {
     setRefreshKeys((r) => ({ ...r, [studentId]: (r[studentId] ?? 0) + 1 }));
@@ -258,36 +323,71 @@ function ClassCompetencyView({ classInfo, onBack }: { classInfo: MyClass; onBack
 
   if (loading) return <PageLoader />;
 
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title={classInfo.class_name} description="Record competency assessments and observation notes for each learner." />
-      <Button variant="ghost" size="sm" onClick={onBack} className="w-fit"><ArrowLeft /> All my classes</Button>
+  const q = search.trim().toLowerCase();
+  const visible = roll.filter(({ s }) => !q || `${s.first_name} ${s.last_name} ${s.admission_number}`.toLowerCase().includes(q));
 
-      <div className="flex flex-col gap-3">
-        {students.map((s) => (
-          <Card key={s.id}>
-            <CardContent className="pt-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium">{s.first_name} {s.last_name}</p>
-                  <p className="text-xs text-muted-foreground">{s.admission_number}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CompetencyDialog student={s} classId={classInfo.class_id} subjects={subjects} onSaved={() => bump(s.id)} />
-                  <ObservationDialog student={s} classId={classInfo.class_id} onSaved={() => bump(s.id)} />
-                  <Button size="sm" variant="ghost" onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
-                    {expanded === s.id ? "Hide history" : "View history"}
-                  </Button>
-                </div>
-              </div>
-              {expanded === s.id && <StudentHistory studentId={s.id} refreshKey={refreshKeys[s.id] ?? 0} />}
-            </CardContent>
-          </Card>
-        ))}
-        {students.length === 0 && (
-          <Card><CardContent className="flex h-24 items-center justify-center text-sm text-muted-foreground">No learners in this class yet.</CardContent></Card>
+  return (
+    <div className="flex flex-col gap-5">
+      <Button variant="ghost" size="sm" onClick={onBack} className="h-10 w-fit sm:h-8"><ArrowLeft /> All my classes</Button>
+      <Banner title={classInfo.class_name} subtitle="Record competency assessments and observation notes for each learner.">
+        <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-medium">
+          <Users className="size-4" /> {students.length} learner{students.length === 1 ? "" : "s"}
+        </span>
+      </Banner>
+
+      <section className="overflow-hidden rounded-xl border bg-card">
+        <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <h2 className="font-heading text-lg font-semibold">Class list</h2>
+          {students.length > 0 && (
+            <div className="relative sm:w-64">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or admission no..." aria-label="Search learners" className="h-10 pl-8 sm:h-9" />
+            </div>
+          )}
+        </div>
+
+        {failed ? (
+          <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+            <AlertTriangle className="size-6 text-red-600" />
+            <p className="text-sm text-muted-foreground">We couldn&apos;t load the learners.</p>
+            <Button size="sm" variant="outline" onClick={() => { setLoading(true); setReloadKey((k) => k + 1); }}><RotateCw /> Try again</Button>
+          </div>
+        ) : students.length === 0 ? (
+          <p className="px-4 py-12 text-center text-sm text-muted-foreground">No learners in this class yet.</p>
+        ) : visible.length === 0 ? (
+          <p className="px-4 py-12 text-center text-sm text-muted-foreground">No learners match your search.</p>
+        ) : (
+          <ul className="divide-y">
+            {visible.map(({ s, no }) => {
+              const isOpen = expanded === s.id;
+              return (
+                <li key={s.id} className="flex flex-col gap-3 px-4 py-3.5 sm:px-5">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md bg-muted px-1.5 text-xs font-semibold text-muted-foreground tabular-nums" aria-label={`Number ${no}`}>
+                        {String(no).padStart(2, "0")}
+                      </span>
+                      <span className={`flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${AVATAR_TONES[(s.id + no) % AVATAR_TONES.length]}`} aria-hidden>
+                        {initials(s)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-medium break-words">{s.first_name} {s.last_name}</p>
+                        <p className="text-xs text-muted-foreground">Adm. no. {s.admission_number}</p>
+                      </div>
+                    </div>
+                    <StudentActions s={s} classId={classInfo.class_id} subjects={subjects} expanded={isOpen} onToggle={() => setExpanded(isOpen ? null : s.id)} onSaved={() => bump(s.id)} />
+                  </div>
+                  {isOpen && (
+                    <div className="rounded-lg bg-muted/40 p-3">
+                      <StudentHistory studentId={s.id} refreshKey={refreshKeys[s.id] ?? 0} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }
@@ -296,12 +396,27 @@ export default function CompetencyPage() {
   const { user, token, loading } = useAuth();
   const [myClasses, setMyClasses] = useState<MyClass[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    api.listMyClasses(token, user.school_id).then(setMyClasses).catch(() => setMyClasses([])).finally(() => setClassesLoading(false));
-  }, [token, user?.school_id]);
+    let cancelled = false;
+    api
+      .listMyClasses(token, user.school_id)
+      .then((r) => ({ ok: true, r }))
+      .catch(() => ({ ok: false, r: [] as MyClass[] }))
+      .then(({ ok, r }) => {
+        if (cancelled) return;
+        setMyClasses(r);
+        setFailed(!ok);
+        setClassesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.school_id, reloadKey]);
 
   const selectedClass = myClasses.find((c) => c.class_id === selectedClassId);
 
@@ -311,27 +426,50 @@ export default function CompetencyPage() {
     return <ClassCompetencyView key={selectedClass.class_id} classInfo={selectedClass} onBack={() => setSelectedClassId(null)} />;
   }
 
+  const totalLearners = myClasses.reduce((n, c) => n + c.student_count, 0);
+
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Learner Progress" description="Competency assessments and observation notes, per class." />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {myClasses.map((c) => (
-          <button
-            key={c.class_id}
-            type="button"
-            onClick={() => setSelectedClassId(c.class_id)}
-            className="rounded-xl border bg-card p-4 text-left transition-colors hover:border-primary/40"
-          >
-            <p className="font-medium">{c.class_name}</p>
-            <p className="text-xs text-muted-foreground">{c.student_count} learner{c.student_count === 1 ? "" : "s"}</p>
-          </button>
-        ))}
-        {myClasses.length === 0 && (
-          <Card className="sm:col-span-2 lg:col-span-3">
-            <CardContent className="flex h-24 items-center justify-center text-sm text-muted-foreground">No classes assigned to you yet.</CardContent>
-          </Card>
+    <div className="flex flex-col gap-5 sm:gap-6">
+      <Banner title="Learner Progress" subtitle="Competency assessments and observation notes, per class.">
+        {myClasses.length > 0 && (
+          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-medium">
+            <Users className="size-4" /> {myClasses.length} class{myClasses.length === 1 ? "" : "es"} · {totalLearners} learners
+          </span>
         )}
-      </div>
+      </Banner>
+
+      {failed ? (
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border bg-card px-4 py-12 text-center">
+          <AlertTriangle className="size-6 text-red-600" />
+          <p className="text-sm text-muted-foreground">We couldn&apos;t load your classes.</p>
+          <Button size="sm" variant="outline" onClick={() => { setClassesLoading(true); setReloadKey((k) => k + 1); }}><RotateCw /> Try again</Button>
+        </div>
+      ) : myClasses.length === 0 ? (
+        <div className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No classes assigned to you yet.</div>
+      ) : (
+        <div>
+          <h2 className="mb-3 font-heading text-lg font-semibold">Choose a class</h2>
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+            {myClasses.map((c, i) => (
+              <button
+                key={c.class_id}
+                type="button"
+                onClick={() => setSelectedClassId(c.class_id)}
+                className="group flex items-center gap-3.5 rounded-xl border bg-card p-4 text-left transition-colors outline-none hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${AVATAR_TONES[i % AVATAR_TONES.length]}`}>
+                  <UserRound className="size-6" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-heading text-base font-semibold break-words">{c.class_name}</span>
+                  <span className="block text-sm text-muted-foreground">{c.student_count} learner{c.student_count === 1 ? "" : "s"}</span>
+                </span>
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
