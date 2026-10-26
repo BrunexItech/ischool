@@ -211,11 +211,15 @@ export default function ResultsPage() {
   async function handleAddSubject(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !user?.school_id || !newSubject.trim()) return;
-    const subject = await api.createSubject(token, user.school_id, newSubject.trim());
-    setSubjects((s) => [...s, subject]);
-    setSubjectId(subject.id);
-    setNewSubject("");
-    toast.success(`${subject.name} added`);
+    try {
+      const subject = await api.createSubject(token, user.school_id, newSubject.trim());
+      setSubjects((s) => [...s, subject]);
+      setSubjectId(subject.id);
+      setNewSubject("");
+      toast.success(`${subject.name} added`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to add subject");
+    }
   }
 
   async function handleSeedLearningAreas() {
@@ -288,8 +292,10 @@ export default function ResultsPage() {
         ))}
       </div>
 
+      {(canConfigure || canSeedPrePrimary) && (
       <Card>
-        <CardContent className="flex items-end gap-3 pt-6">
+        <CardContent className="flex flex-wrap items-end gap-3 pt-6">
+          {canConfigure && (
           <form onSubmit={handleAddSubject} className="flex items-end gap-3">
             <div className="grid gap-1.5">
               <Label>Add subject</Label>
@@ -297,6 +303,7 @@ export default function ResultsPage() {
             </div>
             <Button type="submit" variant="secondary"><Plus /> Add</Button>
           </form>
+          )}
           {canSeedPrePrimary && (
             <Button type="button" variant="outline" onClick={handleSeedLearningAreas} disabled={seeding}>
               <Sparkles /> {seeding ? "Adding..." : "Add official PP1/PP2 learning areas"}
@@ -304,6 +311,7 @@ export default function ResultsPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader><CardTitle>Gradebook</CardTitle></CardHeader>
