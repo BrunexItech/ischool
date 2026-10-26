@@ -602,6 +602,46 @@ export interface ResultsAnalytics {
   term_trend: { term: string; average: number }[];
 }
 
+export interface InsightsFigure {
+  value: number | null;
+  previous: number | null;
+}
+
+export interface Insights {
+  term: string;
+  start_date: string | null;
+  end_date: string | null;
+  scorecard: {
+    average: InsightsFigure;
+    attendance_rate: InsightsFigure;
+    coverage: { completed: number; total: number; expected: number | null };
+    below_expectation: number | null;
+    below_expectation_previous: number | null;
+    learners: number;
+    previous_term: string | null;
+  };
+  attention: {
+    dropped_learners: { student_id: number; name: string; class_name: string; average: number; previous: number; drop: number }[];
+    absence_streaks: { student_id: number; name: string; class_name: string; days: number; since: string }[];
+    weak_subjects: { class_id: number; class_name: string; subject_id: number; subject_name: string; average: number; previous: number | null; learners: number }[];
+    behind_teachers: { teacher_name: string; class_name: string; subject_name: string; plan_id: number | null; completed: number; expected: number; behind: number }[];
+    meeting_line: number | null;
+  };
+  exam_types: { exam_type: string; average: number; count: number }[];
+  classes: { class_id: number; class_name: string; average: number; count: number }[];
+  school_average: number | null;
+  levels: { subject_id: number; subject: string; counts: Record<string, number>; total: number }[];
+  bands: { level_code: string; label: string; min_score: number; max_score: number }[];
+  attendance: {
+    calendar: { date: string; rate: number; marked: number }[];
+    reasons: { reason: string; count: number }[];
+    without_reason: number;
+    scatter: { attendance: number; average: number }[];
+    correlation: number | null;
+  };
+  delivery: { taught: number; partly: number; not_taught: number; reasons: Record<string, number> };
+}
+
 export interface Award {
   id: number;
   school_id: number;
@@ -1774,6 +1814,13 @@ export const api = {
 
   getResultsAnalytics: (token: string, schoolId: number, term?: string) =>
     request<ResultsAnalytics>(`/schools/${schoolId}/analytics/results${term ? `?term=${encodeURIComponent(term)}` : ""}`, {}, token),
+
+  getInsights: (token: string, schoolId: number, params: { term: string; class_id?: number; subject_id?: number }) => {
+    const qs = new URLSearchParams({ term: params.term });
+    if (params.class_id !== undefined) qs.set("class_id", String(params.class_id));
+    if (params.subject_id !== undefined) qs.set("subject_id", String(params.subject_id));
+    return request<Insights>(`/schools/${schoolId}/analytics/insights?${qs}`, {}, token);
+  },
 
   getAttendanceTrend: (token: string, schoolId: number) =>
     request<AttendanceTrendPoint[]>(`/schools/${schoolId}/analytics/attendance-trend`, {}, token),
