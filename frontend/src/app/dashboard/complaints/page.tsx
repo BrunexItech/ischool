@@ -67,6 +67,9 @@ export default function ComplaintsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ audience: "class_teacher" as "class_teacher" | "principal", subject: "", message: "", student_id: "" });
 
+  // A teacher can only write to the principal, so there is nothing to choose
+  // and "Class teacher" must never appear (or be the hidden default).
+  const audience: "class_teacher" | "principal" = user?.role === "teacher" ? "principal" : form.audience;
   const isRecipient = user?.role === "teacher" || user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
   const canRaise = user?.role === "student" || user?.role === "parent" || user?.role === "teacher";
 
@@ -88,14 +91,14 @@ export default function ComplaintsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !user?.school_id || !form.subject.trim() || !form.message.trim()) return;
-    if (user.role === "parent" && form.audience === "class_teacher" && !form.student_id) {
+    if (user.role === "parent" && audience === "class_teacher" && !form.student_id) {
       toast.error("Choose which child this is about");
       return;
     }
     setSubmitting(true);
     try {
       await api.raiseComplaint(token, user.school_id, {
-        audience: form.audience,
+        audience,
         subject: form.subject.trim(),
         message: form.message.trim(),
         student_id: form.student_id ? Number(form.student_id) : undefined,
@@ -123,15 +126,19 @@ export default function ComplaintsPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label>Send to</Label>
+                  {user?.role === "teacher" ? (
+                    <p className="flex h-9 items-center rounded-lg border bg-muted/40 px-3 text-sm">Principal</p>
+                  ) : (
                   <Select value={form.audience} onValueChange={(v) => v && setForm((f) => ({ ...f, audience: v as "class_teacher" | "principal" }))}>
                     <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {user?.role !== "teacher" && <SelectItem value="class_teacher">Class teacher</SelectItem>}
+                      <SelectItem value="class_teacher">Class teacher</SelectItem>
                       <SelectItem value="principal">Principal</SelectItem>
                     </SelectContent>
                   </Select>
+                  )}
                 </div>
-                {user?.role === "parent" && form.audience === "class_teacher" && (
+                {user?.role === "parent" && audience === "class_teacher" && (
                   <div className="grid gap-1.5">
                     <Label>Child</Label>
                     <Select value={form.student_id} onValueChange={(v) => v && setForm((f) => ({ ...f, student_id: v }))}>
