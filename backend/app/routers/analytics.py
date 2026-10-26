@@ -3,12 +3,14 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.insights import build_insights
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.models.academics import SchoolClass, Student
 from app.models.results import Result, Subject
 from app.models.user import User, UserRole
 from app.routers.dashboard import compute_attendance_trend
 from app.schemas.analytics import (
+    InsightsOut,
     ClassAverage,
     GradeCount,
     ResultsAnalyticsOut,
@@ -122,3 +124,23 @@ def get_results_analytics(
         top_students=top_students,
         term_trend=term_trend,
     )
+
+
+@router.get(
+    "/insights",
+    response_model=InsightsOut,
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("results"))],
+)
+def get_insights(
+    school_id: int,
+    term: str,
+    class_id: int | None = None,
+    subject_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Scorecard, what needs attention, comparisons, performance levels,
+    attendance and teaching delivery for one term. A teacher only ever sees
+    their own classes and subjects."""
+    ensure_school_access(db, current_user, school_id)
+    return build_insights(db, school_id, current_user, term, class_id, subject_id)
