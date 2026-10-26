@@ -357,6 +357,67 @@ export interface StaffAttendanceWithName extends StaffAttendanceRecord {
   staff_name: string;
 }
 
+export type StaffDayStatus = "present" | "late" | "absent" | "on_leave" | "expected";
+
+export interface StaffDayRow {
+  user_id: number;
+  name: string;
+  role: string;
+  status: StaffDayStatus;
+  source: string | null;
+  clocked_in_at: string | null;
+  clocked_out_at: string | null;
+  leave_type: string | null;
+  reason: string | null;
+  note: string | null;
+  lessons: number;
+  register_status: "self" | "other" | "missing" | null;
+}
+
+export interface StaffDay {
+  date: string;
+  school_day: boolean;
+  holiday: string | null;
+  rows: StaffDayRow[];
+}
+
+export interface StaffSummaryRow {
+  user_id: number;
+  name: string;
+  role: string;
+  school_days: number;
+  present: number;
+  late: number;
+  absent_explained: number;
+  absent_unexplained: number;
+  on_leave: number;
+}
+
+export interface StaffSummary {
+  date_from: string;
+  date_to: string;
+  school_days: number;
+  rows: StaffSummaryRow[];
+}
+
+export interface StaffLeave {
+  id: number;
+  user_id: number;
+  staff_name: string;
+  start_date: string;
+  end_date: string;
+  leave_type: string;
+  note: string | null;
+  recorded_by_name: string | null;
+}
+
+export interface StaffPerson {
+  user_id: number;
+  name: string;
+  role: string;
+  tracked: boolean;
+}
+
 export interface DutyAssignment {
   id: number;
   school_id: number;
@@ -2215,6 +2276,57 @@ export const api = {
     const suffix = qs.toString() ? `?${qs}` : "";
     return request<StaffAttendanceWithName[]>(`/schools/${schoolId}/staff-attendance${suffix}`, {}, token);
   },
+
+  getStaffDay: (token: string, schoolId: number, date: string) =>
+    request<StaffDay>(`/schools/${schoolId}/staff-attendance/day?date=${date}`, {}, token),
+
+  getStaffSummary: (token: string, schoolId: number, dateFrom: string, dateTo: string, userId?: number) =>
+    request<StaffSummary>(`/schools/${schoolId}/staff-attendance/summary?date_from=${dateFrom}&date_to=${dateTo}${userId ? `&user_id=${userId}` : ""}`, {}, token),
+
+  getStaffSettings: (token: string, schoolId: number) =>
+    request<{ late_after: string; absent_after: string }>(`/schools/${schoolId}/staff-attendance/settings`, {}, token),
+
+  setStaffSettings: (token: string, schoolId: number, payload: { late_after: string; absent_after: string }) =>
+    request<{ late_after: string; absent_after: string }>(
+      `/schools/${schoolId}/staff-attendance/settings`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  listStaffPeople: (token: string, schoolId: number) => request<StaffPerson[]>(`/schools/${schoolId}/staff-attendance/people`, {}, token),
+
+  setStaffTracking: (token: string, schoolId: number, userId: number, tracked: boolean) =>
+    request<void>(
+      `/schools/${schoolId}/staff-attendance/tracking`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId, tracked }) },
+      token
+    ),
+
+  listStaffLeaves: (token: string, schoolId: number) => request<StaffLeave[]>(`/schools/${schoolId}/staff-attendance/leaves`, {}, token),
+
+  recordStaffLeave: (
+    token: string,
+    schoolId: number,
+    payload: { user_id: number; start_date: string; end_date: string; leave_type: string; note?: string }
+  ) =>
+    request<StaffLeave>(
+      `/schools/${schoolId}/staff-attendance/leaves`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  deleteStaffLeave: (token: string, schoolId: number, leaveId: number) =>
+    request<void>(`/schools/${schoolId}/staff-attendance/leaves/${leaveId}`, { method: "DELETE" }, token),
+
+  setAbsenceNote: (token: string, schoolId: number, payload: { user_id: number; date: string; reason: string; note?: string }) =>
+    request<void>(
+      `/schools/${schoolId}/staff-attendance/notes`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  clearAbsenceNote: (token: string, schoolId: number, userId: number, date: string) =>
+    request<void>(`/schools/${schoolId}/staff-attendance/notes?user_id=${userId}&date=${date}`, { method: "DELETE" }, token),
 
   listMyDuties: (token: string, schoolId: number) =>
     request<DutyAssignment[]>(`/schools/${schoolId}/duties/mine`, {}, token),
