@@ -19,6 +19,7 @@ class ResultUpsert(BaseModel):
     student_id: int
     subject_id: int
     term: str
+    exam_type: str = "Not specified"
     score: float
     grade: str | None = None
     remarks: str | None = None
@@ -32,9 +33,11 @@ class ResultOut(BaseModel):
     student_id: int
     subject_id: int
     term: str
+    exam_type: str
     score: float
     grade: str | None
     remarks: str | None
+    recorded_by: int | None = None
 
 
 class ReportCardRow(BaseModel):
@@ -65,3 +68,41 @@ class ReportCardOut(BaseModel):
 class ReportCardRemarkUpdate(BaseModel):
     class_teacher_remark: str | None = None
     principal_remark: str | None = None
+
+
+class BoardSubject(BaseModel):
+    id: int
+    name: str
+
+
+class BoardStudent(BaseModel):
+    student_id: int
+    name: str
+    admission_number: str
+    scores: dict[int, float | None]
+    levels: dict[int, str | None]
+    total: float
+    average: float | None
+    level: str | None
+    subjects_marked: int
+    rank: int | None
+
+
+class BoardBand(BaseModel):
+    level_code: str
+    label: str
+    min_score: float
+    max_score: float
+
+
+class ResultsBoardOut(BaseModel):
+    class_id: int
+    class_name: str
+    term: str
+    selected_exam_types: list[str]
+    available_exam_types: list[str]
+    subjects: list[BoardSubject]
+    students: list[BoardStudent]
+    bands: list[BoardBand]
+    ranked: bool
+    class_average: float | None

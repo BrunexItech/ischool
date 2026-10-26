@@ -4,6 +4,7 @@ from app.models.academic_term import AcademicTerm
 from app.models.academics import Student
 from app.models.attendance import AttendanceRecord, AttendanceStatus
 from app.core.grading import level_for_score
+from app.core.results_board import subject_means
 from app.models.competency_assessment import CompetencyAssessment
 from app.models.grade_level import LevelGroup
 from app.models.report_card_remark import ReportCardRemark
@@ -23,7 +24,7 @@ def _is_pre_primary(student: Student) -> bool:
     )
 
 
-def _class_position(db: Session, student: Student, term: str) -> str | None:
+def _class_position(db: Session, student: Student, term: str, exam_types: list[str] | None = None) -> str | None:
     """Ranks every student in the same class by their term average, highest
     first — the classic '7 / 32' line on a printed report card.
 
@@ -40,10 +41,8 @@ def _class_position(db: Session, student: Student, term: str) -> str | None:
     if not classmate_ids:
         return None
 
-    rows = db.query(Result.student_id, Result.score).filter(Result.term == term, Result.student_id.in_(classmate_ids)).all()
-    totals: dict[int, list[float]] = {}
-    for sid, score in rows:
-        totals.setdefault(sid, []).append(float(score))
+    means = subject_means(db, student.school_id, classmate_ids, term, exam_types)
+    totals = {sid: [m for m in subjects.values()] for sid, subjects in means.items() if subjects}
     if student.id not in totals:
         return None
 
@@ -75,17 +74,24 @@ def _attendance_rate(db: Session, student: Student, term: str) -> float | None:
     return round(present / len(records) * 100, 1)
 
 
-def build_report_card(db: Session, student: Student, term: str) -> ReportCardOut:
-    results = (
-        db.query(Result)
-        .filter_by(school_id=student.school_id, student_id=student.id, term=term)
-        .join(Result.subject)
-        .all()
-    )
-    rows = [
-        ReportCardRow(subject_name=r.subject.name, score=float(r.score), grade=r.grade, remarks=r.remarks)
-        for r in results
-    ]
+def build_report_card(db: Session, student: Student, term: str, exam_types: list[str] | None = None) -> ReportCardOut:
+    """One row per subject. When a subject has several marks in the term
+    (different exam types), the chosen types — all of them by default — are
+    averaged into that subject's row."""
+    query = db.query(Result).filter_by(school_id=student.school_id, student_id=student.id, term=term)
+    if exam_types:
+        query = query.filter(Result.exam_type.in_(exam_types))
+    results = query.join(Result.subject).order_by(Result.id).all()
+    by_subject: dict[int, list[Result]] = {}
+    for r in results:
+        by_subject.setdefault(r.subject_id, []).append(r)
+    rows = []
+    for group in by_subject.values():
+        mean = sum(float(r.score) for r in group) / len(group)
+        remark_text = next((r.remarks for r in reversed(group) if r.remarks), None)
+        grade = group[0].grade if len(group) == 1 else level_for_score(db, student.school_id, mean)
+        rows.append(ReportCardRow(subject_name=group[0].subject.name, score=round(mean, 2), grade=grade, remarks=remark_text))
+    rows.sort(key=lambda r: r.subject_name)
     average = round(sum(r.score for r in rows) / len(rows), 2) if rows else None
 
     remark = db.query(ReportCardRemark).filter_by(school_id=student.school_id, student_id=student.id, term=term).first()
@@ -114,7 +120,7 @@ def build_report_card(db: Session, student: Student, term: str) -> ReportCardOut
         rows=rows,
         average=average,
         overall_grade=level_for_score(db, student.school_id, average) if average is not None else None,
-        class_position=_class_position(db, student, term),
+        class_position=_class_position(db, student, term, exam_types),
         attendance_rate=_attendance_rate(db, student, term),
         class_teacher_remark=remark.class_teacher_remark if remark else None,
         principal_remark=remark.principal_remark if remark else None,

@@ -20,7 +20,7 @@ class Subject(Base):
 class Result(Base):
     __tablename__ = "results"
     __table_args__ = (
-        UniqueConstraint("student_id", "subject_id", "term", name="uq_result_student_subject_term"),
+        UniqueConstraint("student_id", "subject_id", "term", "exam_type", name="uq_result_student_subject_term_type"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -29,6 +29,9 @@ class Result(Base):
     subject_id: Mapped[int] = mapped_column(ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
 
     term: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Opener / CAT 1 / Mid Term / End Term ... Free text like Exam.exam_type;
+    # "Not specified" for marks recorded before types existed.
+    exam_type: Mapped[str] = mapped_column(String(50), nullable=False, default="Not specified", server_default="Not specified")
     score: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
     grade: Mapped[str | None] = mapped_column(String(5), nullable=True)
     remarks: Mapped[str | None] = mapped_column(String(500), nullable=True)

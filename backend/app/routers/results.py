@@ -8,13 +8,26 @@ from app.core.notify import notify
 from app.core.report_card import build_report_card
 from app.core.grading import level_for_score
 from app.core.teaching import ensure_can_grade
+from app.core.grading import get_bands
+from app.core.results_board import competition_ranks, parse_exam_types, subject_means
 from app.models.academics import SchoolClass, Student
 from app.models.grade_level import LevelGroup
 from app.models.report_card_remark import ReportCardRemark
 from app.models.teacher_assignment import TeacherAssignment
 from app.models.results import Result, Subject
 from app.models.user import User, UserRole
-from app.schemas.results import ReportCardOut, ReportCardRemarkUpdate, ResultOut, ResultUpsert, SubjectCreate, SubjectOut
+from app.schemas.results import (
+    BoardBand,
+    BoardStudent,
+    BoardSubject,
+    ReportCardOut,
+    ReportCardRemarkUpdate,
+    ResultOut,
+    ResultsBoardOut,
+    ResultUpsert,
+    SubjectCreate,
+    SubjectOut,
+)
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["results"])
 
@@ -139,11 +152,14 @@ def list_results(
     student_id: int | None = Query(default=None),
     subject_id: int | None = Query(default=None),
     term: str | None = Query(default=None),
+    exam_type: str | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     ensure_school_access(db, current_user, school_id)
     query = db.query(Result).filter_by(school_id=school_id)
+    if exam_type is not None:
+        query = query.filter_by(exam_type=exam_type)
     if student_id is not None:
         query = query.filter_by(student_id=student_id)
     if subject_id is not None:
@@ -162,6 +178,7 @@ def get_report_card(
     school_id: int,
     student_id: int,
     term: str,
+    exam_types: str | None = Query(default=None, description="Comma-separated exam types to compile; all when empty"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -169,7 +186,7 @@ def get_report_card(
     student = db.query(Student).filter_by(school_id=school_id, id=student_id).first()
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
-    return build_report_card(db, student, term)
+    return build_report_card(db, student, term, parse_exam_types(exam_types))
 
 
 @router.patch(
@@ -236,13 +253,34 @@ def upsert_result(
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found")
     ensure_can_grade(db, current_user, student.class_id, payload.subject_id)
+    exam_type = payload.exam_type.strip() or "Not specified"
 
     result = (
         db.query(Result)
-        .filter_by(school_id=school_id, student_id=payload.student_id, subject_id=payload.subject_id, term=payload.term)
+        .filter_by(
+            school_id=school_id,
+            student_id=payload.student_id,
+            subject_id=payload.subject_id,
+            term=payload.term,
+            exam_type=exam_type,
+        )
         .first()
     )
     grade = payload.grade or level_for_score(db, school_id, payload.score)
+
+    # A class teacher reviews the whole class but does not own other
+    # teachers' subjects: marks someone else entered are not theirs to change.
+    if (
+        result is not None
+        and current_user.role == UserRole.TEACHER
+        and result.recorded_by not in (None, current_user.id)
+        and student.school_class is not None
+        and student.school_class.homeroom_teacher_id == current_user.id
+    ):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "These marks were entered by the subject teacher and can only be changed by them",
+        )
 
     if result:
         before = {"score": float(result.score), "grade": result.grade, "remarks": result.remarks}
@@ -258,6 +296,7 @@ def upsert_result(
             student_id=payload.student_id,
             subject_id=payload.subject_id,
             term=payload.term,
+            exam_type=exam_type,
             score=payload.score,
             grade=grade,
             remarks=payload.remarks,
@@ -284,9 +323,151 @@ def upsert_result(
             school_id=school_id,
             user_id=student.guardian_user_id,
             title=f"New result for {student.first_name}",
-            body=f"{student.first_name} {student.last_name} scored {payload.score} ({grade}) for {payload.term}.",
+            body=f"{student.first_name} {student.last_name} scored {payload.score} ({grade}) for {payload.term} ({exam_type}).",
         )
 
     db.commit()
     db.refresh(result)
     return result
+
+
+# --- Class subjects & results board ---
+
+
+def _class_or_404(db: Session, school_id: int, class_id: int) -> SchoolClass:
+    school_class = db.query(SchoolClass).filter_by(school_id=school_id, id=class_id).first()
+    if school_class is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Class not found")
+    return school_class
+
+
+def _class_subject_ids(db: Session, school_id: int, class_id: int) -> list[int]:
+    rows = (
+        db.query(TeacherAssignment.subject_id)
+        .filter(
+            TeacherAssignment.school_id == school_id,
+            TeacherAssignment.class_id == class_id,
+            TeacherAssignment.subject_id.isnot(None),
+        )
+        .distinct()
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
+@router.get(
+    "/classes/{class_id}/subjects",
+    response_model=list[SubjectOut],
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("results"))],
+)
+def list_class_subjects(school_id: int, class_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """The subjects allocated to a class. Every learner in the class takes
+    them automatically — there is no separate per-learner subject enrolment."""
+    ensure_school_access(db, current_user, school_id)
+    _class_or_404(db, school_id, class_id)
+    ids = _class_subject_ids(db, school_id, class_id)
+    if not ids:
+        return []
+    return db.query(Subject).filter(Subject.school_id == school_id, Subject.id.in_(ids)).order_by(Subject.name).all()
+
+
+@router.get(
+    "/classes/{class_id}/results-board",
+    response_model=ResultsBoardOut,
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("results"))],
+)
+def class_results_board(
+    school_id: int,
+    class_id: int,
+    term: str,
+    exam_types: str | None = Query(default=None, description="Comma-separated exam types to compile; all when empty"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Every learner in the class against every subject of the class, best
+    first. Read-only: the class teacher sees all subjects but marks are only
+    ever entered by each subject's own teacher."""
+    ensure_school_access(db, current_user, school_id)
+    school_class = _class_or_404(db, school_id, class_id)
+    is_admin = current_user.role in MANAGE_ROLES
+    is_class_teacher = current_user.role == UserRole.TEACHER and school_class.homeroom_teacher_id == current_user.id
+    if not (is_admin or is_class_teacher):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only this class's teacher or school leadership can see the class results board")
+
+    selected = parse_exam_types(exam_types)
+    students = (
+        db.query(Student)
+        .filter_by(school_id=school_id, class_id=class_id, is_active=True)
+        .order_by(Student.first_name, Student.last_name)
+        .all()
+    )
+    student_ids = [s.id for s in students]
+    means = subject_means(db, school_id, student_ids, term, selected)
+
+    available = sorted(
+        {
+            r[0]
+            for r in db.query(Result.exam_type)
+            .filter(Result.school_id == school_id, Result.term == term, Result.student_id.in_(student_ids or [0]))
+            .distinct()
+            .all()
+        }
+    )
+
+    subject_ids = set(_class_subject_ids(db, school_id, class_id))
+    for subs in means.values():
+        subject_ids.update(subs.keys())
+    subjects = (
+        db.query(Subject).filter(Subject.school_id == school_id, Subject.id.in_(subject_ids or [0])).order_by(Subject.name).all()
+    )
+
+    grade = school_class.grade
+    pre_primary = grade is not None and grade.level_group == LevelGroup.PRE_PRIMARY
+
+    averages: dict[int, float] = {}
+    for s in students:
+        marks = list(means.get(s.id, {}).values())
+        if marks:
+            averages[s.id] = sum(marks) / len(marks)
+    ranks = {} if pre_primary else competition_ranks(averages)
+
+    out: list[BoardStudent] = []
+    for s in students:
+        mine = means.get(s.id, {})
+        avg = averages.get(s.id)
+        out.append(
+            BoardStudent(
+                student_id=s.id,
+                name=f"{s.first_name} {s.last_name}",
+                admission_number=s.admission_number,
+                scores={sub.id: (round(mine[sub.id], 2) if sub.id in mine else None) for sub in subjects},
+                levels={sub.id: (level_for_score(db, school_id, mine[sub.id]) if sub.id in mine else None) for sub in subjects},
+                total=round(sum(mine.values()), 2),
+                average=round(avg, 2) if avg is not None else None,
+                level=level_for_score(db, school_id, avg) if avg is not None else None,
+                subjects_marked=len(mine),
+                rank=ranks.get(s.id),
+            )
+        )
+    # Best first; learners with no marks go last. Pre-primary is never ranked
+    # (see _class_position), so those classes stay alphabetical.
+    if not pre_primary:
+        out.sort(key=lambda b: (b.average is None, -(b.average or 0), b.name))
+
+    bands = [
+        BoardBand(level_code=b.level_code, label=b.label, min_score=float(b.min_score), max_score=float(b.max_score))
+        for b in get_bands(db, school_id)
+    ]
+    class_avg = round(sum(averages.values()) / len(averages), 2) if averages else None
+    return ResultsBoardOut(
+        class_id=class_id,
+        class_name=school_class.name,
+        term=term,
+        selected_exam_types=selected,
+        available_exam_types=available,
+        subjects=[BoardSubject(id=x.id, name=x.name) for x in subjects],
+        students=out,
+        bands=bands,
+        ranked=not pre_primary,
+        class_average=class_avg,
+    )
