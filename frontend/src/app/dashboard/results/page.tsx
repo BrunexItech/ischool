@@ -438,30 +438,24 @@ export default function ResultsPage() {
                 <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Add a term first" className="w-44" />
               )}
             </div>
+            <div className="grid gap-1.5">
+              <Label>Exam type</Label>
+              <Select value={examType} onValueChange={(v) => v && setExamType(v)}>
+                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                <SelectContent>{EXAM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            {examType === "Other" && (
+              <div className="grid gap-1.5">
+                <Label>Exam name</Label>
+                <Input value={customType} onChange={(e) => setCustomType(e.target.value)} placeholder="e.g. Mock 2" className="w-44" />
+              </div>
+            )}
             {canRecord && (
               <Button onClick={handleSaveScores} disabled={saving || students.length === 0 || subjectId === null}>
                 <Save /> {saving ? "Saving..." : "Save grades"}
               </Button>
             )}
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label>Exam</Label>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Exam type">
-              {EXAM_TYPES.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  aria-pressed={examType === t}
-                  onClick={() => setExamType(t)}
-                  className={`inline-flex h-10 items-center rounded-full border px-4 text-sm font-medium transition-colors sm:h-9 ${examType === t ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}
-                >
-                  {t}
-                </button>
-              ))}
-              {examType === "Other" && <Input value={customType} onChange={(e) => setCustomType(e.target.value)} placeholder="Name of the exam" className="h-10 w-44 sm:h-9" />}
-            </div>
-            <p className="text-xs text-muted-foreground">Switch between exams to see how the class did in each. Marks are saved against the exam you have selected.</p>
           </div>
 
           {classOptions.length === 0 ? (
