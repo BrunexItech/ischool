@@ -208,6 +208,11 @@ export default function CalendarPage() {
 
   const grid = useMemo(() => monthGrid(cursor.year, cursor.month), [cursor]);
   const canEdit = user?.role === "head_of_institution" || user?.role === "group_principal";
+  const monthEvents = useMemo(() => {
+    const first = iso(new Date(cursor.year, cursor.month, 1));
+    const last = iso(new Date(cursor.year, cursor.month + 1, 0));
+    return events.filter((e) => e.start_date <= last && (e.end_date ?? e.start_date) >= first).sort((a, b) => (a.start_date < b.start_date ? -1 : 1));
+  }, [events, cursor]);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
@@ -231,11 +236,11 @@ export default function CalendarPage() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="icon" onClick={() => setCursor((c) => { const m = c.month - 1; return m < 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: m }; })}><ChevronLeft /></Button>
+        <Button variant="outline" size="icon" className="size-10" aria-label="Previous month" onClick={() => setCursor((c) => { const m = c.month - 1; return m < 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: m }; })}><ChevronLeft /></Button>
         <p className="min-w-40 text-center text-sm font-medium">
           {new Date(cursor.year, cursor.month, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
         </p>
-        <Button variant="outline" size="icon" onClick={() => setCursor((c) => { const m = c.month + 1; return m > 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: m }; })}><ChevronRight /></Button>
+        <Button variant="outline" size="icon" className="size-10" aria-label="Next month" onClick={() => setCursor((c) => { const m = c.month + 1; return m > 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: m }; })}><ChevronRight /></Button>
         <Button variant="ghost" size="sm" onClick={() => { const d = new Date(); setCursor({ year: d.getFullYear(), month: d.getMonth() }); }}>Today</Button>
         {dataLoading && <Spinner size={14} />}
         <div className="flex w-full flex-wrap gap-x-3 gap-y-1 sm:ml-auto sm:w-auto">
@@ -264,12 +269,15 @@ export default function CalendarPage() {
                   key={day}
                   type="button"
                   onClick={() => setActiveDay(day)}
-                  className={`flex min-h-24 flex-col gap-1 border-r border-b p-1.5 text-left last:border-r-0 hover:bg-accent/40 ${inMonth ? "" : "bg-muted/30"}`}
+                  className={`flex min-h-16 flex-col gap-1 border-r border-b p-1 text-left last:border-r-0 hover:bg-accent/40 sm:min-h-24 sm:p-1.5 ${inMonth ? "" : "bg-muted/30"}`}
                 >
                   <span className={`flex size-6 items-center justify-center rounded-full text-xs font-medium ${isToday ? "bg-primary text-primary-foreground" : inMonth ? "" : "text-muted-foreground"}`}>
                     {date.getDate()}
                   </span>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex flex-wrap gap-0.5 sm:hidden" aria-hidden>
+                    {dayEvents.slice(0, 4).map((e) => <span key={e.id} className={`size-1.5 rounded-full ${typeMeta(e.event_type).dot}`} />)}
+                  </div>
+                  <div className="hidden flex-col gap-0.5 sm:flex">
                     {dayEvents.slice(0, 2).map((e) => (
                       <span key={e.id} className="flex items-center gap-1 truncate rounded bg-muted px-1 py-0.5 text-[0.65rem]">
                         <span className={`size-1.5 shrink-0 rounded-full ${typeMeta(e.event_type).dot}`} /> {e.title}
@@ -283,6 +291,39 @@ export default function CalendarPage() {
           </div>
         </CardContent>
       </Card>
+
+      <section className="overflow-hidden rounded-xl border bg-card" aria-label="This month">
+        <h2 className="border-b px-4 py-3 font-heading text-lg font-semibold sm:px-5">
+          {new Date(cursor.year, cursor.month, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}: what&apos;s on
+        </h2>
+        {monthEvents.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nothing scheduled this month.</p>
+        ) : (
+          <ul className="divide-y">
+            {monthEvents.map((e) => {
+              const start = new Date(e.start_date + "T12:00:00");
+              return (
+                <li key={e.id}>
+                  <button type="button" onClick={() => setActiveDay(e.start_date)} className="flex w-full items-start gap-3 px-4 py-3 text-left outline-none hover:bg-accent/40 focus-visible:bg-accent/40 sm:px-5">
+                    <span className="flex w-12 shrink-0 flex-col items-center rounded-lg border bg-muted/40 py-1">
+                      <span className="text-[10px] font-semibold tracking-wider text-primary uppercase">{start.toLocaleDateString("en-GB", { weekday: "short" })}</span>
+                      <span className="font-heading text-lg leading-none font-semibold tabular-nums">{start.getDate()}</span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium break-words">{e.title}</span>
+                      <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><span className={`size-2 rounded-full ${typeMeta(e.event_type).dot}`} /> {typeMeta(e.event_type).label}</span>
+                        {e.end_date && e.end_date !== e.start_date && <span>until {new Date(e.end_date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
+                      </span>
+                      {e.description && <span className="mt-0.5 block text-xs break-words text-muted-foreground">{e.description}</span>}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       {activeDay && (
         <DayDialog

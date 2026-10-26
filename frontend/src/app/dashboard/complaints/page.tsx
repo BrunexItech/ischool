@@ -117,7 +117,7 @@ export default function ComplaintsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Complaints" description="Raise a concern with the class teacher or the principal, and track the response." />
+      <PageHeader title="Complaints" description={user?.role === "teacher" ? "Raise a concern with the principal, and answer concerns sent to you as a class teacher." : isRecipient ? "Concerns sent to you, and your replies." : "Raise a concern with the class teacher or the principal, and track the response."} />
 
       {canRaise && (
         <Card>
@@ -180,9 +180,9 @@ export default function ComplaintsPage() {
                   <Badge variant={c.status === "resolved" ? "secondary" : "outline"} className="capitalize">{c.status}</Badge>
                 </div>
               </div>
-              {isRecipient && <p className="mt-1 text-xs text-muted-foreground">From {c.raised_by_name} ({c.raised_by_role}) · {new Date(c.created_at).toLocaleString()}</p>}
+              {isRecipient && <p className="mt-1 text-xs text-muted-foreground">{c.raised_by === user?.id ? "Raised by you" : `From ${c.raised_by_name} (${c.raised_by_role})`} · {new Date(c.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>}
               <p className="mt-2 text-sm">{c.message}</p>
-              <RespondBox complaint={c} canRespond={isRecipient} onResponded={(u) => setComplaints((all) => all.map((x) => (x.id === u.id ? u : x)))} />
+              <RespondBox complaint={c} canRespond={isRecipient && c.raised_by !== user?.id} onResponded={(u) => setComplaints((all) => all.map((x) => (x.id === u.id ? u : x)))} />
             </CardContent>
           </Card>
         ))}

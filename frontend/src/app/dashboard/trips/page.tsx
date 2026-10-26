@@ -287,22 +287,38 @@ export default function TripsPage() {
   const [statusFilter, setStatusFilter] = useState<TripStatus | "">("");
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
 
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
     if (!token || !user?.school_id) return;
+    let cancelled = false;
+    let tripsFailed = false;
+    const isTeacher = user.role === "teacher";
     Promise.all([
-      api.listTrips(token, user.school_id),
-      api.listClasses(token, user.school_id),
-      api.listStudents(token, user.school_id),
-      api.listVehicles(token, user.school_id),
-    ])
-      .then(([t, c, s, v]) => {
-        setTrips(t);
-        setClasses(c);
-        setStudents(s);
-        setVehicles(v);
-      })
-      .finally(() => setDataLoading(false));
-  }, [token, user?.school_id]);
+      api.listTrips(token, user.school_id).catch(() => {
+        tripsFailed = true;
+        return [] as Trip[];
+      }),
+      api.listClasses(token, user.school_id).catch(() => [] as SchoolClass[]),
+      api.listStudents(token, user.school_id).catch(() => [] as Student[]),
+      api.listVehicles(token, user.school_id).catch(() => [] as Vehicle[]),
+      isTeacher ? api.listMyClasses(token, user.school_id).catch(() => []) : Promise.resolve(null),
+    ]).then(([t, c, s, v, mine]) => {
+      if (cancelled) return;
+      // A teacher can take learners only from classes they teach.
+      const own = mine ? new Set(mine.map((m) => m.class_id)) : null;
+      setTrips(t);
+      setClasses(own ? c.filter((x) => own.has(x.id)) : c);
+      setStudents(own ? s.filter((x) => x.class_id !== null && own.has(x.class_id)) : s);
+      setVehicles(v);
+      setFailed(tripsFailed);
+      setDataLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.school_id, user?.role, reloadKey]);
 
   if (loading || dataLoading) return <PageLoader />;
   if (!user) return null;
@@ -328,12 +344,19 @@ export default function TripsPage() {
         action={canRequest ? <NewTripDialog classes={classes} students={students} onCreated={upsert} /> : undefined}
       />
 
+      {failed && (
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border bg-card px-4 py-10 text-center">
+          <p className="text-sm text-muted-foreground">We couldn&apos;t load the trips.</p>
+          <Button size="sm" variant="outline" onClick={() => { setDataLoading(true); setReloadKey((k) => k + 1); }}>Try again</Button>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {statuses.map((s) => (
           <button
             key={s || "all"}
             onClick={() => setStatusFilter(s)}
-            className={`rounded-full border px-3 py-1 text-xs capitalize ${statusFilter === s ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+            className={`min-h-9 rounded-full border px-3 py-1 text-xs capitalize ${statusFilter === s ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
           >
             {s ? s.replace("_", " ") : "All"} <span className="text-muted-foreground">{s ? trips.filter((t) => t.status === s).length : trips.length}</span>
           </button>
@@ -352,7 +375,7 @@ export default function TripsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={STATUS_BADGE[t.status]} className="capitalize">{t.status.replace("_", " ")}</Badge>
-                <Button size="sm" variant={canManage && t.status === "requested" ? "default" : "outline"} onClick={(e) => { e.stopPropagation(); setActiveTrip(t); }}>
+                <Button size="sm" className="h-10 sm:h-8" variant={canManage && t.status === "requested" ? "default" : "outline"} onClick={(e) => { e.stopPropagation(); setActiveTrip(t); }}>
                   {canManage && t.status === "requested" ? "Review" : "Open"}
                 </Button>
               </div>

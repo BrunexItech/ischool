@@ -1,12 +1,11 @@
 "use client";
 
-import "@livekit/components-styles";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LiveKitRoom, VideoConference } from "@livekit/components-react";
 import { Loader2 } from "lucide-react";
 import { api, ApiError, JoinToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { LiveRoom } from "@/components/LiveRoom";
 
 export default function HostRoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -21,25 +20,22 @@ export default function HostRoomPage({ params }: { params: Promise<{ id: string 
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    if (user.role === "student") {
-      api
-        .getMyStudentRecord(token)
-        .then((student) => api.getChildLiveClassJoinToken(token, student.id, Number(id)))
-        .then(setJoinToken)
-        .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to join class"));
-      return;
-    }
-    api
-      .getHostToken(token, user.school_id, Number(id))
-      .then(setJoinToken)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to join class"));
+    let cancelled = false;
+    const request =
+      user.role === "student"
+        ? api.getMyStudentRecord(token).then((student) => api.getChildLiveClassJoinToken(token, student.id, Number(id)))
+        : api.getHostToken(token, user.school_id, Number(id));
+    request.then((t) => !cancelled && setJoinToken(t)).catch((err) => !cancelled && setError(err instanceof ApiError ? err.message : "Failed to join class"));
+    return () => {
+      cancelled = true;
+    };
   }, [token, user?.school_id, user?.role, id]);
 
   if (loading || !user) return null;
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-sidebar text-sidebar-foreground">
+      <div className="flex min-h-dvh items-center justify-center bg-[#17090a] px-6 text-center text-white">
         <p>{error}</p>
       </div>
     );
@@ -47,27 +43,21 @@ export default function HostRoomPage({ params }: { params: Promise<{ id: string 
 
   if (!joinToken) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-sidebar text-sidebar-foreground">
-        <Loader2 className="size-5 animate-spin text-primary" />
-        <p className="text-sm text-sidebar-foreground/70">Connecting to the class...</p>
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-[#17090a] text-white">
+        <Loader2 className="size-5 animate-spin" style={{ color: "#FFA819" }} />
+        <p className="text-sm text-white/70">Connecting to the class...</p>
       </div>
     );
   }
 
+  const isLearner = user.role === "student";
   return (
-    <div style={{ height: "100vh" }}>
-      <LiveKitRoom
-        token={joinToken.token}
-        serverUrl={joinToken.url}
-        connect
-        video={user?.role !== "student"}
-        audio={user?.role !== "student"}
-        data-lk-theme="default"
-        style={{ height: "100%" }}
-        onDisconnected={() => router.push("/dashboard/live-classes")}
-      >
-        <VideoConference />
-      </LiveKitRoom>
-    </div>
+    <LiveRoom
+      join={joinToken}
+      mode={isLearner ? "learner" : "host"}
+      schoolId={user.school_id ?? undefined}
+      liveClassId={Number(id)}
+      leaveHref={isLearner ? "/dashboard" : "/dashboard/live-classes"}
+    />
   );
 }

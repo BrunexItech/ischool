@@ -2177,8 +2177,38 @@ export const api = {
   getHostToken: (token: string, schoolId: number, liveClassId: number) =>
     request<JoinToken>(`/schools/${schoolId}/live-classes/${liveClassId}/host-token`, { method: "POST" }, token),
 
-  joinLiveClassByCode: (joinCode: string, name: string) =>
-    request<JoinToken>(`/live-classes/join/${joinCode}?name=${encodeURIComponent(name)}`),
+  askToJoinLiveClass: (joinCode: string, name: string) =>
+    request<{ request_code: string; status: string }>(
+      `/live-classes/join/${joinCode}/request`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }
+    ),
+
+  liveClassWaitStatus: (joinCode: string, requestCode: string) =>
+    request<{ status: "pending" | "admitted" | "denied"; join: JoinToken | null }>(
+      `/live-classes/join/${joinCode}/status?request_code=${encodeURIComponent(requestCode)}`
+    ),
+
+  muteAllLiveClass: (token: string, schoolId: number, liveClassId: number) =>
+    request<{ affected: number }>(`/schools/${schoolId}/live-classes/${liveClassId}/mute-all`, { method: "POST" }, token),
+
+  setLiveSpeaking: (token: string, schoolId: number, liveClassId: number, identity: string, allowed: boolean) =>
+    request<{ affected: number }>(
+      `/schools/${schoolId}/live-classes/${liveClassId}/participants/${encodeURIComponent(identity)}/speaking`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allowed }) },
+      token
+    ),
+
+  removeFromLiveClass: (token: string, schoolId: number, liveClassId: number, identity: string) =>
+    request<{ affected: number }>(`/schools/${schoolId}/live-classes/${liveClassId}/participants/${encodeURIComponent(identity)}/remove`, { method: "POST" }, token),
+
+  listLiveRequests: (token: string, schoolId: number, liveClassId: number) =>
+    request<{ id: number; name: string; requested_at: string }[]>(`/schools/${schoolId}/live-classes/${liveClassId}/requests`, {}, token),
+
+  decideLiveRequest: (token: string, schoolId: number, liveClassId: number, requestId: number, decision: "admit" | "deny") =>
+    request<void>(`/schools/${schoolId}/live-classes/${liveClassId}/requests/${requestId}/${decision}`, { method: "POST" }, token),
+
+  listLiveJoins: (token: string, schoolId: number, liveClassId: number) =>
+    request<{ name: string; kind: string; joined_at: string }[]>(`/schools/${schoolId}/live-classes/${liveClassId}/joins`, {}, token),
 
   // --- Portal (parent/student self-service) ---
 
