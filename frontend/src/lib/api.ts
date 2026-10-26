@@ -436,6 +436,11 @@ export interface Activity {
   date: string;
   description: string | null;
   participant_count: number;
+  created_by: number | null;
+  created_by_name: string | null;
+  scope: "school" | "class" | "invited";
+  class_id: number | null;
+  class_name: string | null;
 }
 
 export interface ActivityParticipant {
@@ -642,16 +647,28 @@ export interface Insights {
   delivery: { taught: number; partly: number; not_taught: number; reasons: Record<string, number> };
 }
 
+export type AwardScope = "student" | "staff" | "class" | "school";
+
 export interface Award {
   id: number;
   school_id: number;
+  scope: AwardScope;
   student_id: number | null;
   staff_user_id: number | null;
+  class_id: number | null;
+  subject_id: number | null;
+  activity_id: number | null;
   recipient_name: string;
+  class_name: string | null;
+  subject_name: string | null;
   title: string;
   description: string | null;
   category: string | null;
+  term: string | null;
   date_awarded: string;
+  awarded_by: number | null;
+  awarded_by_name: string | null;
+  created_at: string;
 }
 
 export type ConductCategory = "disruption" | "disrespect" | "bullying" | "fighting" | "dishonesty" | "property_damage" | "dress_code" | "other";
@@ -2410,18 +2427,27 @@ export const api = {
 
   // --- Awards ---
 
-  listAwards: (token: string, schoolId: number) => request<Award[]>(`/schools/${schoolId}/awards`, {}, token),
+  listAwards: (token: string, schoolId: number, params: { student_id?: number; include_shared?: boolean } = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString();
+    return request<Award[]>(`/schools/${schoolId}/awards${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  getAward: (token: string, schoolId: number, awardId: number) => request<Award>(`/schools/${schoolId}/awards/${awardId}`, {}, token),
 
   createAward: (
     token: string,
     schoolId: number,
     payload: {
+      scope?: AwardScope;
       student_id?: number;
       staff_user_id?: number;
+      class_id?: number;
+      subject_id?: number;
       title: string;
       description?: string;
       category?: string;
       date_awarded: string;
+      notify_guardian?: boolean;
     }
   ) =>
     request<Award>(
@@ -2568,7 +2594,7 @@ export const api = {
   createActivity: (
     token: string,
     schoolId: number,
-    payload: { name: string; category?: string; date: string; description?: string }
+    payload: { name: string; category?: string; date: string; description?: string; scope?: "school" | "class" | "invited"; class_id?: number }
   ) =>
     request<Activity>(
       `/schools/${schoolId}/activities`,
@@ -2588,6 +2614,19 @@ export const api = {
 
   removeActivityParticipant: (token: string, schoolId: number, activityId: number, studentId: number) =>
     request<void>(`/schools/${schoolId}/activities/${activityId}/participants/${studentId}`, { method: "DELETE" }, token),
+
+  awardFromActivity: (
+    token: string,
+    schoolId: number,
+    activityId: number,
+    awards: { student_id: number; title: string; description?: string; category?: string }[],
+    notifyGuardian = true
+  ) =>
+    request<Award[]>(
+      `/schools/${schoolId}/activities/${activityId}/awards`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ awards, notify_guardian: notifyGuardian }) },
+      token
+    ),
 
   deleteActivity: (token: string, schoolId: number, activityId: number) =>
     request<void>(`/schools/${schoolId}/activities/${activityId}`, { method: "DELETE" }, token),

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -18,7 +19,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { api, ApiError, GradeLevel, LevelGroup, MyClass, SchoolClass, Student } from "@/lib/api";
+import { api, ApiError, Award, GradeLevel, LevelGroup, MyClass, SchoolClass, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Input } from "@/components/ui/input";
@@ -264,6 +265,43 @@ function PortalAccessPanel({ student, onUpdated }: { student: Student; onUpdated
   );
 }
 
+function AwardsList({ studentId }: { studentId: number }) {
+  const { token, user } = useAuth();
+  const [state, setState] = useState<{ id: number; awards: Award[] } | null>(null);
+
+  useEffect(() => {
+    if (!token || !user?.school_id) return;
+    let cancelled = false;
+    api
+      .listAwards(token, user.school_id, { student_id: studentId, include_shared: true })
+      .catch(() => [] as Award[])
+      .then((awards) => !cancelled && setState({ id: studentId, awards }));
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.school_id, studentId]);
+
+  if (!state || state.id !== studentId || state.awards.length === 0) return null;
+  return (
+    <div className="rounded-xl border p-4">
+      <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Awards</p>
+      <ul className="flex flex-col gap-2.5">
+        {state.awards.slice(0, 6).map((a) => (
+          <li key={a.id}>
+            <Link href={`/dashboard/awards/${a.id}/certificate`} className="block rounded-md outline-none hover:bg-accent/50 focus-visible:bg-accent/50">
+              <span className="block text-sm font-medium break-words">{a.title}</span>
+              <span className="block text-xs text-muted-foreground">
+                {a.scope === "class" ? "Whole class" : a.scope === "school" ? "Whole school" : "Individual"}
+                {a.term ? ` · ${a.term}` : ""} · {new Date(a.date_awarded + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function LearnerDrawer({
   student,
   className,
@@ -370,6 +408,7 @@ function LearnerDrawer({
                       </>
                     )}
                   </div>
+                  <AwardsList studentId={student.id} />
                 </>
               )}
             </div>
