@@ -55,6 +55,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TodayLessons } from "@/components/TodayLessons";
 
 function todayLabel(d: Date = new Date()) {
   return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -759,6 +760,8 @@ function TeacherDashboard() {
           href="/dashboard/my-classes"
         />
       </div>
+
+      <TodayLessons compact />
 
       <div className="grid items-start gap-4 xl:grid-cols-[1.3fr_1fr]">
         <Card>

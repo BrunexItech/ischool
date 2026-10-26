@@ -1242,10 +1242,84 @@ export interface LessonPlan {
   updated_at: string;
   entry_count: number;
   completed_count: number;
+  next_topic: string | null;
 }
 
 export interface LessonPlanDetail extends LessonPlan {
   entries: LessonPlanEntry[];
+}
+
+export type DeliveryStatus = "taught" | "partly" | "not_taught";
+export type NotTaughtReason = "teacher_absent" | "public_holiday" | "exams" | "school_event" | "other";
+
+export interface LessonDelivery {
+  id: number;
+  entry_id: number | null;
+  status: DeliveryStatus;
+  reason: string | null;
+  remark: string | null;
+  topic: string | null;
+}
+
+export interface DayLesson {
+  slot_id: number;
+  class_id: number;
+  class_name: string;
+  subject_id: number;
+  subject_name: string;
+  start_time: string;
+  end_time: string;
+  room: string | null;
+  plan: { plan_id: number; term: string; entry_count: number; completed_count: number } | null;
+  entry: LessonPlanEntry | null;
+  delivery: LessonDelivery | null;
+}
+
+export interface LessonDay {
+  date: string;
+  is_today: boolean;
+  holiday: string | null;
+  lessons: DayLesson[];
+}
+
+export interface RecordOfWorkRow {
+  id: number;
+  lesson_date: string;
+  start_time: string;
+  end_time: string;
+  teacher_user_id: number;
+  teacher_name: string;
+  class_name: string;
+  subject_name: string;
+  topic: string | null;
+  status: DeliveryStatus;
+  reason: string | null;
+  remark: string | null;
+}
+
+export interface CoverageRow {
+  teacher_user_id: number | null;
+  teacher_name: string;
+  class_id: number;
+  class_name: string;
+  subject_id: number;
+  subject_name: string;
+  plan_id: number | null;
+  entry_count: number;
+  completed_count: number;
+  expected_covered: number | null;
+  taught: number;
+  partly: number;
+  not_taught: number;
+  reasons: Record<string, number>;
+  last_taught: string | null;
+}
+
+export interface Coverage {
+  term: string;
+  start_date: string | null;
+  end_date: string | null;
+  rows: CoverageRow[];
 }
 
 export type HomeworkSubmissionStatus = "not_submitted" | "submitted" | "reviewed";
@@ -2651,6 +2725,45 @@ export const api = {
 
   deleteLessonPlanEntry: (token: string, schoolId: number, planId: number, entryId: number) =>
     request<void>(`/schools/${schoolId}/lesson-plans/${planId}/entries/${entryId}`, { method: "DELETE" }, token),
+
+  reorderLessonPlanEntries: (token: string, schoolId: number, planId: number, entryIds: number[]) =>
+    request<LessonPlanDetail>(
+      `/schools/${schoolId}/lesson-plans/${planId}/entries/reorder`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entry_ids: entryIds }) },
+      token
+    ),
+
+  duplicateLessonPlan: (token: string, schoolId: number, planId: number, payload: { class_id: number; subject_id: number; term: string }) =>
+    request<LessonPlanDetail>(
+      `/schools/${schoolId}/lesson-plans/${planId}/duplicate`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  getLessonDay: (token: string, schoolId: number, date?: string) =>
+    request<LessonDay>(`/schools/${schoolId}/lessons/day${date ? `?date=${date}` : ""}`, {}, token),
+
+  markLesson: (
+    token: string,
+    schoolId: number,
+    payload: { timetable_slot_id: number; lesson_date: string; status: DeliveryStatus; reason?: NotTaughtReason; remark?: string; entry_id?: number }
+  ) =>
+    request<LessonDelivery>(
+      `/schools/${schoolId}/lessons/deliveries`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      token
+    ),
+
+  undoLessonMark: (token: string, schoolId: number, deliveryId: number) =>
+    request<void>(`/schools/${schoolId}/lessons/deliveries/${deliveryId}`, { method: "DELETE" }, token),
+
+  getRecordOfWork: (token: string, schoolId: number, params: { date_from?: string; date_to?: string; teacher_user_id?: number }) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString();
+    return request<RecordOfWorkRow[]>(`/schools/${schoolId}/lessons/deliveries${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  getLessonCoverage: (token: string, schoolId: number, term: string) =>
+    request<Coverage>(`/schools/${schoolId}/lessons/coverage?term=${encodeURIComponent(term)}`, {}, token),
 
   // --- Boarding ---
 
