@@ -50,6 +50,29 @@ function LoanTable({ loans, onReturn, empty }: { loans: LibLoan[]; onReturn?: (l
   );
 }
 
+function MyBookCards({ loans }: { loans: LibLoan[] }) {
+  if (loans.length === 0) return <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed bg-card px-4 py-14 text-center"><BookOpen className="size-6 text-muted-foreground" aria-hidden /><p className="font-medium">No books borrowed yet</p><p className="max-w-sm text-sm text-muted-foreground">Visit the Catalogue to find something to read, then ask the librarian to lend it.</p></div>;
+  const out = loans.filter((l) => l.active);
+  const back = loans.filter((l) => !l.active);
+  const card = (l: LibLoan) => (
+    <article key={l.id} className={`flex min-w-0 gap-4 rounded-2xl border bg-card p-4 shadow-xs ${l.overdue ? "border-red-200 dark:border-red-500/30" : ""}`}>
+      <div className={`flex h-24 w-16 shrink-0 flex-col items-center justify-center rounded-lg text-white shadow-sm ${l.overdue ? "bg-gradient-to-br from-red-700 to-red-500" : l.active ? "bg-gradient-to-br from-[#0f3d4a] to-[#0E7490]" : "bg-gradient-to-br from-slate-500 to-slate-400"}`} aria-hidden>
+        <BookOpen className="size-6" /><span className="mt-1 px-1 text-center text-[8px] leading-tight font-semibold uppercase opacity-80">{l.copy_number}</span>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
+        <div className="min-w-0"><p className="font-heading text-base leading-snug font-semibold break-words">{l.title}</p><p className="truncate text-sm text-muted-foreground">{l.author}</p><p className="truncate text-xs text-muted-foreground">Borrowed by {l.borrower_name}</p></div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">{!l.active ? <Pill tone="muted">Returned</Pill> : l.overdue ? <Pill tone="bad">{l.days_overdue} {l.days_overdue === 1 ? "day" : "days"} overdue</Pill> : <Pill tone="info">Due back {fmt(l.due_date)}</Pill>}</div>
+      </div>
+    </article>
+  );
+  return (
+    <div className="flex min-w-0 flex-col gap-5">
+      {out.length > 0 && <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{out.map(card)}</div>}
+      {back.length > 0 && <div className="flex flex-col gap-3"><h2 className="font-heading text-base font-semibold">Returned</h2><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{back.map(card)}</div></div>}
+    </div>
+  );
+}
+
 function ClassSets({ sets }: { sets: LibClassSet[] }) {
   if (sets.length === 0) return <p className="rounded-xl border border-dashed bg-card px-4 py-10 text-center text-sm text-muted-foreground">No teacher has borrowed books for a class.</p>;
   return (
@@ -467,7 +490,7 @@ export default function LibraryPage() {
           {loans ? <LoanTable loans={loans} onReturn={keeper ? takeBack : undefined} empty="No loans match." /> : <PageLoader />}
         </div>
       )}
-      {view === "mine" && (mine ? <LoanTable loans={mine} empty="You have not borrowed any books yet." /> : <PageLoader />)}
+      {view === "mine" && (mine ? <MyBookCards loans={mine} /> : <PageLoader />)}
       {!keeper && !overseer && !teacher && !learner && <p className="text-sm text-muted-foreground"><BookOpen className="mr-1 inline size-4" aria-hidden />Browse the catalogue above.</p>}
     </div>
   );

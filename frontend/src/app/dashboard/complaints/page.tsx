@@ -3,14 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MessageSquareWarning, Send } from "lucide-react";
+import { CheckCircle2, Clock, GraduationCap, MessageSquareWarning, School, Send, ShieldCheck } from "lucide-react";
 import { api, ApiError, Complaint, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,9 +23,9 @@ function RespondBox({ complaint, canRespond, onResponded }: { complaint: Complai
 
   if (complaint.status === "resolved") {
     return (
-      <div className="mt-2 rounded-lg bg-muted/50 p-3 text-sm">
-        <p className="text-xs font-medium text-muted-foreground">Response</p>
-        <p>{complaint.response}</p>
+      <div className="mt-3 flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
+        <CheckCircle2 className="mt-0.5 size-4.5 shrink-0 text-emerald-600" />
+        <div className="min-w-0"><p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Answered{complaint.responded_at ? ` · ${new Date(complaint.responded_at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : ""}</p><p className="break-words">{complaint.response}</p></div>
       </div>
     );
   }
@@ -116,80 +113,94 @@ export default function ComplaintsPage() {
 
   if (loading || dataLoading) return <PageLoader />;
 
+  const open = complaints.filter((c) => c.status !== "resolved").length;
+  const choices = [
+    { id: "class_teacher" as const, title: "Class teacher", note: "For day-to-day matters in the classroom", icon: GraduationCap },
+    { id: "principal" as const, title: "Principal", note: "For serious or school-wide concerns", icon: School },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Complaints" description={user?.role === "teacher" ? "Raise a concern with the principal, and answer concerns sent to you as a class teacher." : isRecipient ? "Concerns sent to you, and your replies." : "Raise a concern with the class teacher or the principal, and track the response."} />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f3d4a] via-[#0E7490] to-[#2aa6b8] p-5 text-white shadow-md sm:p-7">
+        <div className="pointer-events-none absolute -top-14 -right-10 size-52 rounded-full bg-white/10 blur-2xl" aria-hidden />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Complaints and concerns</h1>
+            <p className="mt-1 max-w-xl text-sm text-white/85">{user?.role === "teacher" ? "Raise a concern with the principal, and answer concerns sent to you as a class teacher." : isRecipient ? "Concerns sent to you, and your answers to them." : "Tell the school what worries you. Every message is read, and you will see the answer here."}</p>
+          </div>
+          <div className="flex gap-2.5">
+            <div className="rounded-2xl bg-white/15 px-4 py-2.5 text-center backdrop-blur-sm"><p className="font-heading text-xl font-semibold tabular-nums">{open}</p><p className="text-[11px] tracking-wide text-white/75 uppercase">Waiting</p></div>
+            <div className="rounded-2xl bg-white/15 px-4 py-2.5 text-center backdrop-blur-sm"><p className="font-heading text-xl font-semibold tabular-nums">{complaints.length - open}</p><p className="text-[11px] tracking-wide text-white/75 uppercase">Answered</p></div>
+          </div>
+        </div>
+      </div>
 
       <DepartmentPulse dept="complaints" />
 
-      {canRaise && (
-        <Card>
-          <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label>Send to</Label>
-                  {user?.role === "teacher" ? (
-                    <p className="flex h-9 items-center rounded-lg border bg-muted/40 px-3 text-sm">Principal</p>
-                  ) : (
-                  <Select value={form.audience} onValueChange={(v) => v && setForm((f) => ({ ...f, audience: v as "class_teacher" | "principal" }))}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="class_teacher">Class teacher</SelectItem>
-                      <SelectItem value="principal">Principal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  )}
-                </div>
-                {user?.role === "parent" && audience === "class_teacher" && (
-                  <div className="grid gap-1.5">
-                    <Label>Child</Label>
-                    <Select value={form.student_id} onValueChange={(v) => v && setForm((f) => ({ ...f, student_id: v }))}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Choose a child" /></SelectTrigger>
-                      <SelectContent>
-                        {children.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.first_name} {c.last_name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
+      <div className={`grid min-w-0 gap-6 ${canRaise ? "lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]" : ""}`}>
+        {canRaise && (
+          <form onSubmit={handleSubmit} className="flex h-fit min-w-0 flex-col gap-4 rounded-2xl border bg-card p-4 shadow-xs sm:p-5 lg:sticky lg:top-4">
+            <div><h2 className="font-heading text-lg font-semibold">Raise a concern</h2><p className="text-sm text-muted-foreground">Be clear and kind. Include dates and names where you can.</p></div>
+            {user?.role === "teacher" ? (
+              <p className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2.5 text-sm"><School className="size-4 text-muted-foreground" /> This goes to the principal.</p>
+            ) : (
+              <fieldset className="grid gap-2">
+                <legend className="mb-1 text-sm font-medium">Who should read it?</legend>
+                {choices.map((c) => {
+                  const on = audience === c.id;
+                  return (
+                    <label key={c.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${on ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "hover:bg-accent/50"}`}>
+                      <input type="radio" name="audience" className="sr-only" checked={on} onChange={() => setForm((f) => ({ ...f, audience: c.id }))} />
+                      <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}><c.icon className="size-5" /></span>
+                      <span className="min-w-0"><span className="block font-medium">{c.title}</span><span className="block text-xs text-muted-foreground">{c.note}</span></span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+            )}
+            {user?.role === "parent" && audience === "class_teacher" && (
               <div className="grid gap-1.5">
-                <Label>Subject</Label>
-                <Input required value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} />
+                <Label>Which child is this about?</Label>
+                <Select value={form.student_id} onValueChange={(v) => v && setForm((f) => ({ ...f, student_id: v }))}>
+                  <SelectTrigger className="h-11 w-full"><SelectValue placeholder="Choose a child" /></SelectTrigger>
+                  <SelectContent>{children.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.first_name} {c.last_name}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
-              <div className="grid gap-1.5">
-                <Label>Message</Label>
-                <Textarea required rows={3} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} />
-              </div>
-              <Button type="submit" disabled={submitting} className="w-fit">
-                {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Sending..." : "Send"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+            )}
+            <div className="grid gap-1.5"><Label>Subject</Label><Input required className="h-11" placeholder="In a few words" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} /></div>
+            <div className="grid gap-1.5"><Label>Message</Label><Textarea required rows={4} placeholder="Tell us what happened and what you would like us to do" value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} /></div>
+            <Button type="submit" disabled={submitting} className="h-11 w-full gap-2">
+              {submitting ? <Spinner size={16} className="text-current" /> : <Send />} {submitting ? "Sending..." : "Send to the school"}
+            </Button>
+            <p className="flex items-start gap-2 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 size-3.5 shrink-0" /> Only the person you choose and school leadership can read this.</p>
+          </form>
+        )}
 
-      <div className="flex flex-col gap-3">
-        {complaints.map((c) => (
-          <Card key={c.id}>
-            <CardContent className="pt-6">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <MessageSquareWarning className="size-4 text-muted-foreground" />
-                  <p className="font-medium">{c.subject}</p>
+        <section className="flex min-w-0 flex-col gap-3" aria-label="Concerns">
+          <h2 className="font-heading text-lg font-semibold">{isRecipient ? "Concerns" : "Your concerns"}</h2>
+          {complaints.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed bg-muted/20 px-6 py-12 text-center">
+              <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"><MessageSquareWarning className="size-5" /></span>
+              <p className="font-medium">Nothing here yet</p>
+              <p className="max-w-sm text-sm text-muted-foreground">{canRaise ? "When you raise a concern it appears here, with the school's answer once it comes." : "Concerns sent to you will appear here."}</p>
+            </div>
+          ) : complaints.map((c) => {
+            const done = c.status === "resolved";
+            return (
+              <article key={c.id} className={`min-w-0 rounded-2xl border bg-card p-4 shadow-xs sm:p-5 ${done ? "" : "border-l-4 border-l-amber-400"}`}>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <h3 className="min-w-0 flex-1 font-heading text-base font-semibold break-words">{c.subject}</h3>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${done ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"}`}>{done ? <CheckCircle2 className="size-3" /> : <Clock className="size-3" />} {done ? "Answered" : "Waiting for an answer"}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="capitalize">{c.audience.replace("_", " ")}</Badge>
-                  <Badge variant={c.status === "resolved" ? "secondary" : "outline"} className="capitalize">{c.status}</Badge>
-                </div>
-              </div>
-              {isRecipient && <p className="mt-1 text-xs text-muted-foreground">{c.raised_by === user?.id ? "Raised by you" : `From ${c.raised_by_name} (${c.raised_by_role})`} · {new Date(c.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>}
-              <p className="mt-2 text-sm">{c.message}</p>
-              <RespondBox complaint={c} canRespond={isRecipient && c.raised_by !== user?.id} onResponded={(u) => setComplaints((all) => all.map((x) => (x.id === u.id ? u : x)))} />
-            </CardContent>
-          </Card>
-        ))}
-        {complaints.length === 0 && <p className="text-sm text-muted-foreground">No complaints yet.</p>}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  To {c.audience === "principal" ? "the principal" : "the class teacher"}{isRecipient ? ` · ${c.raised_by === user?.id ? "Raised by you" : `From ${c.raised_by_name} (${c.raised_by_role})`}` : ""} · {new Date(c.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+                <p className="mt-3 text-sm break-words whitespace-pre-line">{c.message}</p>
+                <RespondBox complaint={c} canRespond={isRecipient && c.raised_by !== user?.id} onResponded={(u) => setComplaints((all) => all.map((x) => (x.id === u.id ? u : x)))} />
+              </article>
+            );
+          })}
+        </section>
       </div>
     </div>
   );
