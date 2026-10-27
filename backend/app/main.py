@@ -70,6 +70,7 @@ from app.routers import (
     supervisors,
     teaching,
     timetable,
+    transport_runs,
     transport,
     trip,
 )
@@ -132,6 +133,7 @@ app.include_router(payroll.router)
 app.include_router(asset.router)
 app.include_router(timetable.router)
 app.include_router(approvals.router)
+app.include_router(transport_runs.router)
 app.include_router(staff_attendance.router)
 app.include_router(supervisors.router)
 app.include_router(homework.router)

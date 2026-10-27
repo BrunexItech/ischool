@@ -27,7 +27,7 @@ export default function StaffPage() {
     email: "",
     full_name: "",
     password: "",
-    role: "teacher" as "teacher" | "staff" | "security" | "boarding_staff" | "transport_staff" | "bursar" | "secretary",
+    role: "teacher" as "teacher" | "staff" | "security" | "boarding_staff" | "transport_staff" | "transport_attendant" | "librarian" | "store_keeper" | "accountant" | "procurement_officer" | "bursar" | "secretary",
     staff_number: "",
     department: "",
     phone: "",
@@ -131,6 +131,11 @@ export default function StaffPage() {
                   <SelectItem value="security">Security</SelectItem>
                   <SelectItem value="boarding_staff">Boarding / Matron</SelectItem>
                   <SelectItem value="transport_staff">Transport</SelectItem>
+                  <SelectItem value="transport_attendant">Transport attendant (rides with the driver)</SelectItem>
+                  <SelectItem value="librarian">Librarian</SelectItem>
+                  <SelectItem value="store_keeper">Store keeper</SelectItem>
+                  <SelectItem value="accountant">Accountant</SelectItem>
+                  <SelectItem value="procurement_officer">Procurement officer</SelectItem>
                   <SelectItem value="bursar">Bursar</SelectItem>
                   <SelectItem value="secretary">Secretary (head&apos;s office)</SelectItem>
                 </SelectContent>

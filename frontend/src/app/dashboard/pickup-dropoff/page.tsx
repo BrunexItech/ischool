@@ -31,7 +31,8 @@ export default function PickupDropoffPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && !["head_of_institution", "teacher", "staff", "super_admin", "security", "group_principal"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && ["head_of_institution", "group_principal"].includes(user.role)) router.replace("/dashboard/transport");
+    else if (!loading && user && !["teacher", "staff", "super_admin", "security"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {

@@ -14,7 +14,7 @@ from app.schemas.payroll import PayRunCreate, PayRunOut, PayrollProfileCreate, P
 router = APIRouter(prefix="/schools/{school_id}/payroll", tags=["payroll"])
 
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
-PAYROLL_ELIGIBLE_ROLES = (UserRole.TEACHER, UserRole.STAFF, UserRole.HEAD_OF_INSTITUTION, UserRole.SECRETARY)
+PAYROLL_ELIGIBLE_ROLES = (UserRole.TEACHER, UserRole.STAFF, UserRole.HEAD_OF_INSTITUTION, UserRole.SECRETARY, UserRole.TRANSPORT_ATTENDANT, UserRole.LIBRARIAN, UserRole.STORE_KEEPER, UserRole.ACCOUNTANT, UserRole.PROCUREMENT_OFFICER)
 
 TEACHING_SALARY_CODE = "5010"
 NON_TEACHING_SALARY_CODE = "5020"

@@ -2,6 +2,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
+from app.schemas.transport import RunSummary
+
 
 class ClassCard(BaseModel):
     id: int
@@ -315,3 +317,56 @@ class PerformanceOverview(BaseModel):
     school_average: float | None
     classes: list[ClassPerformance]
     top_learners: list[TopLearner]
+
+
+class TransportEventOut(BaseModel):
+    at: datetime
+    by: str
+    via: str                 # bus | gate | parent
+    note: str | None
+
+
+class TransportLearner(BaseModel):
+    student_id: int
+    name: str
+    admission_number: str
+    bus_rider: bool
+    arrival: TransportEventOut | None
+    departure: TransportEventOut | None
+    on_route: list[TransportEventOut]
+
+
+class TransportClass(BaseModel):
+    class_id: int
+    class_name: str
+    level: str
+    learners: int
+    arrived: int
+    left: int
+    bus_riders: int
+    rows: list[TransportLearner]
+
+
+class TransportSummary(BaseModel):
+    learners: int
+    arrived: int
+    left: int
+    bus_riders: int
+    runs_total: int
+    runs_completed: int
+    runs_in_progress: int
+
+
+class FleetAlert(BaseModel):
+    vehicle: str
+    text: str
+    urgent: bool
+
+
+class TransportOverview(BaseModel):
+    date: date
+    school_day: bool
+    summary: TransportSummary
+    runs: list[RunSummary]
+    fleet_alerts: list[FleetAlert]
+    classes: list[TransportClass]

@@ -289,6 +289,7 @@ def report_pickup_dropoff(
         event_type=payload.event_type,
         person_name=current_user.full_name,
         notes=payload.notes,
+        source="parent",
         occurred_at=datetime.now(timezone.utc),
     )
     db.add(log)

@@ -11,6 +11,11 @@ const STAFF_ROLES: UserRole[] = [
   "security",
   "boarding_staff",
   "transport_staff",
+  "transport_attendant",
+  "librarian",
+  "store_keeper",
+  "accountant",
+  "procurement_officer",
   "bursar",
   "secretary",
 ];

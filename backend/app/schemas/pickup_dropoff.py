@@ -30,3 +30,5 @@ class PickupDropoffOut(BaseModel):
     person_name: str
     notes: str | None
     occurred_at: datetime
+    source: str = "gate"
+    at_school: bool = True

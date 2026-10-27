@@ -41,6 +41,8 @@ VIEW_ROLES = (
     UserRole.BURSAR,
     UserRole.GROUP_PRINCIPAL,
     UserRole.SECRETARY,
+    UserRole.TRANSPORT_ATTENDANT,
+    UserRole.LIBRARIAN,
 )
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 # A supervisor may register staff in a school they're linked to (their one
@@ -63,6 +65,11 @@ STAFF_CREATABLE_ROLES = (
     UserRole.TRANSPORT_STAFF,
     UserRole.BURSAR,
     UserRole.SECRETARY,
+    UserRole.TRANSPORT_ATTENDANT,
+    UserRole.LIBRARIAN,
+    UserRole.STORE_KEEPER,
+    UserRole.ACCOUNTANT,
+    UserRole.PROCUREMENT_OFFICER,
 )
 
 

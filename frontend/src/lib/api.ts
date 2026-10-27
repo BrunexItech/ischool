@@ -10,6 +10,11 @@ export type UserRole =
   | "security"
   | "boarding_staff"
   | "transport_staff"
+  | "transport_attendant"
+  | "librarian"
+  | "store_keeper"
+  | "accountant"
+  | "procurement_officer"
   | "bursar"
   | "secretary"
   | "group_principal";
@@ -532,6 +537,91 @@ export interface Vehicle {
   driver_name: string;
   driver_phone: string;
   is_active: boolean;
+  vehicle_type?: string;
+  make_model?: string | null;
+  insurance_expiry?: string | null;
+  inspection_expiry?: string | null;
+  next_service_date?: string | null;
+  attendant_user_id?: number | null;
+  attendant_name?: string | null;
+  notes?: string | null;
+  assigned_learners?: number;
+}
+
+export interface RunSummary {
+  route_id: number;
+  route_name: string;
+  direction: "morning" | "afternoon";
+  vehicle_registration: string | null;
+  driver_name: string | null;
+  attendant_name: string | null;
+  run_id: number | null;
+  status: "not_started" | "in_progress" | "completed";
+  expected: number;
+  pending: number;
+  boarded: number;
+  dropped: number;
+  absent: number;
+  started_at: string | null;
+  completed_at: string | null;
+  due_time: string | null;
+}
+
+export interface ManifestRow {
+  student_id: number;
+  name: string;
+  class_name: string | null;
+  admission_number: string;
+  stop_name: string | null;
+  stop_time: string | null;
+  guardian_phone: string | null;
+  status: "pending" | "boarded" | "dropped" | "absent";
+  boarded_at: string | null;
+  dropped_at: string | null;
+  handed_to: string | null;
+  note: string | null;
+}
+
+export interface RunDetail {
+  summary: RunSummary;
+  rows: ManifestRow[];
+}
+
+export interface TransportEvent {
+  at: string;
+  by: string;
+  via: "bus" | "gate" | "parent";
+  note: string | null;
+}
+
+export interface TransportLearner {
+  student_id: number;
+  name: string;
+  admission_number: string;
+  bus_rider: boolean;
+  arrival: TransportEvent | null;
+  departure: TransportEvent | null;
+  on_route: TransportEvent[];
+}
+
+export interface TransportClassRow {
+  class_id: number;
+  class_name: string;
+  level: string;
+  learners: number;
+  arrived: number;
+  left: number;
+  bus_riders: number;
+  rows: TransportLearner[];
+}
+
+export interface TransportOverview {
+  date: string;
+  school_day: boolean;
+  summary: { learners: number; arrived: number; left: number; bus_riders: number; runs_total: number; runs_completed: number; runs_in_progress: number };
+  runs: RunSummary[];
+  fleet_alerts: { vehicle: string; text: string; urgent: boolean }[];
+  classes: TransportClassRow[];
 }
 
 export interface RouteStop {
@@ -548,6 +638,9 @@ export interface TransportRoute {
   vehicle_id: number | null;
   name: string;
   description: string | null;
+  school_arrival_time?: string | null;
+  afternoon_departure_time?: string | null;
+  learners?: number;
   stops: RouteStop[];
 }
 
@@ -2020,7 +2113,7 @@ export const api = {
       email: string;
       full_name: string;
       password: string;
-      role: "teacher" | "staff" | "security" | "boarding_staff" | "transport_staff" | "bursar" | "secretary";
+      role: "teacher" | "staff" | "security" | "boarding_staff" | "transport_staff" | "transport_attendant" | "librarian" | "store_keeper" | "accountant" | "procurement_officer" | "bursar" | "secretary";
       staff_number: string;
       department?: string;
       phone?: string;
@@ -2734,7 +2827,7 @@ export const api = {
   createVehicle: (
     token: string,
     schoolId: number,
-    payload: { registration_number: string; capacity: number; driver_name: string; driver_phone: string }
+    payload: { registration_number: string; capacity: number; driver_name: string; driver_phone: string; vehicle_type?: string; make_model?: string; insurance_expiry?: string; inspection_expiry?: string; next_service_date?: string; attendant_user_id?: number }
   ) =>
     request<Vehicle>(
       `/schools/${schoolId}/transport/vehicles`,
@@ -2745,10 +2838,27 @@ export const api = {
   listTransportRoutes: (token: string, schoolId: number) =>
     request<TransportRoute[]>(`/schools/${schoolId}/transport/routes`, {}, token),
 
+  updateVehicle: (token: string, schoolId: number, id: number, body: Partial<Vehicle>) =>
+    request<Vehicle>(`/schools/${schoolId}/transport/vehicles/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  listAttendants: (token: string, schoolId: number) => request<{ user_id: number; full_name: string }[]>(`/schools/${schoolId}/transport/attendants`, {}, token),
+  listRuns: (token: string, schoolId: number, on?: string) => request<RunSummary[]>(`/schools/${schoolId}/transport/runs${on ? `?on=${on}` : ""}`, {}, token),
+  startRun: (token: string, schoolId: number, routeId: number, direction: string) =>
+    request<RunDetail>(`/schools/${schoolId}/transport/runs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ route_id: routeId, direction }) }, token),
+  getRun: (token: string, schoolId: number, runId: number) => request<RunDetail>(`/schools/${schoolId}/transport/runs/${runId}`, {}, token),
+  markRunStudent: (token: string, schoolId: number, runId: number, studentId: number, body: { status: string; handed_to?: string; note?: string }) =>
+    request<RunDetail>(`/schools/${schoolId}/transport/runs/${runId}/students/${studentId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  completeRun: (token: string, schoolId: number, runId: number, note?: string) =>
+    request<RunDetail>(`/schools/${schoolId}/transport/runs/${runId}/complete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: note || null }) }, token),
+  getTransportOverview: (token: string, schoolId: number, q: { on?: string; class_id?: number } = {}) => {
+    const p = new URLSearchParams();
+    if (q.on) p.set("on", q.on);
+    if (q.class_id) p.set("class_id", String(q.class_id));
+    return request<TransportOverview>(`/schools/${schoolId}/oversight/transport?${p}`, {}, token);
+  },
   createTransportRoute: (
     token: string,
     schoolId: number,
-    payload: { name: string; description?: string; vehicle_id?: number }
+    payload: { name: string; description?: string; vehicle_id?: number; school_arrival_time?: string; afternoon_departure_time?: string }
   ) =>
     request<TransportRoute>(
       `/schools/${schoolId}/transport/routes`,

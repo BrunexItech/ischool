@@ -81,7 +81,7 @@ const NAV_SECTIONS = [
   {
     label: null,
     items: [
-      { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "group_principal", "secretary"] },
+      { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar", "group_principal", "secretary"] },
       { href: "/dashboard/reports", label: "Weekly Report", icon: FileBarChart, roles: ["head_of_institution", "group_principal"] },
     ],
   },
@@ -118,14 +118,14 @@ const NAV_SECTIONS = [
   {
     label: "Operations",
     items: [
-      { href: "/dashboard/calendar", label: "Calendar", icon: CalendarDays, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "group_principal", "secretary"] },
-      { href: "/dashboard/staff-attendance", label: "Staff Attendance", icon: UserCheck, roles: ["head_of_institution", "teacher", "staff", "security", "boarding_staff", "transport_staff", "bursar", "group_principal", "secretary"] },
+      { href: "/dashboard/calendar", label: "Calendar", icon: CalendarDays, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar", "group_principal", "secretary"] },
+      { href: "/dashboard/staff-attendance", label: "Staff Attendance", icon: UserCheck, roles: ["head_of_institution", "teacher", "staff", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar", "group_principal", "secretary"] },
       { href: "/dashboard/boarding", label: "Boarding", icon: BedDouble, roles: ["head_of_institution", "staff", "boarding_staff", "group_principal"] },
       { href: "/dashboard/security", label: "Security", icon: ShieldCheck, roles: ["head_of_institution", "staff", "security", "group_principal"] },
-      { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["head_of_institution", "staff", "transport_staff", "group_principal"] },
+      { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["head_of_institution", "staff", "transport_staff", "transport_attendant", "group_principal"] },
       { href: "/dashboard/trips", label: "Trips", icon: Map, roles: ["head_of_institution", "teacher", "staff", "transport_staff", "group_principal", "secretary"] },
       { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["head_of_institution", "staff", "group_principal", "secretary"] },
-      { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["head_of_institution", "staff", "security", "group_principal"] },
+      { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["staff", "security"] },
       { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["head_of_institution", "teacher", "staff", "group_principal", "secretary"] },
     ],
   },
@@ -147,7 +147,7 @@ const NAV_SECTIONS = [
   {
     label: "Communication",
     items: [
-      { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "group_principal", "secretary"] },
+      { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar", "group_principal", "secretary"] },
       { href: "/dashboard/complaints", label: "Complaints", icon: MessageSquareWarning, roles: ["head_of_institution", "teacher", "student", "parent", "super_admin", "group_principal"] },
       { href: "/dashboard/communication-settings", label: "Communication Settings", icon: MessageSquare, roles: ["head_of_institution", "group_principal"] },
     ],

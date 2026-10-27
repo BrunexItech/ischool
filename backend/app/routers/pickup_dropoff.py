@@ -10,8 +10,11 @@ from app.schemas.pickup_dropoff import PickupDropoffCreate, PickupDropoffOut
 
 router = APIRouter(prefix="/schools/{school_id}/students/{student_id}/pickup-dropoff", tags=["pickup-dropoff"])
 
-LOG_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF, UserRole.SECURITY)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+# Recording who collects a child is gate work. The head oversees it (see the
+# transport overview) but does not do it.
+LOG_ROLES = (UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.SECURITY)
+VIEW_ROLES = LOG_ROLES + (UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN,)
 
 
 def _get_student(db: Session, school_id: int, student_id: int) -> Student:
@@ -24,7 +27,7 @@ def _get_student(db: Session, school_id: int, student_id: int) -> Student:
 @router.get(
     "",
     response_model=list[PickupDropoffOut],
-    dependencies=[Depends(require_roles(*LOG_ROLES)), Depends(require_feature("pickup_dropoff"))],
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("pickup_dropoff"))],
 )
 def list_pickup_dropoff(
     school_id: int, student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
