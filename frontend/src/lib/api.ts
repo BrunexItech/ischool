@@ -710,6 +710,116 @@ export interface Insights {
 
 export type AwardScope = "student" | "staff" | "class" | "school";
 
+export interface ClassCard {
+  id: number;
+  name: string;
+  grade_code: string | null;
+  grade_name: string | null;
+  level: string;
+  homeroom_teacher_id: number | null;
+  homeroom_teacher_name: string | null;
+  learners: number;
+  teachers: number;
+  subjects: number;
+  register_today: "taken" | "missing" | "not_a_school_day";
+  attendance_rate: number | null;
+  attendance_date: string | null;
+  average: number | null;
+  topics_covered: number;
+  topics_total: number;
+  homework_this_week: number;
+  open_conduct: number;
+}
+
+export interface ClassDetail {
+  card: ClassCard;
+  term: string | null;
+  teacher_rows: { subject_id: number; subject: string; teacher_id: number | null; teacher: string | null; topics_covered: number; topics_total: number; homework_this_week: number; last_taught: string | null }[];
+  learners_list: { id: number; name: string; admission_number: string; attendance_rate: number | null; average: number | null }[];
+  attendance_days: { date: string; rate: number; marked: number }[];
+  subject_averages: { subject: string; average: number }[];
+  homework: { id: number; title: string; subject: string; due_date: string; given_on_board: boolean; teacher: string | null }[];
+  conduct: { id: number; student_name: string; category: string; status: string; incident_date: string }[];
+  boys: number;
+  girls: number;
+}
+
+export interface TeacherCard {
+  user_id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  staff_number: string | null;
+  tsc_number: string | null;
+  department: string | null;
+  categories: string[];
+  classes: string[];
+  class_teacher_of: string[];
+  subjects: string[];
+  today: StaffDayStatus | null;
+  topics_covered: number;
+  topics_total: number;
+  topics_expected: number | null;
+  lessons_marked_week: number;
+  lessons_scheduled_week: number;
+  homework_week: number;
+  plans: number;
+}
+
+export interface HomeworkGrid {
+  week_start: string;
+  days: string[];
+  rows: { class_id: number; class_name: string; subject_id: number; subject: string; teacher: string | null; cells: { date: string; status: "given" | "board" | "none" | "missing" | "upcoming" | "no_lesson"; count: number; titles: string[] }[] }[];
+  summary: { given: number; board: number; none: number; missing: number; expected: number };
+}
+
+export interface AttendanceOversight {
+  date: string;
+  school_day: boolean;
+  holiday: string | null;
+  classes_total: number;
+  classes_taken: number;
+  school_rate: number | null;
+  learners_marked: number;
+  rows: {
+    class_id: number;
+    class_name: string;
+    level: string;
+    learners: number;
+    register_status: "taken" | "missing" | "not_a_school_day";
+    taken_by: string | null;
+    present: number;
+    late: number;
+    excused: number;
+    absent: number;
+    rate: number | null;
+    absentees: { name: string; status: string; reason: string | null }[];
+  }[];
+}
+
+export interface HeadOverview {
+  pulse: {
+    school_day: boolean;
+    holiday: string | null;
+    learners: number;
+    teachers: number;
+    classes: number;
+    attendance_rate: number | null;
+    registers_taken: number;
+    registers_total: number;
+    staff_present: number;
+    staff_late: number;
+    staff_absent: number;
+    staff_on_leave: number;
+    staff_expected: number;
+    lessons_scheduled: number;
+    lessons_marked: number;
+    unmarked_yesterday: number;
+  };
+  inbox: { kind: string; title: string; detail: string; age_days: number; href: string }[];
+  inbox_counts: Record<string, number>;
+}
+
 export interface Award {
   id: number;
   school_id: number;
@@ -1453,6 +1563,7 @@ export interface Homework {
   attachment_url: string | null;
   due_date: string;
   allow_digital_submission: boolean;
+  given_on_board?: boolean;
   created_by: number | null;
   created_at: string;
 }
@@ -1892,6 +2003,27 @@ export const api = {
 
   getResultsAnalytics: (token: string, schoolId: number, term?: string) =>
     request<ResultsAnalytics>(`/schools/${schoolId}/analytics/results${term ? `?term=${encodeURIComponent(term)}` : ""}`, {}, token),
+
+  getClassCards: (token: string, schoolId: number) => request<ClassCard[]>(`/schools/${schoolId}/oversight/classes`, {}, token),
+  getClassDetail: (token: string, schoolId: number, classId: number) => request<ClassDetail>(`/schools/${schoolId}/oversight/classes/${classId}`, {}, token),
+  getTeacherCards: (token: string, schoolId: number) => request<TeacherCard[]>(`/schools/${schoolId}/oversight/teachers`, {}, token),
+  getHomeworkGrid: (token: string, schoolId: number, week?: string) => request<HomeworkGrid>(`/schools/${schoolId}/oversight/homework${week ? `?week=${week}` : ""}`, {}, token),
+  getAttendanceOversight: (token: string, schoolId: number, on?: string) => request<AttendanceOversight>(`/schools/${schoolId}/oversight/attendance${on ? `?on=${on}` : ""}`, {}, token),
+  getHeadOverview: (token: string, schoolId: number) => request<HeadOverview>(`/schools/${schoolId}/oversight/overview`, {}, token),
+
+  addStreams: (token: string, schoolId: number, gradeLevelId: number, streams: string[]) =>
+    request<{ created: string[]; skipped: string[] }>(
+      `/schools/${schoolId}/classes/streams`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade_level_id: gradeLevelId, streams }) },
+      token
+    ),
+
+  declareNoHomework: (token: string, schoolId: number, classId: number, subjectId: number) =>
+    request<void>(
+      `/schools/${schoolId}/homework/none`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ class_id: classId, subject_id: subjectId }) },
+      token
+    ),
 
   getInsights: (token: string, schoolId: number, params: { term: string; class_id?: number; subject_id?: number }) => {
     const qs = new URLSearchParams({ term: params.term });
@@ -2869,7 +3001,7 @@ export const api = {
   createHomework: (
     token: string,
     schoolId: number,
-    payload: { class_id: number; subject_id: number; title: string; homework_type?: string; instructions?: string; due_date: string; allow_digital_submission: boolean }
+    payload: { class_id: number; subject_id: number; title: string; homework_type?: string; instructions?: string; due_date: string; allow_digital_submission: boolean; given_on_board?: boolean }
   ) =>
     request<HomeworkListItem>(
       `/schools/${schoolId}/homework`,

@@ -25,7 +25,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { api, ApiError, GradeLevel, HomeworkListItem, MyClass, SchoolClass, Subject } from "@/lib/api";
+import { api, ApiError, GradeLevel, HomeworkGrid, HomeworkListItem, MyClass, SchoolClass, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { localDateStr } from "@/lib/dates";
 import { PageLoader, Spinner } from "@/components/Spinner";
@@ -244,35 +244,54 @@ function CreateHomeworkDialog({
   onOpenChange: (open: boolean) => void;
   classOptions: { id: number; name: string }[];
   subjectsFor: (classId: number | null) => { id: number; name: string }[];
-  onCreated: (item: HomeworkListItem) => void;
+  onCreated: (item: HomeworkListItem | null) => void;
 }) {
   const { user, token } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<"typed" | "board" | "none">("typed");
   const [form, setForm] = useState({ classId: "", subjectId: "", title: "", type: "Assignment", customType: "", instructions: "", dueDate: "", allowDigital: true });
 
   const subjectOptions = subjectsFor(form.classId ? Number(form.classId) : null);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !user?.school_id || !form.classId || !form.subjectId || !form.title || !form.dueDate) return;
+    if (!token || !user?.school_id || !form.classId || !form.subjectId) return;
+    if (mode === "none") {
+      setSubmitting(true);
+      try {
+        await api.declareNoHomework(token, user.school_id, Number(form.classId), Number(form.subjectId));
+        toast.success("Recorded: no homework today");
+        onOpenChange(false);
+        onCreated(null);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : "Could not record that");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+    const board = mode === "board";
+    const due = form.dueDate || (board ? addDaysStr(localDateStr(), 1) : "");
+    if (!form.title || !due) return;
     setSubmitting(true);
     try {
       let created = await api.createHomework(token, user.school_id, {
         class_id: Number(form.classId),
         subject_id: Number(form.subjectId),
         title: form.title,
-        homework_type: form.type === "Other" ? form.customType.trim() || "Other" : form.type,
+        homework_type: board ? "Assignment" : form.type === "Other" ? form.customType.trim() || "Other" : form.type,
         instructions: form.instructions || undefined,
-        due_date: form.dueDate,
-        allow_digital_submission: form.allowDigital,
+        due_date: due,
+        allow_digital_submission: board ? false : form.allowDigital,
+        given_on_board: board,
       });
-      if (file) created = await api.uploadHomeworkAttachment(token, user.school_id, created.id, file);
+      if (file && !board) created = await api.uploadHomeworkAttachment(token, user.school_id, created.id, file);
       onCreated(created);
       setForm({ classId: "", subjectId: "", title: "", type: "Assignment", customType: "", instructions: "", dueDate: "", allowDigital: true });
       setFile(null);
       onOpenChange(false);
-      toast.success("Homework created");
+      toast.success(board ? "Recorded: homework given on the board" : "Homework created");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to create homework");
     } finally {
@@ -284,9 +303,16 @@ function CreateHomeworkDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Create homework</DialogTitle>
+          <DialogTitle>Record homework</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
+          <div role="radiogroup" aria-label="What happened" className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+            {([["typed", "Typed in"], ["board", "On the board"], ["none", "None today"]] as const).map(([k, label]) => (
+              <button key={k} type="button" role="radio" aria-checked={mode === k} onClick={() => setMode(k)} className={`min-h-10 rounded-md px-1 text-sm font-medium transition-colors ${mode === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+            ))}
+          </div>
+          {mode === "board" && <p className="-mt-1 text-xs text-muted-foreground">Use this when you wrote the homework on the board or said it in class. It is recorded so school leadership can see it was given, even though it is not typed in as a full assignment.</p>}
+          {mode === "none" && <p className="-mt-1 text-xs text-muted-foreground">Records that this class had no homework in this subject today, so the day is not mistaken for one that was missed.</p>}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>Class</Label>
@@ -318,7 +344,7 @@ function CreateHomeworkDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-1.5">
+            {mode === "typed" && <div className="grid gap-1.5">
               <Label>Type</Label>
               <Select value={form.type} onValueChange={(v) => v && setForm((f) => ({ ...f, type: v }))}>
                 <SelectTrigger className="w-full">
@@ -332,26 +358,31 @@ function CreateHomeworkDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Due date</Label>
-              <Input required type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
-            </div>
-            {form.type === "Other" && (
+            </div>}
+            {mode !== "none" && <div className="grid gap-1.5">
+              <Label>{mode === "board" ? "Due date (optional)" : "Due date"}</Label>
+              <Input required={mode === "typed"} type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
+            </div>}
+            {mode === "typed" && form.type === "Other" && (
               <div className="grid gap-1.5 sm:col-span-2">
                 <Label>Custom type</Label>
                 <Input placeholder="e.g. Science fair" value={form.customType} onChange={(e) => setForm((f) => ({ ...f, customType: e.target.value }))} />
               </div>
             )}
           </div>
+          {mode !== "none" && (
           <div className="grid gap-1.5">
-            <Label>Title</Label>
-            <Input required placeholder="e.g. Read chapter 3 and answer the questions" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+            <Label>{mode === "board" ? "What was given" : "Title"}</Label>
+            <Input required placeholder={mode === "board" ? "e.g. Page 52, questions 1 to 5" : "e.g. Read chapter 3 and answer the questions"} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
           </div>
+          )}
+          {mode !== "none" && (
           <div className="grid gap-1.5">
             <Label>Instructions (optional)</Label>
-            <Textarea rows={3} value={form.instructions} onChange={(e) => setForm((f) => ({ ...f, instructions: e.target.value }))} />
+            <Textarea rows={mode === "board" ? 2 : 3} value={form.instructions} onChange={(e) => setForm((f) => ({ ...f, instructions: e.target.value }))} />
           </div>
+          )}
+          {mode === "typed" && (<>
           <div className="grid gap-1.5">
             <Label>Worksheet (optional): PDF or photo</Label>
             {file ? (
@@ -374,12 +405,13 @@ function CreateHomeworkDialog({
             <Switch checked={form.allowDigital} onCheckedChange={(v) => setForm((f) => ({ ...f, allowDigital: v }))} />
             <Label className="font-normal">Allow learners to submit a photo online. Otherwise it is checked in the exercise book at school.</Label>
           </div>
+          </>)}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Creating..." : "Create homework"}
+              {submitting && <Spinner size={16} className="text-current" />} {submitting ? "Saving..." : mode === "none" ? "Record: none today" : mode === "board" ? "Record homework" : "Create homework"}
             </Button>
           </div>
         </form>
@@ -475,7 +507,7 @@ function HomeworkCalendar({ rows, today }: { rows: Row[]; today: string }) {
   );
 }
 
-export default function HomeworkPage() {
+function HomeworkListView() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
   const schoolId = user?.school_id ?? null;
@@ -882,7 +914,7 @@ export default function HomeworkPage() {
                             </TableCell>
                             <TableCell className="text-sm">{r.subjectName}</TableCell>
                             <TableCell>
-                              <TypePill type={r.hw.homework_type} />
+                              <TypePill type={r.hw.homework_type} />{r.hw.given_on_board && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">On the board</span>}
                             </TableCell>
                             <TableCell>
                               <p className={`text-sm font-medium tabular-nums ${r.status === "overdue" ? "text-red-700 dark:text-red-400" : ""}`}>{due.date}</p>
@@ -923,7 +955,7 @@ export default function HomeworkPage() {
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground">{r.className}</span>
                           <span>{r.subjectName}</span>
-                          <TypePill type={r.hw.homework_type} />
+                          <TypePill type={r.hw.homework_type} />{r.hw.given_on_board && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">On the board</span>}
                           <span className={r.status === "overdue" ? "font-medium text-red-700 dark:text-red-400" : ""}>
                             Due {due.date} ({due.weekday})
                           </span>
@@ -980,7 +1012,7 @@ export default function HomeworkPage() {
           onOpenChange={setCreateOpen}
           classOptions={classOptions}
           subjectsFor={subjectsFor}
-          onCreated={(item) => setItems((all) => [item, ...all])}
+          onCreated={(item) => (item ? setItems((all) => [item, ...all]) : setReloadKey((k) => k + 1))}
         />
       )}
 
@@ -1002,6 +1034,147 @@ export default function HomeworkPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+
+const CELL: Record<string, { label: string; cls: string }> = {
+  given: { label: "Typed", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" },
+  board: { label: "Board", cls: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300" },
+  none: { label: "None", cls: "bg-muted text-muted-foreground" },
+  missing: { label: "Not recorded", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" },
+  upcoming: { label: "", cls: "border border-dashed text-muted-foreground" },
+  no_lesson: { label: "", cls: "" },
+};
+
+function HomeworkWeek() {
+  const { token, user } = useAuth();
+  const schoolId = user?.school_id ?? null;
+  const [week, setWeek] = useState<string | undefined>(undefined);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [data, setData] = useState<{ key: string; grid: HomeworkGrid | null } | null>(null);
+  const [search, setSearch] = useState("");
+  const [onlyMissing, setOnlyMissing] = useState(false);
+  const key = `${week ?? "now"}/${reloadKey}`;
+
+  useEffect(() => {
+    if (!token || !schoolId) return;
+    let cancelled = false;
+    api.getHomeworkGrid(token, schoolId, week).then((grid) => !cancelled && setData({ key, grid })).catch(() => !cancelled && setData({ key, grid: null }));
+    return () => {
+      cancelled = true;
+    };
+  }, [token, schoolId, week, key]);
+
+  const ready = data && data.key === key;
+  const grid = ready ? data.grid : null;
+  const q = search.trim().toLowerCase();
+  const rows = (grid?.rows ?? []).filter((r) => (!q || `${r.class_name} ${r.subject} ${r.teacher ?? ""}`.toLowerCase().includes(q)) && (!onlyMissing || r.cells.some((c) => c.status === "missing")));
+  const dayName = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric" });
+  const recorded = grid ? grid.summary.given + grid.summary.board + grid.summary.none : 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button variant="outline" size="icon" className="size-10" aria-label="Previous week" onClick={() => grid && setWeek(addDaysStr(grid.week_start, -7))}><ChevronLeft /></Button>
+        <p className="min-w-44 text-center text-sm font-medium">{grid ? `Week of ${new Date(grid.week_start + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long" })}` : "Loading..."}</p>
+        <Button variant="outline" size="icon" className="size-10" aria-label="Next week" disabled={!grid || addDaysStr(grid.week_start, 7) > localDateStr()} onClick={() => grid && setWeek(addDaysStr(grid.week_start, 7))}><ChevronRight /></Button>
+        {week && <Button variant="ghost" className="h-10" onClick={() => setWeek(undefined)}>This week</Button>}
+      </div>
+
+      {!ready ? (
+        <PageLoader />
+      ) : !grid ? (
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border bg-card px-4 py-12 text-center">
+          <AlertTriangle className="size-6 text-red-600" />
+          <p className="text-sm text-muted-foreground">We couldn&apos;t load the homework overview.</p>
+          <Button size="sm" variant="outline" onClick={() => setReloadKey((k) => k + 1)}><RotateCw /> Try again</Button>
+        </div>
+      ) : grid.rows.length === 0 ? (
+        <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">There are no timetabled lessons or subject allocations yet, so there is nothing to track.</p>
+      ) : (
+        <>
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Week summary">
+            {[
+              ["Lessons with homework recorded", `${recorded} of ${grid.summary.expected}`, "typed, on the board or none"],
+              ["Typed in", String(grid.summary.given), "full assignments"],
+              ["Given on the board", String(grid.summary.board), "written or said in class"],
+              ["No homework", String(grid.summary.none), "declared by the teacher"],
+              ["Not recorded", String(grid.summary.missing), "nothing entered for the day"],
+            ].map(([label, value, sub], i) => (
+              <div key={label} className={`rounded-xl border bg-card p-3.5 sm:p-4 ${i === 0 ? "col-span-2 lg:col-span-1" : ""}`}>
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <p className={`font-heading text-2xl font-semibold tabular-nums ${label === "Not recorded" && Number(value) > 0 ? "text-amber-700 dark:text-amber-400" : ""}`}>{value}</p>
+                <p className="text-xs text-muted-foreground">{sub}</p>
+              </div>
+            ))}
+          </section>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative sm:w-80">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search class, subject or teacher..." aria-label="Search" className="h-10 pl-8" />
+            </div>
+            <button type="button" aria-pressed={onlyMissing} onClick={() => setOnlyMissing((v) => !v)} className={`h-10 w-fit rounded-full border px-4 text-sm font-medium transition-colors ${onlyMissing ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}>Only rows with gaps</button>
+          </div>
+
+          <section className="overflow-hidden rounded-xl border bg-card">
+            <div className="hidden grid-cols-[minmax(0,1.6fr)_repeat(5,minmax(0,1fr))] gap-2 border-b bg-muted/50 px-5 py-2.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase md:grid">
+              <span>Class and subject</span>
+              {grid.days.map((d) => <span key={d} className="text-center">{dayName(d)}</span>)}
+            </div>
+            {rows.length === 0 ? (
+              <p className="px-4 py-12 text-center text-sm text-muted-foreground">Nothing matches.</p>
+            ) : (
+              <ul className="divide-y">
+                {rows.map((r) => (
+                  <li key={`${r.class_id}-${r.subject_id}`} className="grid gap-2 px-4 py-3 sm:px-5 md:grid-cols-[minmax(0,1.6fr)_repeat(5,minmax(0,1fr))] md:items-center">
+                    <div className="min-w-0">
+                      <p className="font-medium break-words">{r.subject} <span className="font-normal text-muted-foreground">· {r.class_name}</span></p>
+                      <p className="text-xs text-muted-foreground">{r.teacher ?? "No teacher"}</p>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1.5 md:contents">
+                      {r.cells.map((c) => (
+                        <div key={c.date} title={c.titles.join("; ") || undefined} className="flex flex-col items-stretch gap-1 md:items-center">
+                          <span className="text-center text-[10px] font-semibold tracking-wide text-muted-foreground uppercase md:hidden">{new Date(c.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" })}</span>
+                          <span className={`flex min-h-9 items-center justify-center rounded-md px-1 text-center text-[11px] leading-tight font-semibold ${CELL[c.status].cls}`}>
+                            {c.status === "no_lesson" ? <span className="text-muted-foreground/40">·</span> : c.status === "upcoming" ? "" : CELL[c.status].label}
+                            {(c.status === "given" || c.status === "board") && c.count > 1 ? ` ×${c.count}` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <p className="text-xs text-muted-foreground">A day is only expected when the subject is on that class&apos;s timetable. &ldquo;Board&rdquo; means the teacher recorded homework written on the board or said aloud.</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function HomeworkPage() {
+  const { user } = useAuth();
+  const isHead = user?.role === "head_of_institution" || user?.role === "group_principal" || user?.role === "super_admin";
+  const [choice, setChoice] = useState<"week" | "list" | null>(null);
+  if (!isHead) return <HomeworkListView />;
+  const view = choice ?? "week";
+  return (
+    <div className="flex flex-col gap-5 sm:gap-6">
+      <div>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Homework</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Whether homework is being given, class by class. Teachers record it; you can see it here.</p>
+      </div>
+      <div role="tablist" className="flex w-fit gap-1 rounded-lg bg-muted p-1">
+        {([["week", "This week"], ["list", "All homework"]] as const).map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setChoice(k)} className={`h-9 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+        ))}
+      </div>
+      {view === "week" ? <HomeworkWeek /> : <HomeworkListView />}
     </div>
   );
 }

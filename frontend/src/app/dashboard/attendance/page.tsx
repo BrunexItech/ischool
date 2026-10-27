@@ -4,7 +4,8 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AlertTriangle, CalendarCheck, Check, ChevronDown, ChevronLeft, ChevronRight, History, RotateCw, Save, Search } from "lucide-react";
-import { api, ApiError, AttendanceRecord, AttendanceStatus, Student } from "@/lib/api";
+import { api, ApiError, AttendanceOversight, AttendanceRecord, AttendanceStatus, Student } from "@/lib/api";
+import { ErrorBox, LEVEL_BAR, LEVEL_LABEL, PageHead, Pill } from "@/components/oversight";
 import { useAuth } from "@/lib/auth";
 import { addDaysStr, localDateStr } from "@/lib/dates";
 import { PageLoader, Spinner } from "@/components/Spinner";
@@ -516,10 +517,144 @@ function AttendanceView() {
   );
 }
 
+function AttendanceOversightView() {
+  const { user, token } = useAuth();
+  const schoolId = user?.school_id ?? null;
+  const [date, setDate] = useState(localDateStr());
+  const [reloadKey, setReloadKey] = useState(0);
+  const [data, setData] = useState<{ key: string; value: AttendanceOversight | null } | null>(null);
+  const [filter, setFilter] = useState<"all" | "missing" | "absent">("all");
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState<Set<number>>(new Set());
+  const key = `${date}/${reloadKey}`;
+
+  useEffect(() => {
+    if (!token || !schoolId) return;
+    let cancelled = false;
+    api.getAttendanceOversight(token, schoolId, date).then((value) => !cancelled && setData({ key, value })).catch(() => !cancelled && setData({ key, value: null }));
+    return () => {
+      cancelled = true;
+    };
+  }, [token, schoolId, date, key]);
+
+  const ready = data && data.key === key;
+  const v = ready ? data.value : null;
+  const isToday = date === localDateStr();
+  const q = search.trim().toLowerCase();
+  const rows = (v?.rows ?? []).filter((r) => (filter === "all" || (filter === "missing" ? r.register_status === "missing" : r.absent + r.late + r.excused > 0)) && (!q || r.class_name.toLowerCase().includes(q)));
+  const levels = ["pre_primary", "primary", "junior_school", "senior_school", "other"];
+  const groups = levels.map((l) => ({ level: l, items: rows.filter((r) => r.level === l) })).filter((g) => g.items.length > 0);
+
+  return (
+    <div className="flex flex-col gap-5 sm:gap-6">
+      <PageHead title="Attendance" subtitle="Which registers have been taken, by whom, and who is away. Class teachers take the registers; you see them here." />
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button type="button" variant="outline" size="icon" className="size-10" aria-label="Previous day" onClick={() => setDate((d) => addDaysStr(d, -1))}><ChevronLeft /></Button>
+        <Input type="date" value={date} max={localDateStr()} onChange={(e) => e.target.value && setDate(e.target.value)} className="h-10 w-44" />
+        <Button type="button" variant="outline" size="icon" className="size-10" aria-label="Next day" disabled={isToday} onClick={() => setDate((d) => addDaysStr(d, 1))}><ChevronRight /></Button>
+        {!isToday && <Button type="button" variant="ghost" className="h-10" onClick={() => setDate(localDateStr())}>Today</Button>}
+        <span className="ml-1 text-sm text-muted-foreground">{formatDate(date)}</span>
+      </div>
+
+      {!ready ? (
+        <PageLoader />
+      ) : !v ? (
+        <ErrorBox message="We couldn't load the attendance." onRetry={() => setReloadKey((k) => k + 1)} />
+      ) : !v.school_day && v.classes_taken === 0 ? (
+        <div className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">{v.holiday ? `${v.holiday} is a holiday on the school calendar.` : "This is not a school day."}</div>
+      ) : (
+        <>
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Summary">
+            {[
+              ["Registers taken", `${v.classes_taken} of ${v.classes_total}`, v.classes_taken === v.classes_total ? "Every class" : `${v.classes_total - v.classes_taken} still to take`],
+              ["Attendance rate", v.school_rate != null ? `${v.school_rate}%` : "—", "across registers taken"],
+              ["Learners marked", String(v.learners_marked), "in registers so far"],
+              ["Away or late", String(v.rows.reduce((n, r) => n + r.absent + r.late + r.excused, 0)), "absent, late or excused"],
+            ].map(([label, value, sub]) => (
+              <div key={label} className="rounded-xl border bg-card p-3.5 sm:p-4">
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <p className="font-heading text-2xl font-semibold tabular-nums">{value}</p>
+                <p className="text-xs text-muted-foreground">{sub}</p>
+              </div>
+            ))}
+          </section>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative sm:w-64">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a class..." aria-label="Search classes" className="h-10 pl-8" />
+            </div>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Show">
+              {([["all", "All classes"], ["missing", "Register not taken"], ["absent", "With absentees"]] as const).map(([k, label]) => (
+                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)} className={`h-9 rounded-full border px-3.5 text-sm font-medium transition-colors ${filter === k ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          {groups.length === 0 ? (
+            <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No classes match.</p>
+          ) : (
+            groups.map((g) => (
+              <section key={g.level} className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <span className={`h-5 w-1.5 rounded-full ${LEVEL_BAR[g.level]}`} aria-hidden />
+                  <h2 className="font-heading text-lg font-semibold">{LEVEL_LABEL[g.level]}</h2>
+                </div>
+                <ul className="overflow-hidden rounded-xl border bg-card divide-y">
+                  {g.items.map((r) => {
+                    const isOpen = open.has(r.class_id);
+                    const hasList = r.absentees.length > 0;
+                    return (
+                      <li key={r.class_id}>
+                        <button type="button" disabled={!hasList} aria-expanded={isOpen} onClick={() => setOpen((s) => { const n = new Set(s); if (n.has(r.class_id)) n.delete(r.class_id); else n.add(r.class_id); return n; })} className="grid w-full gap-x-4 gap-y-2 px-4 py-3 text-left outline-none transition-colors enabled:hover:bg-accent/40 focus-visible:bg-accent/40 sm:px-5 lg:grid-cols-[minmax(0,1.2fr)_9rem_minmax(0,1fr)_minmax(0,1.2fr)_1.5rem] lg:items-center">
+                          <span className="min-w-0"><span className="block font-medium break-words">{r.class_name}</span><span className="block text-xs text-muted-foreground">{r.learners} learners</span></span>
+                          <span>{r.register_status === "taken" ? <Pill tone="good">Register taken</Pill> : r.register_status === "missing" ? <Pill tone="warn">Not taken</Pill> : <Pill tone="muted">No school</Pill>}</span>
+                          <span className="text-xs text-muted-foreground">{r.register_status === "taken" ? `by ${r.taken_by ?? "a teacher"}` : "No register yet"}</span>
+                          {r.register_status === "taken" ? (
+                            <span>
+                              <span className="flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+                                {r.present > 0 && <span className="bg-emerald-500" style={{ width: `${(r.present / Math.max(1, r.present + r.late + r.excused + r.absent)) * 100}%` }} />}
+                                {r.late > 0 && <span className="bg-amber-400" style={{ width: `${(r.late / Math.max(1, r.present + r.late + r.excused + r.absent)) * 100}%` }} />}
+                                {r.excused > 0 && <span className="bg-sky-500" style={{ width: `${(r.excused / Math.max(1, r.present + r.late + r.excused + r.absent)) * 100}%` }} />}
+                                {r.absent > 0 && <span className="bg-red-500" style={{ width: `${(r.absent / Math.max(1, r.present + r.late + r.excused + r.absent)) * 100}%` }} />}
+                              </span>
+                              <span className="mt-1 block text-[11px] text-muted-foreground tabular-nums">{r.present} present · {r.late} late · {r.excused} excused · {r.absent} absent · <strong className="text-foreground">{r.rate}%</strong></span>
+                            </span>
+                          ) : <span />}
+                          <ChevronDown className={`hidden size-4 text-muted-foreground transition-transform lg:block ${isOpen ? "rotate-180" : ""} ${hasList ? "" : "opacity-0"}`} aria-hidden />
+                        </button>
+                        {isOpen && hasList && (
+                          <ul className="divide-y border-t bg-muted/20">
+                            {r.absentees.map((a, i) => (
+                              <li key={i} className="flex items-center justify-between gap-3 px-4 py-2 text-sm sm:px-5 lg:pl-8">
+                                <span className="min-w-0 break-words">{a.name}{a.reason ? <span className="text-muted-foreground"> · {a.reason}</span> : null}</span>
+                                <Pill tone={a.status === "absent" ? "bad" : a.status === "late" ? "warn" : "info"}>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</Pill>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))
+          )}
+        </>
+      )}
+
+      {schoolId && v && <HistorySection schoolId={schoolId} classes={v.rows.map((r) => ({ id: r.class_id, name: r.class_name }))} />}
+    </div>
+  );
+}
+
 export default function AttendancePage() {
+  const { user } = useAuth();
+  const isLeadership = user?.role === "head_of_institution" || user?.role === "group_principal";
   return (
     <Suspense fallback={<PageLoader />}>
-      <AttendanceView />
+      {isLeadership ? <AttendanceOversightView /> : <AttendanceView />}
     </Suspense>
   );
 }

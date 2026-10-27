@@ -140,6 +140,71 @@ function MarkDialog({
   );
 }
 
+function HomeworkQuick({ lesson, date, onClose }: { lesson: DayLesson; date: string; onClose: () => void }) {
+  const { token, user } = useAuth();
+  const [mode, setMode] = useState<"board" | "none">("board");
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !user?.school_id) return;
+    setSaving(true);
+    try {
+      if (mode === "none") {
+        await api.declareNoHomework(token, user.school_id, lesson.class_id, lesson.subject_id);
+        toast.success("Recorded: no homework today");
+      } else {
+        await api.createHomework(token, user.school_id, {
+          class_id: lesson.class_id,
+          subject_id: lesson.subject_id,
+          title: text.trim(),
+          homework_type: "Assignment",
+          due_date: addDaysStr(date, 1),
+          allow_digital_submission: false,
+          given_on_board: true,
+        });
+        toast.success("Recorded: homework given on the board");
+      }
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not save");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>Homework for {lesson.subject_name}, {lesson.class_name}</DialogTitle></DialogHeader>
+        <form onSubmit={save} className="flex flex-col gap-4">
+          <div role="radiogroup" aria-label="Homework" className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+            {([["board", "Given on the board"], ["none", "None today"]] as const).map(([k, label]) => (
+              <button key={k} type="button" role="radio" aria-checked={mode === k} onClick={() => setMode(k)} className={`min-h-10 rounded-md text-sm font-medium transition-colors ${mode === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+            ))}
+          </div>
+          {mode === "board" ? (
+            <div className="grid gap-1.5">
+              <Label>What was given</Label>
+              <Textarea rows={2} required autoFocus placeholder="e.g. Page 52, questions 1 to 5" value={text} onChange={(e) => setText(e.target.value)} />
+              <p className="text-xs text-muted-foreground">So school leadership can see homework was given, even though it is not typed in as a full assignment.</p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Records that this class had no homework in this subject today.</p>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <Link href="/dashboard/homework" className="text-sm font-medium text-primary hover:underline">Type a full assignment instead</Link>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+              <Button type="submit" disabled={saving || (mode === "board" && !text.trim())}>{saving && <Spinner size={16} className="text-current" />} Save</Button>
+            </div>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function LessonRow({
   lesson,
   date,
@@ -148,6 +213,7 @@ function LessonRow({
   onTaught,
   onOpen,
   onUndo,
+  onHomework,
 }: {
   lesson: DayLesson;
   date: string;
@@ -156,6 +222,7 @@ function LessonRow({
   onTaught: () => void;
   onOpen: (mode: "partly" | "not_taught" | "remark") => void;
   onUndo: () => void;
+  onHomework: () => void;
 }) {
   const d = lesson.delivery;
   const entry = lesson.entry;
@@ -234,6 +301,7 @@ function LessonRow({
             </Button>
           </>
         )}
+        <Button size="sm" variant="ghost" className="h-10 sm:h-8" onClick={onHomework}>Homework</Button>
       </div>
       <span className="sr-only">{date}</span>
     </li>
@@ -250,6 +318,7 @@ export function TodayLessons({ compact = false }: { compact?: boolean }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [busySlot, setBusySlot] = useState<number | null>(null);
   const [dialog, setDialog] = useState<{ lesson: DayLesson; date: string; mode: "partly" | "not_taught" | "remark" } | null>(null);
+  const [hwFor, setHwFor] = useState<{ lesson: DayLesson; date: string } | null>(null);
 
   useEffect(() => {
     if (!token || !schoolId) return;
@@ -349,6 +418,7 @@ export function TodayLessons({ compact = false }: { compact?: boolean }) {
                   onTaught={() => markTaught(l, today.date)}
                   onOpen={(mode) => setDialog({ lesson: l, date: today.date, mode })}
                   onUndo={() => undo(l)}
+                  onHomework={() => setHwFor({ lesson: l, date: today.date })}
                 />
               ))}
             </ul>
@@ -371,6 +441,7 @@ export function TodayLessons({ compact = false }: { compact?: boolean }) {
                     onTaught={() => markTaught(l, data.earlier!.date)}
                     onOpen={(mode) => setDialog({ lesson: l, date: data.earlier!.date, mode })}
                     onUndo={() => undo(l)}
+                    onHomework={() => setHwFor({ lesson: l, date: data.earlier!.date })}
                   />
                 ))}
               </ul>
@@ -379,6 +450,7 @@ export function TodayLessons({ compact = false }: { compact?: boolean }) {
         </>
       )}
 
+      {hwFor && <HomeworkQuick key={`${hwFor.lesson.slot_id}-${hwFor.date}`} lesson={hwFor.lesson} date={hwFor.date} onClose={() => setHwFor(null)} />}
       {dialog && <MarkDialog key={`${dialog.lesson.slot_id}-${dialog.date}-${dialog.mode}`} lesson={dialog.lesson} date={dialog.date} mode={dialog.mode} onClose={() => setDialog(null)} onDone={reload} />}
     </section>
   );
