@@ -124,3 +124,24 @@ def test_family_overview_and_class_name_and_result_subjects(client, db_session, 
     # a student gets their own card
     mine = client.get("/portal/overview", headers=_login(client, db_session.query(User).filter_by(id=student.user_id).first()))
     assert mine.status_code == 200 and len(mine.json()["children"]) == 1
+
+
+def test_parent_sees_exam_details_but_never_the_paper_or_questions(client, db_session, school):
+    from datetime import datetime, timezone
+
+    from app.models.exam import Exam
+
+    student, _, _ = _setup(db_session, school)
+    math = db_session.query(Subject).filter_by(school_id=school.id, name="Math").first()
+    exam = Exam(school_id=school.id, subject_id=math.id, class_id=student.class_id, title="Mid-term Math", exam_type="cat", term="Term 1", duration_minutes=40, is_published=True, paper_file_url="/files/paper.pdf", created_by=student.guardian_user_id)
+    db_session.add(exam)
+    db_session.commit()
+    guardian = db_session.query(User).filter_by(id=student.guardian_user_id).first()
+    kid = db_session.query(User).filter_by(id=student.user_id).first()
+
+    as_parent = client.get(f"/portal/students/{student.id}/exams", headers=_login(client, guardian)).json()
+    assert as_parent[0]["title"] == "Mid-term Math" and as_parent[0]["paper_file_url"] is None
+    assert client.post(f"/portal/students/{student.id}/exams/{exam.id}/start", headers=_login(client, guardian)).status_code == 403
+
+    as_student = client.get(f"/portal/students/{student.id}/exams", headers=_login(client, kid)).json()
+    assert as_student[0]["paper_file_url"] == "/files/paper.pdf"

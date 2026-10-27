@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { api, FamilyChildCard } from "@/lib/api";
+import { api, FamilyChildCard, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 /** Which child a parent is looking at. Remembered between visits and shared by the menu and the pages. */
@@ -51,7 +51,13 @@ export function useFamily() {
   useEffect(() => {
     if (!token || !user || (user.role !== "parent" && user.role !== "student")) return;
     let live = true;
+    const plain = (kids: Student[]): FamilyChildCard[] => kids.map((student) => ({ student, today: new Date().toLocaleDateString("en-CA"), attendance: null, fees: null, homework: null, lessons: null, latest_award: null }));
     api.getFamilyOverview(token)
+      .catch(async () => {
+        // The summary is a bonus. If it is unavailable, the learners and every section must still show.
+        const kids = user.role === "student" ? [await api.getMyStudentRecord(token)] : await api.listMyChildren(token);
+        return { children: plain(kids) };
+      })
       .then((r) => { cache = { token, cards: r.children }; if (live) setCards(r.children); })
       .catch(() => { if (live) setCards((prev) => prev ?? null); });
     return () => { live = false; };

@@ -33,18 +33,18 @@ function Items({ query, onNavigate }: { query: string; onNavigate: () => void })
   const { list, active } = useFamily();
   const pathname = usePathname();
   const search = useSearchParams();
-  if (!user || !active) return null;
+  if (!user) return null;
   const isParent = user.role === "parent";
   const tab = search.get("tab") ?? (isParent ? "overview" : "timetable");
   const items = ITEMS.filter((i) => (isParent || (i.tab !== "pickup" && i.tab !== "overview")) && (!query || i.label.toLowerCase().includes(query)));
   if (items.length === 0) return null;
-  const idx = list.findIndex((c) => c.student.id === active.student.id);
+  const idx = active ? list.findIndex((c) => c.student.id === active.student.id) : 0;
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel className="gap-1.5 text-sidebar-primary/90">{isParent ? "My Child" : "My School Life"}</SidebarGroupLabel>
       <SidebarGroupContent>
-        {isParent && list.length > 1 && (
+        {isParent && active && list.length > 1 && (
           <div className="mb-2 px-1 group-data-[collapsible=icon]:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -61,7 +61,7 @@ function Items({ query, onNavigate }: { query: string; onNavigate: () => void })
                   <DropdownMenuItem key={c.student.id} onClick={() => setActiveChildId(c.student.id)}>
                     <ChildAvatar first={c.student.first_name} last={c.student.last_name} index={i} size={26} />
                     <span className="flex-1 truncate">{c.student.first_name} {c.student.last_name}</span>
-                    {c.student.id === active.student.id && <Check className="size-4" />}
+                    {c.student.id === active?.student.id && <Check className="size-4" />}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -70,7 +70,7 @@ function Items({ query, onNavigate }: { query: string; onNavigate: () => void })
         )}
         <SidebarMenu>
           {items.map((item) => {
-            const href = recordPath(user.role, active.student.id, item.tab);
+            const href = recordPath(user.role, active?.student.id, item.tab);
             const onRecord = pathname === href.split("?")[0];
             const on = onRecord && tab === item.tab;
             return (

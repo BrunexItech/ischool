@@ -326,9 +326,12 @@ def list_child_exams(student_id: int, db: Session = Depends(get_db), current_use
     out = []
     for exam in exams:
         submission = db.query(ExamSubmission).filter_by(exam_id=exam.id, student_id=student.id).first()
+        details = ExamOut.model_validate(exam).model_dump()
+        if current_user.role == UserRole.PARENT:
+            details["paper_file_url"] = None   # a parent sees the title, timing and result, never the paper itself
         out.append(
             ExamForStudentListOut(
-                **ExamOut.model_validate(exam).model_dump(),
+                **details,
                 subject_name=exam.subject.name,
                 submission_status=submission.status.value if submission else None,
                 score=submission.score if submission else None,

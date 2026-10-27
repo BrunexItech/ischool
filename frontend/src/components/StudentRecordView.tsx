@@ -493,7 +493,8 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
               <div className="min-w-0 flex-1">
                 <Pill tone="quiet">{e.subject_name}</Pill>
                 <p className="mt-1.5 font-heading text-base font-semibold break-words">{e.title}</p>
-                <p className="text-xs text-muted-foreground">{e.term} · {e.duration_minutes} min · {e.total_marks} marks{opensLater ? ` · opens ${new Date(e.opens_at!).toLocaleString()}` : ""}</p>
+                <p className="text-xs text-muted-foreground">{e.term} · {e.duration_minutes} min · {e.total_marks} marks</p>
+                {(e.opens_at || e.closes_at) && <p className="text-xs text-muted-foreground">{e.opens_at ? `Opens ${new Date(e.opens_at).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}{e.opens_at && e.closes_at ? " · " : ""}{e.closes_at ? `Closes ${new Date(e.closes_at).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</p>}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={e.submission_status === "graded" ? "default" : "secondary"} className="capitalize">{e.submission_status?.replace("_", " ") ?? (closed ? "Closed" : "Not started")}</Badge>

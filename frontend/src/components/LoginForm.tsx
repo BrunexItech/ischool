@@ -124,7 +124,7 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
           </div>
         </div>
 
-        <div className="space-y-6 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
+        <div key={config.audience} className="animate-in fade-in space-y-6 duration-500 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
           <h2 className="max-w-sm text-4xl leading-[1.1] font-semibold text-balance">{config.heroTitle}</h2>
           <ul className="flex flex-col gap-3.5">
             {config.features.map((f) => (
@@ -168,16 +168,23 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
             <WritingAnimation />
           </div>
           {config.audience !== "admin" && (
-          <div className="mb-5 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+          <div role="tablist" aria-label="Who is signing in" className="relative mb-5 grid grid-cols-3 rounded-xl bg-muted p-1">
+            <span
+              aria-hidden
+              className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-lg bg-background shadow-sm transition-transform duration-300 ease-out"
+              style={{ transform: `translateX(${AUDIENCE_TABS.findIndex((t) => t.key === config.audience) * 100}%)` }}
+            />
             {AUDIENCE_TABS.map((tab) => (
               <Link
                 key={tab.key}
                 href={tab.href}
-                className={
-                  tab.key === config.audience
-                    ? "rounded-lg bg-background py-1.5 text-center text-sm font-semibold text-foreground shadow-sm"
-                    : "rounded-lg py-1.5 text-center text-sm text-muted-foreground hover:text-foreground"
-                }
+                role="tab"
+                aria-selected={tab.key === config.audience}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (tab.key !== config.audience) window.history.replaceState(null, "", tab.href);
+                }}
+                className={`relative z-10 rounded-lg py-1.5 text-center text-sm transition-colors duration-200 ${tab.key === config.audience ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 {tab.label}
               </Link>

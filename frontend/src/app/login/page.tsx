@@ -1,14 +1,3 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-
-export default function LoginRedirectPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/login/staff");
-  }, [router]);
-
+export default function Page() {
   return null;
 }

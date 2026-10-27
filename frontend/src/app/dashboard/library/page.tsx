@@ -429,7 +429,7 @@ export default function LibraryPage() {
       : teacher
         ? [["shelf", "My class books"], ["catalogue", "Catalogue"]]
         : learner
-          ? [["mine", "My books"], ["catalogue", "Catalogue"]]
+          ? [["mine", role === "parent" ? "My child's books" : "My books"], ["catalogue", "Catalogue"]]
           : [["catalogue", "Catalogue"]];
   const [tab, setTab] = useState<string | null>(null);
   const view = tab ?? tabs[0][0];
