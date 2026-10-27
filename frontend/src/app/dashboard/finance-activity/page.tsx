@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -98,7 +99,7 @@ export default function FinanceActivityPage() {
                 {kinds.map((k) => <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(kind === k ? null : k)} className={`h-8 rounded-full border px-3 text-xs font-medium ${kind === k ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground"}`}>{KIND_LABEL[k] ?? k}</button>)}
               </div>
               {events.length === 0 ? (
-                <p className="px-4 py-12 text-center text-sm text-muted-foreground">Nothing matches.</p>
+                <EmptyNote>Nothing matches.</EmptyNote>
               ) : (
                 <ul className="divide-y">
                   {events.map((e, i) => (

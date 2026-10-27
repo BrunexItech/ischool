@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Banknote, Plus } from "lucide-react";
@@ -151,7 +152,7 @@ function ProfilesTab() {
               ))}
             </TableBody>
           </Table>
-          {profiles.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No staff on payroll yet.</p>}
+          {profiles.length === 0 && <EmptyNote>No staff on payroll yet.</EmptyNote>}
         </CardContent>
       </Card>
     </div>
@@ -265,7 +266,7 @@ function RunsTab() {
             </Card>
           );
         })}
-        {runs.length === 0 && <p className="text-sm text-muted-foreground">No pay runs yet.</p>}
+        {runs.length === 0 && <EmptyNote>No pay runs yet.</EmptyNote>}
       </div>
     </div>
   );

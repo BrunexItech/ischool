@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -138,7 +139,7 @@ export default function SuppliersPage() {
               ))}
             </TableBody>
           </Table>
-          {suppliers.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No suppliers registered yet.</p>}
+          {suppliers.length === 0 && <EmptyNote>No suppliers registered yet.</EmptyNote>}
         </CardContent>
       </Card>
     </div>

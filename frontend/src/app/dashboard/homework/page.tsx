@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -697,31 +699,16 @@ function HomeworkListView() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[#6e1316] px-5 py-4 text-primary-foreground shadow-sm sm:px-6 sm:py-5">
-        <span className="absolute inset-y-0 left-0 w-1 bg-sidebar-primary" aria-hidden />
-        <FileText className="pointer-events-none absolute -right-4 -bottom-8 size-32 text-white/10" strokeWidth={1} aria-hidden />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/15 sm:size-14">
-              <FileText className="size-6 sm:size-7" />
-            </span>
-            <div className="min-w-0">
-              <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Homework</h1>
-              <p className="text-sm text-primary-foreground/80">
-                {canRecord ? "Create, assign and manage homework for your classes." : "See the homework teachers have set across the school."}
-              </p>
-            </div>
-          </div>
-          {canRecord && (
+      <ModuleBanner title="Homework" description={canRecord ? "Create, assign and manage homework for your classes." : "See the homework teachers have set across the school."}>
+        {canRecord && (
             <Button
               onClick={() => setCreateOpen(true)}
-              className="h-10 justify-center bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 sm:h-9 sm:shrink-0"
+              className="h-10 sm:h-9"
             >
               <Plus /> Create homework
             </Button>
           )}
-        </div>
-      </div>
+      </ModuleBanner>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatTile
@@ -904,7 +891,7 @@ function HomeworkListView() {
                                     <span className="truncate">{r.hw.title}</span>
                                     {r.hw.attachment_url && <FileUp className="size-3.5 shrink-0 text-muted-foreground" aria-label="Has a worksheet attached" />}
                                   </p>
-                                  <p className="truncate text-xs text-muted-foreground">{r.hw.instructions || "No instructions added"}</p>
+                                  <p className="text-xs text-muted-foreground">{r.hw.instructions || "No instructions added"}</p>
                                 </div>
                               </div>
                             </TableCell>
@@ -948,7 +935,7 @@ function HomeworkListView() {
                           <TypeTile type={r.hw.homework_type} />
                           <div className="min-w-0 flex-1">
                             <p className="font-medium">{r.hw.title}</p>
-                            <p className="line-clamp-1 text-xs text-muted-foreground">{r.hw.instructions || "No instructions added"}</p>
+                            <p className="text-xs text-muted-foreground">{r.hw.instructions || "No instructions added"}</p>
                           </div>
                           <StatusPill status={r.status} />
                         </div>
@@ -1092,7 +1079,7 @@ function HomeworkSplit({ rows, by }: { rows: HwRow[]; by: "subject" | "teacher" 
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums ${tone === "good" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"}`}>{items.length}</span>
       </header>
       {items.length === 0 ? (
-        <p className="px-4 py-10 text-center text-sm text-muted-foreground">{tone === "good" ? "No homework has been set yet this week." : "Everyone has set homework."}</p>
+        <EmptyNote>{tone === "good" ? "No homework has been set yet this week." : "Everyone has set homework."}</EmptyNote>
       ) : (
         <ul className="divide-y">
           {items.map((i) => (
@@ -1175,7 +1162,7 @@ function HomeworkWeek() {
           <Button size="sm" variant="outline" onClick={() => setReloadKey((k) => k + 1)}><RotateCw /> Try again</Button>
         </div>
       ) : grid.rows.length === 0 ? (
-        <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">There are no timetabled lessons or subject allocations yet, so there is nothing to track.</p>
+        <EmptyNote>There are no timetabled lessons or subject allocations yet, so there is nothing to track.</EmptyNote>
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Week summary">
@@ -1212,7 +1199,7 @@ function HomeworkWeek() {
               {grid.days.map((d) => <span key={d} className="text-center">{dayName(d)}</span>)}
             </div>
             {rows.length === 0 ? (
-              <p className="px-4 py-12 text-center text-sm text-muted-foreground">Nothing matches.</p>
+              <EmptyNote>Nothing matches.</EmptyNote>
             ) : (
               <ul className="divide-y">
                 {rows.map((r) => (
@@ -1254,10 +1241,7 @@ export default function HomeworkPage() {
   const view = choice ?? "week";
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Homework</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Whether homework is being given, class by class. Teachers record it; you can see it here.</p>
-      </div>
+      <ModuleBanner title="Homework" description="Whether homework is being given, class by class. Teachers record it; you can see it here." />
       <div role="tablist" className="flex w-fit gap-1 rounded-lg bg-muted p-1">
         {([["week", "This week"], ["list", "All homework"]] as const).map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setChoice(k)} className={`h-9 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>

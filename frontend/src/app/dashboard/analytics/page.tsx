@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -181,7 +183,7 @@ function ChartCard({ title, description, empty, children }: { title: string; des
         <h3 className="font-heading text-base font-semibold">{title}</h3>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      {empty ? <p className="py-10 text-center text-sm text-muted-foreground">No data yet.</p> : children}
+      {empty ? <EmptyNote>No data yet.</EmptyNote> : children}
     </div>
   );
 }
@@ -403,14 +405,7 @@ export default function AnalyticsPage() {
   }
 
   const header = (
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between print:hidden">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Analytics</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {financeOnly ? "Income and expense trends from your own records." : isTeacher ? "How your classes are doing, and who needs help." : "How the school is doing, and what needs attention."}
-        </p>
-      </div>
-      {!financeOnly && (
+    <ModuleBanner title="Analytics" description={<>{financeOnly ? "Income and expense trends from your own records." : isTeacher ? "How your classes are doing, and who needs help." : "How the school is doing, and what needs attention."}</>}>{!financeOnly && (
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="h-10 sm:h-9" onClick={() => window.print()} disabled={!insights}><Printer /> Print</Button>
           <Button variant="outline" className="h-10 sm:h-9" onClick={() => exportAs("pdf")} disabled={!insights || exporting !== null}>
@@ -420,8 +415,7 @@ export default function AnalyticsPage() {
             {exporting === "xlsx" ? <Spinner size={16} className="text-current" /> : <FileSpreadsheet />} Excel
           </Button>
         </div>
-      )}
-    </header>
+      )}</ModuleBanner>
   );
 
   if (financeOnly) {
@@ -635,7 +629,7 @@ export default function AnalyticsPage() {
 
             <Panel title="Performance levels by subject" caption={levelCaption} className="lg:col-span-2">
               {insights.levels.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">No marks recorded for this term yet.</p>
+                <EmptyNote>No marks recorded for this term yet.</EmptyNote>
               ) : (
                 <>
                   <ul className="flex flex-col gap-3">
@@ -665,7 +659,7 @@ export default function AnalyticsPage() {
             </Panel>
 
             <Panel title="Attendance through the term" caption={calendarCaption} className="lg:col-span-2">
-              {insights.attendance.calendar.length > 0 ? <HeatCalendar days={insights.attendance.calendar} /> : <p className="py-6 text-center text-sm text-muted-foreground">No registers taken in this period.</p>}
+              {insights.attendance.calendar.length > 0 ? <HeatCalendar days={insights.attendance.calendar} /> : <EmptyNote>No registers taken in this period.</EmptyNote>}
             </Panel>
 
             <Panel title="Attendance and marks" caption={scatterCaption}>

@@ -1,4 +1,7 @@
+"use client";
+
 import { ReactNode } from "react";
+import { ModuleBanner } from "@/components/ModuleBanner";
 
 export function PageHeader({
   title,
@@ -9,13 +12,5 @@ export function PageHeader({
   description?: string;
   action?: ReactNode;
 }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      </div>
-      {action}
-    </div>
-  );
+  return <ModuleBanner title={title} description={description}>{action}</ModuleBanner>;
 }

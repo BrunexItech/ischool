@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowDownToLine, ArrowUpFromLine, Plus } from "lucide-react";
@@ -226,7 +227,7 @@ export default function StoresPage() {
               ))}
             </TableBody>
           </Table>
-          {items.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No stock items yet.</p>}
+          {items.length === 0 && <EmptyNote>No stock items yet.</EmptyNote>}
         </CardContent>
       </Card>
       </>)}

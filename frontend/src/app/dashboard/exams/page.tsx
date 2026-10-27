@@ -1,5 +1,6 @@
 "use client";
 
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -763,28 +764,13 @@ export default function ExamsPage() {
         }}
       />
 
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[#6e1316] px-5 py-4 text-primary-foreground shadow-sm sm:px-6 sm:py-5">
-        <span className="absolute inset-y-0 left-0 w-1 bg-sidebar-primary" aria-hidden />
-        <BookOpenCheck className="pointer-events-none absolute -right-4 -bottom-8 size-32 text-white/10" strokeWidth={1} aria-hidden />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/15 sm:size-14">
-              <FileText className="size-6 sm:size-7" />
-            </span>
-            <div className="min-w-0">
-              <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Exams</h1>
-              <p className="text-sm text-primary-foreground/80">
-                {canRecord ? "Create and manage exams, set questions, and track results." : "See the exams teachers have set across the school."}
-              </p>
-            </div>
-          </div>
-          {canRecord && (
-            <Button onClick={() => setCreateMode("questions")} className="h-10 justify-center bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 sm:h-9 sm:shrink-0">
+      <ModuleBanner title="Exams" description={canRecord ? "Create and manage exams, set questions, and track results." : "See the exams teachers have set across the school."}>
+        {canRecord && (
+            <Button onClick={() => setCreateMode("questions")} className="h-10 sm:h-9">
               <Plus /> Create exam
             </Button>
           )}
-        </div>
-      </div>
+      </ModuleBanner>
 
       <DepartmentPulse dept="exams" />
 

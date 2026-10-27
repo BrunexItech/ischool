@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -228,7 +230,7 @@ function StudentHistory({ studentId, refreshKey }: { studentId: number; refreshK
         </div>
       ))}
       {assessments.length === 0 && notes.length === 0 && (
-        <p className="text-sm text-muted-foreground">No competency assessments or observations yet.</p>
+        <EmptyNote>No competency assessments or observations yet.</EmptyNote>
       )}
     </div>
   );
@@ -248,23 +250,7 @@ function initials(s: Student) {
 }
 
 function Banner({ title, subtitle, children }: { title: string; subtitle: string; children?: React.ReactNode }) {
-  return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[#6e1316] px-5 py-4 text-primary-foreground shadow-sm sm:px-6 sm:py-5">
-      <span className="absolute inset-y-0 left-0 w-1 bg-sidebar-primary" aria-hidden />
-      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/15 sm:size-14">
-            <NotebookPen className="size-6 sm:size-7" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="font-heading text-2xl font-semibold tracking-tight break-words sm:text-3xl">{title}</h1>
-            <p className="text-sm text-primary-foreground/80">{subtitle}</p>
-          </div>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
+  return <ModuleBanner title={title} description={subtitle}>{children}</ModuleBanner>;
 }
 
 function StudentActions({ s, classId, subjects, expanded, onToggle, onSaved }: { s: Student; classId: number; subjects: Subject[]; expanded: boolean; onToggle: () => void; onSaved: () => void }) {
@@ -330,7 +316,7 @@ function ClassCompetencyView({ classInfo, onBack }: { classInfo: MyClass; onBack
     <div className="flex flex-col gap-5">
       <Button variant="ghost" size="sm" onClick={onBack} className="h-10 w-fit sm:h-8"><ArrowLeft /> All my classes</Button>
       <Banner title={classInfo.class_name} subtitle="Record competency assessments and observation notes for each learner.">
-        <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-medium">
+        <span className="inline-flex w-fit items-center gap-2 rounded-full bg-muted text-foreground px-3 py-1.5 text-sm font-medium">
           <Users className="size-4" /> {students.length} learner{students.length === 1 ? "" : "s"}
         </span>
       </Banner>
@@ -353,9 +339,9 @@ function ClassCompetencyView({ classInfo, onBack }: { classInfo: MyClass; onBack
             <Button size="sm" variant="outline" onClick={() => { setLoading(true); setReloadKey((k) => k + 1); }}><RotateCw /> Try again</Button>
           </div>
         ) : students.length === 0 ? (
-          <p className="px-4 py-12 text-center text-sm text-muted-foreground">No learners in this class yet.</p>
+          <EmptyNote>No learners in this class yet.</EmptyNote>
         ) : visible.length === 0 ? (
-          <p className="px-4 py-12 text-center text-sm text-muted-foreground">No learners match your search.</p>
+          <EmptyNote>No learners match your search.</EmptyNote>
         ) : (
           <ul className="divide-y">
             {visible.map(({ s, no }) => {
@@ -432,7 +418,7 @@ export default function CompetencyPage() {
     <div className="flex flex-col gap-5 sm:gap-6">
       <Banner title="Learner Progress" subtitle="Competency assessments and observation notes, per class.">
         {myClasses.length > 0 && (
-          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-medium">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-muted text-foreground px-3 py-1.5 text-sm font-medium">
             <Users className="size-4" /> {myClasses.length} class{myClasses.length === 1 ? "" : "es"} · {totalLearners} learners
           </span>
         )}

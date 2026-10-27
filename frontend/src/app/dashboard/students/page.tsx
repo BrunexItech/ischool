@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -115,27 +117,11 @@ async function fetchAll(token: string, schoolId: number, isTeacher: boolean): Pr
 }
 
 function Banner({ title, subtitle, children }: { title: string; subtitle: string; children?: React.ReactNode }) {
-  return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[#6e1316] px-5 py-4 text-primary-foreground shadow-sm sm:px-6 sm:py-5">
-      <span className="absolute inset-y-0 left-0 w-1 bg-sidebar-primary" aria-hidden />
-      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/15 sm:size-14">
-            <Users className="size-6 sm:size-7" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="font-heading text-2xl font-semibold tracking-tight break-words sm:text-3xl">{title}</h1>
-            <p className="text-sm text-primary-foreground/80">{subtitle}</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">{children}</div>
-      </div>
-    </div>
-  );
+  return <ModuleBanner title={title} description={subtitle}>{children}</ModuleBanner>;
 }
 
 function Chip({ children }: { children: React.ReactNode }) {
-  return <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-sm font-medium">{children}</span>;
+  return <span className="inline-flex items-center gap-1.5 rounded-full bg-muted text-foreground px-3 py-1.5 text-sm font-medium">{children}</span>;
 }
 
 function Avatar({ s, size = "md" }: { s: Student; size?: "md" | "lg" | "xl" }) {
@@ -370,14 +356,14 @@ function LearnerDrawer({
                         {student.guardian_phone ? (
                           <Button variant="outline" className="h-11 justify-start" nativeButton={false} render={<a href={`tel:${student.guardian_phone}`}><Phone /> {student.guardian_phone}</a>} />
                         ) : (
-                          <p className="text-sm text-muted-foreground">No phone number recorded.</p>
+                          <p className="text-xs text-muted-foreground">No phone number recorded.</p>
                         )}
                         {student.guardian_email && (
                           <Button variant="outline" className="h-11 justify-start" nativeButton={false} render={<a href={`mailto:${student.guardian_email}`}><Mail /> <span className="break-all">{student.guardian_email}</span></a>} />
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No guardian details have been recorded for this learner.</p>
+                      <p className="text-xs text-muted-foreground">No guardian details have been recorded for this learner.</p>
                     )}
                   </div>
 
@@ -766,7 +752,7 @@ function StudentsView() {
     />
   );
   const enrolButton = canEnrol && (
-    <Button onClick={() => setEnrolOpen(true)} className="h-10 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 sm:h-9">
+    <Button onClick={() => setEnrolOpen(true)} className="h-10  sm:h-9">
       <UserPlus /> Enrol learner
     </Button>
   );
@@ -960,7 +946,7 @@ function StudentsView() {
       {entries.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card px-4 py-14 text-center">
           <Users className="size-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{isTeacher ? "You're not assigned to any classes yet." : "No classes or learners yet."}</p>
+          <EmptyNote>{isTeacher ? "You're not assigned to any classes yet." : "No classes or learners yet."}</EmptyNote>
         </div>
       ) : (
         <>

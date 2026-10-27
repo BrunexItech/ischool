@@ -284,8 +284,8 @@ export function BalancesView({ schoolId, terms, classes }: { schoolId: number; t
               <thead>
                 <tr className="border-b bg-muted/50 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                   <th scope="col" className="w-10 px-4 py-2.5 print:hidden"><input type="checkbox" aria-label="Select everyone shown" checked={allPicked} onChange={() => setPicked(allPicked ? new Set() : new Set(rows.map((r) => r.student_id)))} className="size-4 accent-[var(--primary)]" /></th>
-                  <th scope="col" className="px-3 py-2.5">Learner</th><th scope="col" className="px-3 py-2.5">Class</th><th scope="col" className="px-3 py-2.5">Parent or guardian</th>
-                  <th scope="col" className="px-3 py-2.5 text-right">Billed</th><th scope="col" className="px-3 py-2.5 text-right">Paid</th><th scope="col" className="px-3 py-2.5 text-right">Arrears</th><th scope="col" className="px-4 py-2.5 text-right">Owed</th>
+                  <th scope="col" className="px-3 py-2.5">Learner</th><th scope="col" className="hidden px-3 py-2.5 md:table-cell">Class</th><th scope="col" className="hidden px-3 py-2.5 md:table-cell">Parent or guardian</th>
+                  <th scope="col" className="hidden px-3 py-2.5 text-right md:table-cell">Billed</th><th scope="col" className="hidden px-3 py-2.5 text-right md:table-cell">Paid</th><th scope="col" className="px-3 py-2.5 text-right">Arrears</th><th scope="col" className="px-4 py-2.5 text-right">Owed</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -293,10 +293,10 @@ export function BalancesView({ schoolId, terms, classes }: { schoolId: number; t
                   <tr key={r.student_id} className={`${picked.has(r.student_id) ? "bg-primary/5" : ""} ${chosen.length > 0 && !picked.has(r.student_id) ? "print:hidden" : ""}`}>
                     <td className="px-4 py-2.5 print:hidden"><input type="checkbox" aria-label={`Select ${r.name}`} checked={picked.has(r.student_id)} onChange={() => toggle(r.student_id)} className="size-4 accent-[var(--primary)]" /></td>
                     <th scope="row" className="px-3 py-2.5 text-left font-normal"><span className="block font-medium">{r.name}</span><span className="block text-xs text-muted-foreground">{r.admission_number}</span></th>
-                    <td className="px-3 py-2.5">{r.class_name ?? "—"}</td>
-                    <td className="px-3 py-2.5"><span className="block">{r.guardian_name ?? "—"}</span><span className="block text-xs text-muted-foreground">{r.guardian_phone ?? "No phone"}{r.guardian_email ? ` · ${r.guardian_email}` : ""}</span></td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{kes(r.billed)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{kes(r.paid)}</td>
+                    <td className="hidden md:table-cell px-3 py-2.5">{r.class_name ?? "—"}</td>
+                    <td className="hidden md:table-cell px-3 py-2.5"><span className="block">{r.guardian_name ?? "—"}</span><span className="block text-xs text-muted-foreground">{r.guardian_phone ?? "No phone"}{r.guardian_email ? ` · ${r.guardian_email}` : ""}</span></td>
+                    <td className="hidden md:table-cell px-3 py-2.5 text-right tabular-nums">{kes(r.billed)}</td>
+                    <td className="hidden md:table-cell px-3 py-2.5 text-right tabular-nums">{kes(r.paid)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{r.arrears > 0 ? <Pill tone="warn">{kes(r.arrears)}</Pill> : "—"}</td>
                     <td className="px-4 py-2.5 text-right font-semibold tabular-nums">{kes(r.total_owed)}</td>
                   </tr>

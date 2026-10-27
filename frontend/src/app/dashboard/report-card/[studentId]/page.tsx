@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { Suspense, use, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -214,7 +215,7 @@ function ReportCardView({ params }: { params: Promise<{ studentId: string }> }) 
         <Button className="h-10 sm:h-9" onClick={() => window.print()} disabled={!card}><Printer /> Print report card</Button>
       </div>
 
-      {!card && <p className="text-center text-sm text-muted-foreground">No results recorded for this term yet.</p>}
+      {!card && <EmptyNote>No results recorded for this term yet.</EmptyNote>}
 
       {card && (
         <article className="report-card overflow-hidden border border-neutral-300 bg-white text-neutral-900 shadow-sm print:border-0 print:shadow-none">

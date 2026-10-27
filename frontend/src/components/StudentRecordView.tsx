@@ -28,7 +28,6 @@ import {
   Trip,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,13 +36,6 @@ import { Label } from "@/components/ui/label";
 import { ChildAvatar, Empty, Pill, Section, dueWords, longDay, money, scoreTone, shortDay } from "@/components/family/FamilyUi";
 import { Ring, compactKes, healthTone } from "@/components/group/GroupUi";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
-const ATTENDANCE_STYLE: Record<string, string> = {
-  present: "text-emerald-600",
-  absent: "text-red-600",
-  late: "text-amber-600",
-  excused: "text-sky-600",
-};
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -56,12 +48,6 @@ const CONDUCT_CATEGORY_LABEL: Record<ConductCategory, string> = {
   property_damage: "Property damage",
   dress_code: "Dress code",
   other: "Other",
-};
-
-const FEE_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"> = {
-  paid: "default",
-  partial: "secondary",
-  unpaid: "destructive",
 };
 
 const HOMEWORK_STATUS_STYLE: Record<string, { variant: "default" | "secondary" | "outline"; label: string; icon: typeof CheckCircle2 }> = {

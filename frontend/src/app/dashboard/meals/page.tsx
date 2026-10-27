@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Clock, Pencil, Plus, Trash2, UtensilsCrossed } from "lucide-react";
@@ -29,7 +30,7 @@ function Today({ slots }: { slots: MenuSlot[] }) {
     <section className="rounded-xl border bg-card" aria-label="Today's meals">
       <h2 className="flex items-center gap-2 border-b px-4 py-3 font-heading text-lg font-semibold"><UtensilsCrossed className="size-4.5 text-primary" aria-hidden /> Today, {DAYS[d]}</h2>
       {served.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-muted-foreground">No meals are listed for today.</p>
+        <EmptyNote>No meals are listed for today.</EmptyNote>
       ) : (
         <ul className="grid divide-y sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4">
           {served.map((s) => (
@@ -165,7 +166,7 @@ export default function MealsPage() {
       {editing ? (
         <Editor initial={slots} schoolId={schoolId} canApply={canApply} onCancel={() => setEditing(false)} onDone={() => { setEditing(false); setVersion((v) => v + 1); }} />
       ) : slots.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card px-4 py-14 text-center"><UtensilsCrossed className="size-6 text-muted-foreground" aria-hidden /><p className="text-sm text-muted-foreground">{canSet ? "No menu yet. Set the meal times and what is served each day." : "The school has not published a menu yet."}</p></div>
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card px-4 py-14 text-center"><UtensilsCrossed className="size-6 text-muted-foreground" aria-hidden /><p className="text-xs text-muted-foreground">{canSet ? "No menu yet. Set the meal times and what is served each day." : "The school has not published a menu yet."}</p></div>
       ) : (
         <>
           <Today slots={slots} />

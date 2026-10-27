@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Bell, CheckCircle2, Plus, LogOut as SignOutIcon, ShieldAlert, Search, Siren, XCircle } from "lucide-react";
@@ -332,7 +333,7 @@ function VisitorsTab() {
         </Card>
       ))}
       {filtered.length === 0 && (
-        <p className="text-sm text-muted-foreground">{sorted.length === 0 ? "No visitors on record." : "No visitors match your search."}</p>
+        <EmptyNote>{sorted.length === 0 ? "No visitors on record." : "No visitors match your search."}</EmptyNote>
       )}
     </div>
   );
@@ -445,7 +446,7 @@ function PassesTab() {
               </CardContent>
             </Card>
           ))}
-          {exeats.length === 0 && <p className="text-sm text-muted-foreground">No active gate passes.</p>}
+          {exeats.length === 0 && <EmptyNote>No active gate passes.</EmptyNote>}
         </div>
       </div>
 
@@ -665,7 +666,7 @@ function VehiclesTab() {
             </Card>
           );
         })}
-        {logs.filter((l) => !date || l.logged_at.slice(0, 10) === date).length === 0 && <p className="text-sm text-muted-foreground">No vehicle movements for that filter.</p>}
+        {logs.filter((l) => !date || l.logged_at.slice(0, 10) === date).length === 0 && <EmptyNote>No vehicle movements for that filter.</EmptyNote>}
       </div>
     </div>
   );
@@ -777,7 +778,7 @@ function IncidentsTab() {
             </CardContent>
           </Card>
         ))}
-        {incidents.length === 0 && <p className="text-sm text-muted-foreground">No incidents recorded.</p>}
+        {incidents.length === 0 && <EmptyNote>No incidents recorded.</EmptyNote>}
       </div>
     </div>
   );
@@ -861,7 +862,7 @@ function PatrolsTab() {
             </CardContent>
           </Card>
         ))}
-        {patrols.length === 0 && <p className="text-sm text-muted-foreground">No patrols logged.</p>}
+        {patrols.length === 0 && <EmptyNote>No patrols logged.</EmptyNote>}
       </div>
     </div>
   );

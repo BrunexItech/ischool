@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -171,7 +172,7 @@ function ClassSheet({
             <section>
               <h3 className="mb-2 font-heading text-base font-semibold">Subjects and teachers</h3>
               {detail.teacher_rows.length === 0 ? (
-                <p className="rounded-xl border px-4 py-6 text-center text-sm text-muted-foreground">No subjects have been allocated to this class yet. Allocate them under Teaching Assignments.</p>
+                <EmptyNote>No subjects have been allocated to this class yet. Allocate them under Teaching Assignments.</EmptyNote>
               ) : (
                 <ul className="divide-y rounded-xl border">
                   {detail.teacher_rows.map((r) => (
@@ -225,7 +226,7 @@ function ClassSheet({
             <section>
               <h3 className="mb-2 font-heading text-base font-semibold">Learners ({detail.learners_list.length})</h3>
               {detail.learners_list.length === 0 ? (
-                <p className="rounded-xl border px-4 py-6 text-center text-sm text-muted-foreground">No learners in this class yet.</p>
+                <EmptyNote>No learners in this class yet.</EmptyNote>
               ) : (
                 <ul className="divide-y rounded-xl border">
                   {detail.learners_list.map((l, i) => (
@@ -496,7 +497,7 @@ export default function ClassesPage() {
           </div>
 
           {groups.length === 0 ? (
-            <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No classes match.</p>
+            <EmptyNote>No classes match.</EmptyNote>
           ) : (
             groups.map((g) => (
               <section key={g.level} className="flex flex-col gap-3">

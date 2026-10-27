@@ -223,7 +223,7 @@ export default function MeetingsPage() {
       {canHost && !hostable && <p className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">Meetings are called from All Schools, so you can choose which schools to include. Switch to All Schools to call one.</p>}
 
       {failed ? <ErrorBox message="We couldn't load the meetings." onRetry={() => { setMeetings(null); setFailed(false); setVersion((v) => v + 1); }} /> : !meetings ? <PageLoader /> : meetings.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card px-4 py-14 text-center"><Video className="size-6 text-muted-foreground" aria-hidden /><p className="text-sm text-muted-foreground">{canHost ? "No meetings yet. Call the first one." : "No meetings have been called with you yet."}</p></div>
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card px-4 py-14 text-center"><Video className="size-6 text-muted-foreground" aria-hidden /><p className="text-xs text-muted-foreground">{canHost ? "No meetings yet. Call the first one." : "No meetings have been called with you yet."}</p></div>
       ) : (
         <>
           {live.length > 0 && <section aria-label="Live now" className="flex flex-col gap-3"><h2 className="font-heading text-lg font-semibold">Live now</h2><ul className="grid gap-3 lg:grid-cols-2">{live.map((m) => <Card key={m.id} m={m} />)}</ul></section>}

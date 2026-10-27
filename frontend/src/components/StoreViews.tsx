@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Check, ClipboardList, Plus, Scale, X } from "lucide-react";
@@ -117,7 +118,7 @@ export function RequestsPanel({ schoolId, items, isKeeper, canAsk, onStockChange
     <div className="flex flex-col gap-4">
       {canAsk && <div><Button className="h-10 sm:h-9" onClick={() => setAdding(true)}><ClipboardList /> Ask the store for items</Button></div>}
       {rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed bg-card px-4 py-12 text-center text-sm text-muted-foreground">{isKeeper ? "No one has asked the store for anything yet." : "You have not asked the store for anything."}</p>
+        <EmptyNote>{isKeeper ? "No one has asked the store for anything yet." : "You have not asked the store for anything."}</EmptyNote>
       ) : (
         <ul className="grid gap-3 lg:grid-cols-2">
           {rows.map((r) => (
@@ -202,7 +203,7 @@ export function MovementsPanel({ schoolId, items }: { schoolId: number; items: S
     };
   }, [token, schoolId]);
   if (!rows) return <PageLoader />;
-  if (rows.length === 0) return <p className="rounded-xl border border-dashed bg-card px-4 py-12 text-center text-sm text-muted-foreground">No stock has moved yet.</p>;
+  if (rows.length === 0) return <EmptyNote>No stock has moved yet.</EmptyNote>;
   const name = (id: number) => items.find((i) => i.id === id);
   return (
     <div className="overflow-x-auto rounded-xl border bg-card">

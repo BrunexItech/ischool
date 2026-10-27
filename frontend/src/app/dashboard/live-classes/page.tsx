@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -195,13 +197,7 @@ export default function LiveClassesPage() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Live Classes</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Schedule and host video lessons. You control who is let in and who can speak.</p>
-        </div>
-        {canSchedule && <Button className="h-10 w-fit sm:h-9" onClick={() => setNewOpen(true)}><Plus /> Schedule class</Button>}
-      </header>
+      <ModuleBanner title="Live Classes" description="Schedule and host video lessons. You control who is let in and who can speak.">{canSchedule && <Button className="h-10 w-fit sm:h-9" onClick={() => setNewOpen(true)}><Plus /> Schedule class</Button>}</ModuleBanner>
 
       <DepartmentPulse dept="live_classes" />
 
@@ -223,7 +219,7 @@ export default function LiveClassesPage() {
         <>
           <section className="overflow-hidden rounded-xl border bg-card">
             <h2 className="border-b px-4 py-3 font-heading text-lg font-semibold sm:px-5">Today and upcoming</h2>
-            {upcoming.length === 0 ? <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nothing scheduled. Schedule a class to get a join link.</p> : <ul className="divide-y">{upcoming.map((l) => <Row key={l.id} lc={l} />)}</ul>}
+            {upcoming.length === 0 ? <EmptyNote>Nothing scheduled. Schedule a class to get a join link.</EmptyNote> : <ul className="divide-y">{upcoming.map((l) => <Row key={l.id} lc={l} />)}</ul>}
           </section>
           {past.length > 0 && (
             <section className="overflow-hidden rounded-xl border bg-card">

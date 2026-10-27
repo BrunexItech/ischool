@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
@@ -185,7 +186,7 @@ function DayDialog({
               )}
             </div>
           ))}
-          {events.length === 0 && !showForm && <p className="py-2 text-center text-sm text-muted-foreground">Nothing scheduled.</p>}
+          {events.length === 0 && !showForm && <EmptyNote>Nothing scheduled.</EmptyNote>}
         </div>
 
         {canEdit && (
@@ -300,7 +301,7 @@ export default function CalendarPage() {
           {new Date(cursor.year, cursor.month, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}: what&apos;s on
         </h2>
         {monthEvents.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nothing scheduled this month.</p>
+          <EmptyNote>Nothing scheduled this month.</EmptyNote>
         ) : (
           <ul className="divide-y">
             {monthEvents.map((e) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -95,7 +96,7 @@ export default function TeachersPage() {
       {failed ? (
         <ErrorBox message="We couldn't load the teachers." onRetry={() => setReloadKey((k) => k + 1)} />
       ) : data.length === 0 ? (
-        <p className="rounded-xl border border-dashed bg-card px-4 py-14 text-center text-sm text-muted-foreground">No teachers have been added yet. Add them under Staff.</p>
+        <EmptyNote>No teachers have been added yet. Add them under Staff.</EmptyNote>
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Summary">
@@ -144,7 +145,7 @@ export default function TeachersPage() {
           </div>
 
           {shown.length === 0 ? (
-            <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No teachers match.</p>
+            <EmptyNote>No teachers match.</EmptyNote>
           ) : layout === "rows" ? (
             <div className="overflow-x-auto rounded-xl border bg-card">
               <table className="w-full min-w-[68rem] text-sm">
@@ -240,7 +241,7 @@ export default function TeachersPage() {
                 <section className="rounded-xl border p-4">
                   <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Contact</p>
                   <div className="flex flex-col gap-2">
-                    {open.phone ? <Button variant="outline" className="h-11 justify-start" nativeButton={false} render={<a href={`tel:${open.phone}`}><Phone /> {open.phone}</a>} /> : <p className="text-sm text-muted-foreground">No phone number recorded.</p>}
+                    {open.phone ? <Button variant="outline" className="h-11 justify-start" nativeButton={false} render={<a href={`tel:${open.phone}`}><Phone /> {open.phone}</a>} /> : <p className="text-xs text-muted-foreground">No phone number recorded.</p>}
                     <Button variant="outline" className="h-11 justify-start" nativeButton={false} render={<a href={`mailto:${open.email}`}><Mail /> <span className="break-all">{open.email}</span></a>} />
                   </div>
                   <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">

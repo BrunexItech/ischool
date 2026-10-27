@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -164,7 +165,7 @@ function HistorySection({ schoolId, classes }: { schoolId: number; classes: Clas
               <Button size="sm" variant="outline" onClick={() => setReloadKey((k) => k + 1)}><RotateCw /> Try again</Button>
             </div>
           ) : byDate.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No attendance recorded in this range.</p>
+            <EmptyNote>No attendance recorded in this range.</EmptyNote>
           ) : (
             <>
               <ul className="flex flex-col gap-2 md:hidden">
@@ -460,9 +461,9 @@ function AttendanceView() {
                 </div>
 
                 {students.length === 0 ? (
-                  <p className="px-4 py-12 text-center text-sm text-muted-foreground">No learners in this class yet.</p>
+                  <EmptyNote>No learners in this class yet.</EmptyNote>
                 ) : visible.length === 0 ? (
-                  <p className="px-4 py-12 text-center text-sm text-muted-foreground">No learners match.</p>
+                  <EmptyNote>No learners match.</EmptyNote>
                 ) : (
                   <ul className="divide-y">
                     {visible.map(({ s, no }) => {
@@ -593,7 +594,7 @@ function AttendanceOversightView() {
           </div>
 
           {groups.length === 0 ? (
-            <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No classes match.</p>
+            <EmptyNote>No classes match.</EmptyNote>
           ) : (
             groups.map((g) => (
               <section key={g.level} className="flex flex-col gap-2">

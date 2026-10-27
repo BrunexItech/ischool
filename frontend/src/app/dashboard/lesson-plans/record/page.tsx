@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Printer, RotateCw } from "lucide-react";
@@ -115,7 +116,7 @@ export default function RecordOfWorkPage() {
           <Button size="sm" variant="outline" onClick={() => setReloadKey((k) => k + 1)}><RotateCw /> Try again</Button>
         </div>
       ) : list.length === 0 ? (
-        <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No lessons marked between these dates yet.</p>
+        <EmptyNote>No lessons marked between these dates yet.</EmptyNote>
       ) : (
         <>
           <div className="hidden print:block">

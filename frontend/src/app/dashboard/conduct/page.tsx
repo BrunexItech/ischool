@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -197,16 +199,8 @@ export default function ConductReportsPage() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Conduct Reports</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isAdmin ? "Every report filed across the school." : "Reports you have filed for learners you teach."}
-            {data.reports.length > 0 && <> {data.reports.length} in all{open > 0 ? `, ${open} awaiting a response` : ""}.</>}
-          </p>
-        </div>
-        {canReport && <Button className="h-10 w-fit sm:h-9" onClick={() => setFileOpen(true)}><Plus /> File a report</Button>}
-      </header>
+      <ModuleBanner title="Conduct Reports" description={<>{isAdmin ? "Every report filed across the school." : "Reports you have filed for learners you teach."}
+            {data.reports.length > 0 && <> {data.reports.length} in all{open > 0 ? `, ${open} awaiting a response` : ""}.</>}</>}>{canReport && <Button className="h-10 w-fit sm:h-9" onClick={() => setFileOpen(true)}><Plus /> File a report</Button>}</ModuleBanner>
 
       <DepartmentPulse dept="conduct" />
 
@@ -242,7 +236,7 @@ export default function ConductReportsPage() {
           {canReport && <Button size="sm" className="mt-2" onClick={() => setFileOpen(true)}><Plus /> File a report</Button>}
         </div>
       ) : shown.length === 0 ? (
-        <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No reports match.</p>
+        <EmptyNote>No reports match.</EmptyNote>
       ) : (
         <ul className="overflow-hidden rounded-xl border bg-card divide-y">
           {shown.map((r) => (

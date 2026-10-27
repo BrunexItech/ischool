@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, TrendingDown } from "lucide-react";
@@ -200,7 +201,7 @@ export default function AssetsPage() {
               ))}
             </TableBody>
           </Table>
-          {assets.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No fixed assets registered yet.</p>}
+          {assets.length === 0 && <EmptyNote>No fixed assets registered yet.</EmptyNote>}
         </CardContent>
       </Card>
     </div>

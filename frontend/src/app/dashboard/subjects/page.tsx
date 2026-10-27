@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -192,7 +193,7 @@ export default function SubjectsPage() {
           {shown.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card px-4 py-14 text-center">
               <Library className="size-6 text-muted-foreground" aria-hidden />
-              <p className="text-sm text-muted-foreground">{subjects.length === 0 ? "No subjects yet. Add the first one and choose the grades it is taught in." : "No subjects for this level."}</p>
+              <EmptyNote>{subjects.length === 0 ? "No subjects yet. Add the first one and choose the grades it is taught in." : "No subjects for this level."}</EmptyNote>
             </div>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

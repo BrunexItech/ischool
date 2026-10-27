@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -270,20 +272,12 @@ export default function AwardsPage() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Awards &amp; Recognition</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {data.awards.length} award{data.awards.length === 1 ? "" : "s"}
-            {isTeacher ? " for your learners and classes" : ""}
-          </p>
-        </div>
-        {canGive ? (
+      <ModuleBanner title="Awards &amp; Recognition" description={<>{data.awards.length} award{data.awards.length === 1 ? "" : "s"}
+            {isTeacher ? " for your learners and classes" : ""}</>}>{canGive ? (
           <Button className="h-10 w-fit sm:h-9" onClick={() => setGiveOpen(true)}><Plus /> Give award</Button>
         ) : (
           <p className="max-w-xs text-sm text-muted-foreground">Staff give awards to learners from an activity they run, under Activities.</p>
-        )}
-      </header>
+        )}</ModuleBanner>
 
       <DepartmentPulse dept="awards" />
 
@@ -331,7 +325,7 @@ export default function AwardsPage() {
           {canGive && <Button size="sm" className="mt-2" onClick={() => setGiveOpen(true)}><Plus /> Give award</Button>}
         </div>
       ) : groups.length === 0 ? (
-        <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No awards match.</p>
+        <EmptyNote>No awards match.</EmptyNote>
       ) : (
         groups.map(([month, awards]) => (
           <section key={month} className="flex flex-col gap-2">

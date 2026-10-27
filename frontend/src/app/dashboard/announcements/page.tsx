@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, CalendarDays, ChevronDown, MapPin, Megaphone, Plus, RotateCw, Search, Send } from "lucide-react";
@@ -293,7 +294,7 @@ export default function AnnouncementsPage() {
                     <Search className="pointer-events-none absolute top-1/2 left-5 size-4 -translate-y-1/2 text-muted-foreground sm:left-7" />
                     <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search earlier announcements..." aria-label="Search earlier announcements" className="h-10 pl-8" />
                   </div>
-                  {months.length === 0 ? <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nothing matches.</p> : months.map(([month, list]) => (
+                  {months.length === 0 ? <EmptyNote>Nothing matches.</EmptyNote> : months.map(([month, list]) => (
                     <div key={month}>
                       <p className="bg-muted/40 px-4 py-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase sm:px-5">{new Date(month + "-15T12:00:00").toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>
                       <ul className="divide-y">{list.map((a) => <Card key={a.id} a={a} />)}</ul>

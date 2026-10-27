@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Plus, DoorOpen, LogIn, Check, X, Stethoscope, ShieldAlert } from "lucide-react";
@@ -242,13 +243,13 @@ function HousesTab({ canEdit }: { canEdit: boolean }) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No boarders assigned yet.</p>
+                  <EmptyNote>No boarders assigned yet.</EmptyNote>
                 )}
               </CardContent>
             </Card>
           );
         })}
-        {houses.length === 0 && <p className="text-sm text-muted-foreground">No boarding houses yet. Add one to get started.</p>}
+        {houses.length === 0 && <EmptyNote>No boarding houses yet. Add one to get started.</EmptyNote>}
       </div>
     </div>
   );
@@ -361,7 +362,7 @@ function RollCallTab() {
               </div>
             );
           })}
-          {boarders.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No boarders in this house yet.</p>}
+          {boarders.length === 0 && <EmptyNote>No boarders in this house yet.</EmptyNote>}
         </CardContent>
       </Card>
     </div>
@@ -505,7 +506,7 @@ function ExeatsTab({ canApprove }: { canApprove: boolean }) {
             </CardContent>
           </Card>
         ))}
-        {exeats.length === 0 && <p className="text-sm text-muted-foreground">No leave-outs on record.</p>}
+        {exeats.length === 0 && <EmptyNote>No leave-outs on record.</EmptyNote>}
       </div>
     </div>
   );
@@ -606,7 +607,7 @@ function SickBayTab() {
             </CardContent>
           </Card>
         ))}
-        {visits.length === 0 && <p className="text-sm text-muted-foreground">No sick bay visits logged.</p>}
+        {visits.length === 0 && <EmptyNote>No sick bay visits logged.</EmptyNote>}
       </div>
     </div>
   );
@@ -712,7 +713,7 @@ function IncidentsTab() {
             </CardContent>
           </Card>
         ))}
-        {incidents.length === 0 && <p className="text-sm text-muted-foreground">No incidents recorded.</p>}
+        {incidents.length === 0 && <EmptyNote>No incidents recorded.</EmptyNote>}
       </div>
     </div>
   );

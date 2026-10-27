@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, Bus, CheckCircle2, ChevronLeft, ChevronRight, Clock, Phone, Plus, Search, ShieldAlert, UserCheck } from "lucide-react";
@@ -105,7 +106,7 @@ export function AttendantRuns({ schoolId }: { schoolId: number }) {
         <header className="rounded-xl border bg-card p-4">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{DIRECTION[s.direction]}</p>
           <h2 className="font-heading text-xl font-semibold">{s.route_name}</h2>
-          <p className="text-sm text-muted-foreground">{s.vehicle_registration ?? "No vehicle"} · {s.driver_name ?? "No driver"}</p>
+          <p className="text-xs text-muted-foreground">{s.vehicle_registration ?? "No vehicle"} · {s.driver_name ?? "No driver"}</p>
           <div className="mt-3"><Meter value={accounted} total={Math.max(1, s.expected)} label="Children accounted for" /></div>
           <p className="mt-1.5 text-sm"><strong>{s.boarded}</strong> on board · <strong>{s.dropped}</strong> {morning ? "at school" : "handed over"} · <strong>{s.absent}</strong> absent · <strong>{s.pending}</strong> waiting</p>
         </header>
@@ -205,7 +206,7 @@ export function RunsBoard({ runs, schoolId }: { runs: RunSummary[]; schoolId: nu
     }
   }
 
-  if (runs.length === 0) return <p className="rounded-xl border border-dashed bg-card px-4 py-12 text-center text-sm text-muted-foreground">No routes are set up yet.</p>;
+  if (runs.length === 0) return <EmptyNote>No routes are set up yet.</EmptyNote>;
   return (
     <>
       <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -339,7 +340,7 @@ export function ClassMovement({ schoolId, classes }: { schoolId: number; classes
               })}
             </section>
           ))}
-          {ready.classes.length === 0 && <p className="rounded-xl border border-dashed bg-card px-4 py-12 text-center text-sm text-muted-foreground">No classes to show.</p>}
+          {ready.classes.length === 0 && <EmptyNote>No classes to show.</EmptyNote>}
         </>
       )}
     </div>
@@ -447,7 +448,7 @@ export function FleetPanel({ schoolId, vehicles, setVehicles, alerts, canManage 
       )}
       {canManage && <div><Button className="h-10 sm:h-9" onClick={() => setEditing("new")}><Plus /> Add vehicle</Button></div>}
       {vehicles.length === 0 ? (
-        <p className="rounded-xl border border-dashed bg-card px-4 py-12 text-center text-sm text-muted-foreground">No vehicles yet.</p>
+        <EmptyNote>No vehicles yet.</EmptyNote>
       ) : (
         <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {vehicles.map((v) => (
@@ -579,7 +580,7 @@ export function RoutesPanel({ schoolId, routes, setRoutes, vehicles, students, c
         </div>
       )}
       {routes.length === 0 ? (
-        <p className="rounded-xl border border-dashed bg-card px-4 py-12 text-center text-sm text-muted-foreground">No routes yet.</p>
+        <EmptyNote>No routes yet.</EmptyNote>
       ) : (
         <ul className="grid gap-3 lg:grid-cols-2">
           {routes.map((route) => {

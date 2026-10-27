@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -200,7 +202,7 @@ function ParticipantsDialog({ activity, data, canManage, isTeacher, onClose, onC
               {canManage && <Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${p.student_name}`} onClick={() => remove(p.student_id)}><Trash2 /></Button>}
             </li>
           ))}
-          {detail && detail.participants.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No participants recorded yet.</p>}
+          {detail && detail.participants.length === 0 && <EmptyNote>No participants recorded yet.</EmptyNote>}
         </ul>
       </DialogContent>
     </Dialog>
@@ -330,13 +332,7 @@ export default function ActivitiesPage() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Activities &amp; Competitions</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Events and who took part: sports, academics, arts and clubs.</p>
-        </div>
-        <Button className="h-10 w-fit sm:h-9" onClick={() => setNewOpen(true)}><Plus /> New activity</Button>
-      </header>
+      <ModuleBanner title="Activities &amp; Competitions" description="Events and who took part: sports, academics, arts and clubs."><Button className="h-10 w-fit sm:h-9" onClick={() => setNewOpen(true)}><Plus /> New activity</Button></ModuleBanner>
 
       <DepartmentPulse dept="activities" />
 
@@ -360,7 +356,7 @@ export default function ActivitiesPage() {
           <Button size="sm" className="mt-2" onClick={() => setNewOpen(true)}><Plus /> New activity</Button>
         </div>
       ) : visible.length === 0 ? (
-        <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No activities match.</p>
+        <EmptyNote>No activities match.</EmptyNote>
       ) : (
         <ul className="overflow-hidden rounded-xl border bg-card divide-y">
           {visible.map((a) => (

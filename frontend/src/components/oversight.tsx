@@ -1,5 +1,6 @@
 "use client";
 
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { AlertTriangle, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -82,15 +83,7 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry: () =>
 }
 
 export function PageHead({ title, subtitle, children }: { title: string; subtitle?: React.ReactNode; children?: React.ReactNode }) {
-  return (
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
-      </div>
-      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
-    </header>
-  );
+  return <ModuleBanner title={title} description={subtitle}>{children}</ModuleBanner>;
 }
 
 export function ViewOnly({ children, label = "View only" }: { children?: React.ReactNode; label?: string }) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Medal, Trophy } from "lucide-react";
@@ -134,7 +135,7 @@ export function ClassPerformance({ schoolId, terms }: { schoolId: number; terms:
             <section className="overflow-hidden rounded-xl border bg-card" aria-label="Top learners in the school">
               <h3 className="flex items-center gap-2 border-b px-4 py-3 font-heading text-base font-semibold"><Trophy className="size-4 text-amber-500" aria-hidden /> Top learners</h3>
               {perf.top_learners.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-muted-foreground">No ranked marks yet.</p>
+                <EmptyNote>No ranked marks yet.</EmptyNote>
               ) : (
                 <ol className="divide-y">
                   {perf.top_learners.map((t, i) => (

@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookMarked, BookOpen, Library as LibraryIcon, Plus, ScanLine, Search, Undo2 } from "lucide-react";
@@ -74,7 +75,7 @@ function MyBookCards({ loans }: { loans: LibLoan[] }) {
 }
 
 function ClassSets({ sets }: { sets: LibClassSet[] }) {
-  if (sets.length === 0) return <p className="rounded-xl border border-dashed bg-card px-4 py-10 text-center text-sm text-muted-foreground">No teacher has borrowed books for a class.</p>;
+  if (sets.length === 0) return <EmptyNote>No teacher has borrowed books for a class.</EmptyNote>;
   return (
     <ul className="grid gap-3 lg:grid-cols-2">
       {sets.map((s) => (
@@ -166,7 +167,7 @@ function Catalogue({ schoolId, canAdd, showHolders }: { schoolId: number; canAdd
         {canAdd && <Button className="h-10 sm:ml-auto" onClick={() => setAdding(true)}><Plus /> Add a book</Button>}
       </div>
       {!books ? <PageLoader /> : books.length === 0 ? (
-        <p className="rounded-xl border border-dashed bg-card px-4 py-12 text-center text-sm text-muted-foreground">{q ? "No book matches." : "The catalogue is empty."}</p>
+        <EmptyNote>{q ? "No book matches." : "The catalogue is empty."}</EmptyNote>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {books.map((b) => (

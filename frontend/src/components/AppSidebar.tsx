@@ -19,7 +19,6 @@ import {
   Megaphone,
   MessageSquare,
   Video,
-  HeartHandshake,
   ClipboardList,
   History,
   CalendarRange,

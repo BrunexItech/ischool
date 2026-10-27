@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Check, Package, Plus, Truck, X } from "lucide-react";
@@ -203,7 +204,7 @@ function RequisitionsTab({ suppliers, onPoIssued }: { suppliers: Supplier[]; onP
             </CardContent>
           </Card>
         ))}
-        {requisitions.length === 0 && <p className="text-sm text-muted-foreground">No requisitions yet.</p>}
+        {requisitions.length === 0 && <EmptyNote>No requisitions yet.</EmptyNote>}
       </div>
     </div>
   );
@@ -245,7 +246,7 @@ function PurchaseOrdersTab({ purchaseOrders, suppliers, onUpdated }: { purchaseO
           </CardContent>
         </Card>
       ))}
-      {purchaseOrders.length === 0 && <p className="text-sm text-muted-foreground">No purchase orders yet.</p>}
+      {purchaseOrders.length === 0 && <EmptyNote>No purchase orders yet.</EmptyNote>}
     </div>
   );
 }

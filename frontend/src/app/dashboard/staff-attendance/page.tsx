@@ -1,5 +1,6 @@
 "use client";
 
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -900,10 +901,7 @@ export default function StaffAttendancePage() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <header>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Staff Attendance</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{isAdmin ? "Who was expected, who came, and who was away and why." : "Clock in, see your attendance and leave, and your upcoming duties."}</p>
-      </header>
+      <ModuleBanner title="Staff Attendance" description={isAdmin ? "Who was expected, who came, and who was away and why." : "Clock in, see your attendance and leave, and your upcoming duties."} />
       {isAdmin ? <AdminView /> : <MyView />}
     </div>
   );

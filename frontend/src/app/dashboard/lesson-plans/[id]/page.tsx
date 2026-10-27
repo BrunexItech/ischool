@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -429,7 +430,7 @@ export default function LessonPlanDetailPage({ params }: { params: Promise<{ id:
         )}
 
         {entries.length === 0 ? (
-          <p className="rounded-xl border border-dashed bg-card py-12 text-center text-sm text-muted-foreground">No topics yet. Add one above, or fill the whole term at once.</p>
+          <EmptyNote>No topics yet. Add one above, or fill the whole term at once.</EmptyNote>
         ) : (
           <ol className="relative flex flex-col" aria-label="Topics in order">
             <span className="absolute top-3 bottom-3 left-[0.95rem] w-px bg-border" aria-hidden />

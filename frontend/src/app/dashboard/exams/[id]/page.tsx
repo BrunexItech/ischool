@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -143,7 +144,7 @@ export default function ExamDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
           ))}
-          {submissions.length === 0 && <p className="text-sm text-muted-foreground">No students have sat this exam yet.</p>}
+          {submissions.length === 0 && <EmptyNote>No students have sat this exam yet.</EmptyNote>}
         </CardContent>
       </Card>
     </div>

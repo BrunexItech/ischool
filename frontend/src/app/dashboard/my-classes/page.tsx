@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -225,7 +227,7 @@ function ClassDetails({ model, timetable }: { model: ClassModel; timetable: MyTi
         <div className="flex flex-col gap-1.5">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Lessons this week</p>
           {lessons.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No lessons are scheduled for this class.</p>
+            <EmptyNote>No lessons are scheduled for this class.</EmptyNote>
           ) : (
             <ul className="flex flex-col gap-1.5">
               {lessons.map((s) => (
@@ -646,15 +648,7 @@ export default function MyClassesPage() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <div className="flex items-center gap-4 rounded-2xl border bg-card p-4 sm:p-5">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:size-14">
-          <Users className="size-6 sm:size-7" />
-        </span>
-        <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">My Classes</h1>
-          <p className="text-sm text-muted-foreground">View and manage the classes you are assigned to.</p>
-        </div>
-      </div>
+      <ModuleBanner title="My Classes" description="View and manage the classes you are assigned to." />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatCard

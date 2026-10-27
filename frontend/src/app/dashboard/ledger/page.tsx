@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -211,7 +212,7 @@ function JournalTab() {
             </CardContent>
           </Card>
         ))}
-        {entries.length === 0 && <p className="text-sm text-muted-foreground">No journal entries posted yet.</p>}
+        {entries.length === 0 && <EmptyNote>No journal entries posted yet.</EmptyNote>}
       </div>
     </div>
   );

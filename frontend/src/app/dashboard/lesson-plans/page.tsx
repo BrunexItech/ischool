@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyNote } from "@/components/EmptyNote";
+import { ModuleBanner } from "@/components/ModuleBanner";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -253,7 +255,7 @@ function CoverageView({ terms }: { terms: AcademicTerm[] }) {
       ) : data?.coverage === null ? (
         <ErrorBox message="We couldn't load the lesson plan figures." onRetry={() => setReloadKey((k) => k + 1)} />
       ) : aggs.length === 0 ? (
-        <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No timetabled lessons or plans for this term yet.</p>
+        <EmptyNote>No timetabled lessons or plans for this term yet.</EmptyNote>
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Summary">
@@ -289,7 +291,7 @@ function CoverageView({ terms }: { terms: AcademicTerm[] }) {
           </div>
 
           {shown.length === 0 ? (
-            <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No teachers match.</p>
+            <EmptyNote>No teachers match.</EmptyNote>
           ) : (
             <ul className="overflow-hidden rounded-xl border bg-card divide-y">
               {shown.map((a) => {
@@ -416,15 +418,8 @@ function LessonPlansView() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Lesson Plans</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {data.plans.length} plan{data.plans.length === 1 ? "" : "s"}
-            {totalTopics > 0 && <> · {totalCovered} of {totalTopics} topics covered</>}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <ModuleBanner title="Lesson Plans" description={<>{data.plans.length} plan{data.plans.length === 1 ? "" : "s"}
+            {totalTopics > 0 && <> · {totalCovered} of {totalTopics} topics covered</>}</>}><div className="flex flex-wrap gap-2">
           {isTeacher && (
             <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/lesson-plans/record"><FileText /> Record of work</Link>} />
           )}
@@ -433,8 +428,7 @@ function LessonPlansView() {
               <Plus /> New plan
             </Button>
           )}
-        </div>
-      </header>
+        </div></ModuleBanner>
 
       {isAdmin && (
         <div role="tablist" aria-label="Sections" className="grid w-full max-w-sm grid-cols-2 gap-1 rounded-lg bg-muted p-1">
@@ -517,7 +511,7 @@ function LessonPlansView() {
                 {canRecord && <Button size="sm" className="mt-2" onClick={() => setNewOpen(true)}><Plus /> New plan</Button>}
               </div>
             ) : groups.length === 0 ? (
-              <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No plans match your search.</p>
+              <EmptyNote>No plans match your search.</EmptyNote>
             ) : (
               groups.map(([className, plans]) => (
                 <div key={className} className="flex flex-col gap-2">
