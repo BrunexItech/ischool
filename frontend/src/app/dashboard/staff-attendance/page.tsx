@@ -352,7 +352,35 @@ function ReasonDialog({ row, date, onClose, onSaved }: { row: StaffDayRow; date:
 
 // ---------- Leadership tabs ----------
 
-function DayTab({ people, onLeave }: { people: StaffPerson[]; onLeave: (userId?: number) => void }) {
+// Departments, so a head can look at teachers, security and so on one group at a time.
+const CATEGORIES: { key: string; label: string; roles: string[] }[] = [
+  { key: "teachers", label: "Teachers", roles: ["teacher"] },
+  { key: "admin", label: "Administration", roles: ["head_of_institution", "secretary", "staff", "super_admin"] },
+  { key: "finance", label: "Finance and stores", roles: ["bursar", "accountant", "procurement_officer", "store_keeper"] },
+  { key: "security", label: "Security", roles: ["security"] },
+  { key: "boarding", label: "Boarding", roles: ["boarding_staff"] },
+  { key: "transport", label: "Transport", roles: ["transport_staff", "transport_attendant"] },
+  { key: "library", label: "Library", roles: ["librarian"] },
+];
+
+function CategoryBar({ people, value, onChange }: { people: StaffPerson[]; value: string; onChange: (k: string) => void }) {
+  const tracked = people.filter((p) => p.tracked);
+  const counts = CATEGORIES.map((c) => ({ ...c, n: tracked.filter((p) => c.roles.includes(p.role)).length })).filter((c) => c.n > 0);
+  if (counts.length < 2 && tracked.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 print:hidden" role="group" aria-label="Staff category">
+      <button type="button" aria-pressed={value === "all"} onClick={() => onChange("all")} className={`h-9 rounded-full border px-3.5 text-sm font-medium transition-colors ${value === "all" ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}>All staff <span className="tabular-nums opacity-80">{tracked.length}</span></button>
+      {counts.map((c) => (
+        <button key={c.key} type="button" aria-pressed={value === c.key} onClick={() => onChange(c.key)} className={`h-9 rounded-full border px-3.5 text-sm font-medium transition-colors ${value === c.key ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}>{c.label} <span className="tabular-nums opacity-80">{c.n}</span></button>
+      ))}
+    </div>
+  );
+}
+
+const inCategory = (role: string, key: string) => key === "all" || (CATEGORIES.find((c) => c.key === key)?.roles.includes(role) ?? false);
+const categoryLabel = (key: string) => (key === "all" ? "All staff" : (CATEGORIES.find((c) => c.key === key)?.label ?? "All staff"));
+
+function DayTab({ people, onLeave, category }: { people: StaffPerson[]; onLeave: (userId?: number) => void; category: string }) {
   const { token, user } = useAuth();
   const schoolId = user?.school_id ?? null;
   const [date, setDate] = useState(localDateStr());
@@ -372,11 +400,12 @@ function DayTab({ people, onLeave }: { people: StaffPerson[]; onLeave: (userId?:
 
   const ready = data && data.key === key;
   const day = ready ? data.day : null;
+  const shownRows = useMemo(() => (day?.rows ?? []).filter((r) => inCategory(r.role, category)), [day, category]);
   const counts = useMemo(() => {
     const c: Record<string, number> = { present: 0, late: 0, absent: 0, on_leave: 0, expected: 0 };
-    for (const r of day?.rows ?? []) c[r.status] += 1;
+    for (const r of shownRows) c[r.status] += 1;
     return c;
-  }, [day]);
+  }, [shownRows]);
   void people;
   const isToday = date === localDateStr();
 
@@ -408,11 +437,11 @@ function DayTab({ people, onLeave }: { people: StaffPerson[]; onLeave: (userId?:
           {counts.expected > 0 && <p className="text-sm text-muted-foreground">{counts.expected} not in yet. They count as absent once the cut-off time passes.</p>}
 
           <section className="overflow-hidden rounded-xl border bg-card">
-            {day.rows.length === 0 ? (
-              <Empty>No staff are being tracked yet.</Empty>
+            {shownRows.length === 0 ? (
+              <Empty>{category === "all" ? "No staff are being tracked yet." : `No ${categoryLabel(category).toLowerCase()} are being tracked yet.`}</Empty>
             ) : (
               <ul className="divide-y">
-                {day.rows.map((r) => (
+                {shownRows.map((r) => (
                   <li key={r.user_id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium break-words">{r.name}</p>
@@ -497,7 +526,7 @@ function SummaryTable({ summary, showNames }: { summary: StaffSummary; showNames
   );
 }
 
-function SummaryTab({ isAdmin }: { isAdmin: boolean }) {
+function SummaryTab({ isAdmin, category }: { isAdmin: boolean; category: string }) {
   const { token, user } = useAuth();
   const schoolId = user?.school_id ?? null;
   const [range, setRange] = useState({ from: monthStart(), to: localDateStr() });
@@ -515,7 +544,8 @@ function SummaryTab({ isAdmin }: { isAdmin: boolean }) {
   }, [token, schoolId, range, key]);
 
   const ready = data && data.key === key;
-  const summary = ready ? data.summary : null;
+  const full = ready ? data.summary : null;
+  const summary = full ? { ...full, rows: full.rows.filter((r) => inCategory(r.role, category)) } : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -524,9 +554,9 @@ function SummaryTab({ isAdmin }: { isAdmin: boolean }) {
         <div className="grid gap-1.5"><Label>To</Label><Input type="date" value={range.to} min={range.from} max={localDateStr()} onChange={(e) => e.target.value && setRange((r) => ({ ...r, to: e.target.value }))} className="h-10 w-44" /></div>
         <Button variant="outline" className="h-10" onClick={() => window.print()} disabled={!summary || summary.rows.length === 0}><Printer /> Print</Button>
       </div>
-      <div className="hidden print:block"><h1 className="text-xl font-bold">Staff attendance summary</h1><p className="text-sm">{fmtDay(range.from)} to {fmtDay(range.to)}</p></div>
+      <div className="hidden print:block"><h1 className="text-xl font-bold">Staff attendance summary{category !== "all" ? `: ${categoryLabel(category)}` : ""}</h1><p className="text-sm">{fmtDay(range.from)} to {fmtDay(range.to)}</p></div>
       {!ready ? <PageLoader /> : !summary ? <ErrorBox message="We couldn't load the summary." onRetry={() => setReloadKey((k) => k + 1)} /> : summary.rows.length === 0 ? (
-        <div className="rounded-xl border bg-card"><Empty>No staff to report on for this period.</Empty></div>
+        <div className="rounded-xl border bg-card"><Empty>{category === "all" ? "No staff to report on for this period." : `No ${categoryLabel(category).toLowerCase()} to report on for this period.`}</Empty></div>
       ) : (
         <>
           <p className="text-sm text-muted-foreground print:hidden">{summary.school_days} school day{summary.school_days === 1 ? "" : "s"} in this period. Weekends and holidays are not counted.</p>
@@ -537,13 +567,12 @@ function SummaryTab({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
-function LeaveTab({ people, isAdmin, openDialog, reloadKey }: { people: StaffPerson[]; isAdmin: boolean; openDialog: () => void; reloadKey: number }) {
+function LeaveTab({ people, isAdmin, openDialog, reloadKey, category }: { people: StaffPerson[]; isAdmin: boolean; openDialog: () => void; reloadKey: number; category: string }) {
   const { token, user } = useAuth();
   const schoolId = user?.school_id ?? null;
   const [data, setData] = useState<{ key: number; leaves: StaffLeave[] | null } | null>(null);
   const [local, setLocal] = useState(0);
   const key = reloadKey * 1000 + local;
-  void people;
 
   useEffect(() => {
     if (!token || !schoolId) return;
@@ -565,7 +594,8 @@ function LeaveTab({ people, isAdmin, openDialog, reloadKey }: { people: StaffPer
   }
 
   const ready = data && data.key === key;
-  const leaves = ready ? data.leaves : null;
+  const roleOf = new Map(people.map((p) => [p.user_id, p.role]));
+  const leaves = ready && data.leaves ? data.leaves.filter((l) => category === "all" || inCategory(roleOf.get(l.user_id) ?? "", category)) : null;
   return (
     <div className="flex flex-col gap-4">
       {isAdmin && <Button className="h-10 w-fit" onClick={openDialog}><Plus /> Record leave</Button>}
@@ -757,6 +787,7 @@ function AdminView() {
   const [leaveDialog, setLeaveDialog] = useState<{ open: boolean; userId?: number }>({ open: false });
   const [leaveKey, setLeaveKey] = useState(0);
   const [dayKey, setDayKey] = useState(0);
+  const [category, setCategory] = useState("all");
 
   useEffect(() => {
     if (!token || !schoolId) return;
@@ -777,9 +808,10 @@ function AdminView() {
         />
         <Button variant="outline" className="h-10 sm:h-9" onClick={() => token && schoolId && downloadQrSheet(token, schoolId)}><QrCode /> Download QR sheet</Button>
       </div>
-      {tab === "day" && <DayTab key={dayKey} people={people} onLeave={(userId) => setLeaveDialog({ open: true, userId })} />}
-      {tab === "summary" && <SummaryTab isAdmin />}
-      {tab === "leave" && <LeaveTab people={people} isAdmin openDialog={() => setLeaveDialog({ open: true })} reloadKey={leaveKey} />}
+      {(tab === "day" || tab === "summary" || tab === "leave") && <CategoryBar people={people} value={category} onChange={setCategory} />}
+      {tab === "day" && <DayTab key={dayKey} people={people} category={category} onLeave={(userId) => setLeaveDialog({ open: true, userId })} />}
+      {tab === "summary" && <SummaryTab isAdmin category={category} />}
+      {tab === "leave" && <LeaveTab people={people} category={category} isAdmin openDialog={() => setLeaveDialog({ open: true })} reloadKey={leaveKey} />}
       {tab === "duties" && <DutiesTab />}
       {tab === "settings" && <SettingsTab people={people} onChanged={() => { setPeopleKey((k) => k + 1); setDayKey((k) => k + 1); }} />}
       {leaveDialog.open && (
@@ -849,8 +881,8 @@ function MyView() {
           </section>
         </div>
       )}
-      {tab === "summary" && <SummaryTab isAdmin={false} />}
-      {tab === "leave" && <LeaveTab people={[]} isAdmin={false} openDialog={() => undefined} reloadKey={0} />}
+      {tab === "summary" && <SummaryTab isAdmin={false} category="all" />}
+      {tab === "leave" && <LeaveTab people={[]} category="all" isAdmin={false} openDialog={() => undefined} reloadKey={0} />}
     </div>
   );
 }
