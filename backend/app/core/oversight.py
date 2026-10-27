@@ -464,35 +464,94 @@ def attendance_oversight(db: Session, school_id: int, day: date):
 # --- The head's Overview: today's pulse and what needs a decision ---
 
 
-def head_overview(db: Session, school_id: int):
+def head_overview(db: Session, school_id: int, start: date | None = None, end: date | None = None):
     from app.models.complaint import Complaint, ComplaintStatus
     from app.models.expense import Expense, ExpenseStatus
     from app.models.trip import Trip, TripStatus
-    from app.schemas.oversight import HeadOverview, InboxItem, Pulse
-    from app.core.staff_presence import build_day
+    from app.schemas.oversight import HeadOverview, InboxItem, MissingRegister, Pulse
+    from app.core.staff_presence import build_day, build_summary
 
     today = school_today(db, school_id)
-    day = build_day(db, school_id, today)
-    att = attendance_oversight(db, school_id, today)
+    end = min(end or start or today, today)
+    start = min(start or end, end)
+    is_range = start != end
+    ctx_p = _Context(db, school_id, start, end)
+    span = [start + timedelta(days=i) for i in range((end - start).days + 1)]
+    school_days = [d for d in span if ctx_p.is_school_day(d)]
+    d0 = end  # the day shown when a single day is picked
 
+    day = build_day(db, school_id, d0)
+    att = attendance_oversight(db, school_id, d0)
     status_counts = defaultdict(int)
-    for r in day["rows"]:
-        status_counts[r["status"]] += 1
+    if is_range:
+        summary_rows = build_summary(db, school_id, start, end)["rows"]
+        for r in summary_rows:
+            status_counts["present"] += r["present"]
+            status_counts["late"] += r["late"]
+            status_counts["absent"] += r["absent_explained"] + r["absent_unexplained"]
+            status_counts["on_leave"] += r["on_leave"]
+    else:
+        for r in day["rows"]:
+            status_counts[r["status"]] += 1
 
-    scheduled = 0
-    marked = 0
+    teacher_slots = db.query(TimetableSlot.day_of_week).filter(TimetableSlot.school_id == school_id, TimetableSlot.teacher_user_id.isnot(None)).all()
+    per_weekday: dict[int, int] = defaultdict(int)
+    for (w,) in teacher_slots:
+        per_weekday[w] += 1
+    scheduled = sum(per_weekday[d.weekday()] for d in school_days)
+    marked = db.query(LessonDelivery).filter(LessonDelivery.school_id == school_id, LessonDelivery.lesson_date >= start, LessonDelivery.lesson_date <= end).count()
     unmarked_yesterday = 0
-    if day["school_day"]:
-        scheduled = db.query(TimetableSlot).filter(TimetableSlot.school_id == school_id, TimetableSlot.teacher_user_id.isnot(None), TimetableSlot.day_of_week == today.weekday()).count()
-        marked = db.query(LessonDelivery).filter_by(school_id=school_id, lesson_date=today).count()
-    y = today - timedelta(days=1)
+    y = d0 - timedelta(days=1)
     while y.weekday() >= 5:
         y -= timedelta(days=1)
-    ctx_y = _Context(db, school_id, y, y)
-    if ctx_y.is_school_day(y):
-        slots_y = db.query(TimetableSlot).filter(TimetableSlot.school_id == school_id, TimetableSlot.teacher_user_id.isnot(None), TimetableSlot.day_of_week == y.weekday()).count()
+    if _Context(db, school_id, y, y).is_school_day(y):
+        slots_y = per_weekday[y.weekday()]
         done_y = db.query(LessonDelivery).filter_by(school_id=school_id, lesson_date=y).count()
         unmarked_yesterday = max(0, slots_y - done_y)
+    lessons_unmarked = max(0, sum(per_weekday[d.weekday()] for d in school_days if d < today) - db.query(LessonDelivery).filter(LessonDelivery.school_id == school_id, LessonDelivery.lesson_date >= start, LessonDelivery.lesson_date <= min(end, today - timedelta(days=1))).count()) if school_days else 0
+
+    # Registers: rate over every register in the period, and which classes missed theirs.
+    recs = db.query(AttendanceRecord).filter(AttendanceRecord.school_id == school_id, AttendanceRecord.date >= start, AttendanceRecord.date <= end).all()
+    rate = _rate(recs)
+    taken = total = 0
+    missed: dict[str, list] = {}
+    for d in school_days:
+        a = att if d == d0 else attendance_oversight(db, school_id, d)
+        taken += a.classes_taken
+        total += a.classes_total
+        for row in a.rows:
+            if row.register_status == "missing":
+                entry = missed.setdefault(row.class_name, [0, row.class_id])
+                entry[0] += 1
+    homeroom = {c.id: (c.homeroom_teacher.full_name if c.homeroom_teacher else None) for c in db.query(SchoolClass).filter_by(school_id=school_id)}
+    missing_registers = sorted([MissingRegister(class_name=n, teacher=homeroom.get(v[1]), days=v[0]) for n, v in missed.items()], key=lambda m: (-m.days, m.class_name))
+
+    # Homework: for each lesson day in the period, was something recorded?
+    hw_recorded = hw_missing = hw_expected = 0
+    seen_weeks = set()
+    for d in span:
+        wk = week_start(d)
+        if wk in seen_weeks:
+            continue
+        seen_weeks.add(wk)
+        grid = homework_grid(db, school_id, wk)
+        for row in grid.rows:
+            for cell in row.cells:
+                if start <= cell.date <= end and cell.status in ("given", "board", "none", "missing"):
+                    hw_expected += 1
+                    if cell.status == "missing":
+                        hw_missing += 1
+                    else:
+                        hw_recorded += 1
+
+    from app.core.dates import school_tz
+    from datetime import datetime as _dt, time as _time, timezone as _tzone
+    from app.models.fees import FeePayment
+
+    tz = school_tz(db, school_id)
+    lo = _dt.combine(start, _time.min, tzinfo=tz).astimezone(_tzone.utc)
+    hi = _dt.combine(end + timedelta(days=1), _time.min, tzinfo=tz).astimezone(_tzone.utc)
+    fees_collected = float(sum(float(p.amount) for p in db.query(FeePayment).filter(FeePayment.school_id == school_id, FeePayment.paid_at >= lo, FeePayment.paid_at < hi)))
 
     inbox: list[InboxItem] = []
     now = school_today(db, school_id)
@@ -514,7 +573,7 @@ def head_overview(db: Session, school_id: int):
     for cr in db.query(ChangeRequest).filter_by(school_id=school_id, status=ChangeStatus.PENDING).order_by(ChangeRequest.requested_at).limit(10):
         inbox.append(InboxItem(kind="approval", title=f"To approve: {cr.title}", detail=f"{cr.summary} · prepared by {cr.requester.full_name if cr.requester else 'the office'}", age_days=age(cr.requested_at), href=LINKS.get(cr.kind, "/dashboard")))
     absent_unexplained = [r for r in day["rows"] if r["status"] == "absent" and not r["reason"]]
-    if absent_unexplained and day["school_day"]:
+    if absent_unexplained and day["school_day"] and not is_range and d0 == today:
         inbox.append(InboxItem(kind="staff", title=f"{len(absent_unexplained)} staff absent with no reason recorded", detail=", ".join(r["name"] for r in absent_unexplained[:3]) + ("..." if len(absent_unexplained) > 3 else ""), age_days=0, href="/dashboard/staff-attendance"))
     inbox.sort(key=lambda i: -i.age_days)
 
@@ -523,14 +582,14 @@ def head_overview(db: Session, school_id: int):
         counts[i.kind] += 1
     return HeadOverview(
         pulse=Pulse(
-            school_day=day["school_day"],
-            holiday=day["holiday"],
+            school_day=bool(school_days) if is_range else day["school_day"],
+            holiday=None if is_range else day["holiday"],
             learners=db.query(Student).filter_by(school_id=school_id, is_active=True).count(),
             teachers=db.query(User).filter(User.school_id == school_id, User.role == UserRole.TEACHER, User.is_active.is_(True)).count(),
             classes=att.classes_total,
-            attendance_rate=att.school_rate,
-            registers_taken=att.classes_taken,
-            registers_total=att.classes_total if att.school_day else 0,
+            attendance_rate=rate,
+            registers_taken=taken,
+            registers_total=total,
             staff_present=status_counts["present"],
             staff_late=status_counts["late"],
             staff_absent=status_counts["absent"],
@@ -539,6 +598,16 @@ def head_overview(db: Session, school_id: int):
             lessons_scheduled=scheduled,
             lessons_marked=marked,
             unmarked_yesterday=unmarked_yesterday,
+            start=start,
+            end=end,
+            is_range=is_range,
+            school_days=len(school_days),
+            lessons_unmarked=lessons_unmarked,
+            homework_recorded=hw_recorded,
+            homework_expected=hw_expected,
+            homework_missing=hw_missing,
+            fees_collected=round(fees_collected, 2),
+            missing_registers=missing_registers,
         ),
         inbox=inbox[:12],
         inbox_counts=dict(counts),
@@ -629,3 +698,35 @@ def performance_overview(db: Session, school_id: int, term: str | None, exam_typ
         classes=rows,
         top_learners=everyone[:10],
     )
+
+
+# --- Who is ready to sit a national assessment ---
+
+# Grade 6 sits KPSEA, Grade 9 sits KJSEA, Grade 12 sits KCSE. The numbers each
+# needs; every one is optional on the student record, this just shows what is missing.
+EXAM_GRADES = {
+    "G6": ("KPSEA", ["upi_number", "assessment_number", "birth_certificate_number"]),
+    "G9": ("KJSEA", ["upi_number", "assessment_number", "birth_certificate_number"]),
+    "G12": ("KCSE", ["upi_number", "index_number", "birth_certificate_number"]),
+}
+FIELD_LABEL = {"upi_number": "UPI", "assessment_number": "Assessment number", "index_number": "Index number", "birth_certificate_number": "Birth certificate number"}
+
+
+def exam_readiness(db: Session, school_id: int):
+    from app.schemas.oversight import ExamReadiness, ReadinessGroup, ReadinessLearner
+
+    groups = []
+    for code, (exam, needs) in EXAM_GRADES.items():
+        grade = db.query(GradeLevel).filter_by(code=code).first()
+        if grade is None:
+            continue
+        classes = {c.id: c.name for c in db.query(SchoolClass).filter_by(school_id=school_id, grade_level_id=grade.id)}
+        if not classes:
+            continue
+        kids = db.query(Student).filter(Student.school_id == school_id, Student.is_active.is_(True), Student.class_id.in_(list(classes))).order_by(Student.first_name, Student.last_name).all()
+        rows = []
+        for k in kids:
+            missing = [FIELD_LABEL[f] for f in needs if not (getattr(k, f) or "").strip()]
+            rows.append(ReadinessLearner(student_id=k.id, name=f"{k.first_name} {k.last_name}", admission_number=k.admission_number, class_name=classes[k.class_id], missing=missing))
+        groups.append(ReadinessGroup(grade_code=code, grade_name=grade.display_name, exam=exam, needs=[FIELD_LABEL[f] for f in needs], learners=len(rows), complete=sum(1 for r in rows if not r.missing), rows=rows))
+    return ExamReadiness(groups=groups)

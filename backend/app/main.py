@@ -22,6 +22,7 @@ if settings.sentry_dsn:
         logging.getLogger(__name__).exception("Failed to initialize Sentry — continuing without it")
 import app.core.day_structure  # noqa: F401  (registers the bell-schedule approval)
 import app.core.weekly_menu  # noqa: F401  (registers the meal-menu approval)
+import app.routers.fee_structure  # noqa: F401  (registers the fee-structure approval)
 from app.routers import (
     academic_terms,
     academics,
@@ -44,11 +45,13 @@ from app.routers import (
     exams,
     feedback,
     fees,
+    fee_structure,
     finance,
     grade_levels,
     grading_bands,
     homework,
     leads,
+    leadership,
     library,
     ledger,
     lesson_deliveries,
@@ -137,6 +140,8 @@ app.include_router(payroll.router)
 app.include_router(asset.router)
 app.include_router(timetable.router)
 app.include_router(approvals.router)
+app.include_router(leadership.router)
+app.include_router(fee_structure.router)
 app.include_router(store_requests.router)
 app.include_router(meals_weekly.router)
 app.include_router(library.router)

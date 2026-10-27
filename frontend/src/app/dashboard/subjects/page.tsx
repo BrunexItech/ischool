@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Library, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Library, Pencil, Plus, Trash2 } from "lucide-react";
 import { api, ApiError, GradeLevel, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ErrorBox, PageHead, Pill } from "@/components/oversight";
@@ -170,7 +170,7 @@ export default function SubjectsPage() {
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       <PageHead title="Subjects" subtitle="Every subject the school teaches, and the grades each one belongs to. Subjects are added here and nowhere else.">
-        <Button variant="outline" className="h-10 sm:h-9" onClick={seedPrePrimary} disabled={seeding}>{seeding ? <Spinner size={16} className="text-current" /> : <Sparkles />} Add PP1/PP2 learning areas</Button>
+        <Button variant="outline" className="h-10 sm:h-9" onClick={seedPrePrimary} disabled={seeding}>{seeding && <Spinner size={16} className="text-current" />} Add PP1/PP2 learning areas</Button>
         <Button className="h-10 sm:h-9" onClick={() => setEditing("new")}><Plus /> Add subject</Button>
       </PageHead>
 

@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { PageLoader } from "@/components/Spinner";
 import { Spinner } from "@/components/Spinner";
 import { WritingAnimation } from "@/components/WritingAnimation";
 
@@ -39,6 +40,7 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [assetsReady, setAssetsReady] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -72,7 +74,36 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
     }
   }
 
+  useEffect(() => {
+    let cancelled = false;
+    const done = () => !cancelled && setAssetsReady(true);
+    const sources = ["/login-hero.jpg", "/mila-logo.png"];
+    let left = sources.length;
+    for (const src of sources) {
+      const img = new window.Image();
+      const finish = () => {
+        left -= 1;
+        if (left === 0) done();
+      };
+      img.onload = () => (img.decode ? img.decode().then(finish, finish) : finish());
+      img.onerror = finish;
+      img.src = src;
+    }
+    const safety = window.setTimeout(done, 8000); // never trap someone on the spinner if a picture is slow
+    return () => {
+      cancelled = true;
+      window.clearTimeout(safety);
+    };
+  }, []);
+
   return (
+    <>
+    {/* Hold the whole page behind a spinner until the pictures are ready, so the words never appear before the image does. */}
+    {!assetsReady && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+        <PageLoader label="Getting things ready..." />
+      </div>
+    )}
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[var(--sidebar)] p-10 text-white lg:flex">
@@ -208,5 +239,6 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

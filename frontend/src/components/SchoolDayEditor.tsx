@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Sparkles, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { api, ApiError, PeriodDraft, SchoolPeriod } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { LEVEL_LABEL } from "@/components/oversight";
@@ -70,7 +70,7 @@ function LevelDay({ level, saved, schoolId, onSaved }: { level: string; saved: S
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={withPrep} onChange={(e) => setWithPrep(e.target.checked)} className="size-4 accent-[var(--primary)]" /> Include evening prep</label>
-          <Button variant="outline" size="sm" className="h-9" onClick={loadTemplate} disabled={busy !== null}>{busy === "template" ? <Spinner size={14} className="text-current" /> : <Sparkles />} Suggest a day</Button>
+          <Button variant="outline" size="sm" className="h-9" onClick={loadTemplate} disabled={busy !== null}>{busy === "template" && <Spinner size={14} className="text-current" />} Suggest a day</Button>
         </div>
       </header>
       {rows.length === 0 ? (

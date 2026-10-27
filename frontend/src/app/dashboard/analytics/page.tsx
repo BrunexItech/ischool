@@ -483,6 +483,27 @@ export default function AnalyticsPage() {
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       {header}
+      <section className="flex flex-col gap-3 print:hidden">
+        <button
+          type="button"
+          aria-expanded={chartsOpen}
+          aria-controls="bar-charts"
+          onClick={() => setChartsOpen((o) => !o)}
+          className="flex w-full items-center gap-3 rounded-xl border bg-card px-4 py-3.5 text-left outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><BarChart3 className="size-4.5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-heading text-base font-semibold">Bar charts</span>
+            <span className="block text-sm text-muted-foreground">Averages by subject and class, grades, term trend and attendance.</span>
+          </span>
+          <ChevronDown className={`size-5 shrink-0 text-muted-foreground transition-transform ${chartsOpen ? "rotate-180" : ""}`} aria-hidden />
+        </button>
+        {chartsOpen && (
+          <div id="bar-charts">
+            <BarCharts term={term || null} showFinance={canSeeFinance} />
+          </div>
+        )}
+      </section>
 
       <section className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3 sm:p-5 print:hidden" aria-label="Filters">
         <label className="grid gap-1.5 text-sm font-medium">
@@ -701,27 +722,6 @@ export default function AnalyticsPage() {
         </>
       )}
 
-      <section className="flex flex-col gap-3 print:hidden">
-        <button
-          type="button"
-          aria-expanded={chartsOpen}
-          aria-controls="bar-charts"
-          onClick={() => setChartsOpen((o) => !o)}
-          className="flex w-full items-center gap-3 rounded-xl border bg-card px-4 py-3.5 text-left outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
-        >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><BarChart3 className="size-4.5" /></span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-heading text-base font-semibold">Bar charts</span>
-            <span className="block text-sm text-muted-foreground">Averages by subject and class, grades, term trend and attendance.</span>
-          </span>
-          <ChevronDown className={`size-5 shrink-0 text-muted-foreground transition-transform ${chartsOpen ? "rotate-180" : ""}`} aria-hidden />
-        </button>
-        {chartsOpen && (
-          <div id="bar-charts">
-            <BarCharts term={term || null} showFinance={canSeeFinance} />
-          </div>
-        )}
-      </section>
     </div>
   );
 }

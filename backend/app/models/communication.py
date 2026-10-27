@@ -35,4 +35,10 @@ class Announcement(Base):
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    author: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])
+
+    @property
+    def created_by_name(self) -> str | None:
+        return self.author.full_name if self.author else None
+
     school: Mapped["School"] = relationship("School")

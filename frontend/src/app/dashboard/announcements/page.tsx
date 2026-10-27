@@ -192,41 +192,60 @@ export default function AnnouncementsPage() {
     earlier.reduce((m, a) => m.set(a.created_at.slice(0, 7), [...(m.get(a.created_at.slice(0, 7)) ?? []), a]), new Map<string, Announcement[]>()),
   ).sort(([a], [b]) => (a < b ? 1 : -1));
 
+  const ACCENT: Record<string, string> = { all: "border-l-primary", staff: "border-l-sky-500", teachers: "border-l-sky-500", parents: "border-l-emerald-500", students: "border-l-amber-500" };
+  const ago = (iso: string) => {
+    const mins = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000));
+    if (mins < 60) return mins < 2 ? "just now" : `${mins} minutes ago`;
+    if (mins < 1440) return `${Math.round(mins / 60)} hour${Math.round(mins / 60) === 1 ? "" : "s"} ago`;
+    const d = Math.round(mins / 1440);
+    return d === 1 ? "yesterday" : `${d} days ago`;
+  };
+
   const Card = ({ a }: { a: Announcement }) => {
-    const long = a.body.length > 220;
+    const long = a.body.length > 260;
     const expanded = open.has(a.id);
     const cls = className(a.class_id);
+    const posted = new Date(a.created_at);
     return (
-      <li className="flex gap-3 px-4 py-4 sm:gap-4 sm:px-5">
-        {a.event_date ? (
-          <div className="flex w-12 shrink-0 flex-col items-center rounded-lg border bg-muted/40 py-1.5 text-center" aria-label={`Event on ${a.event_date}`}>
-            <span className="text-[10px] font-semibold tracking-wider text-primary uppercase">{new Date(a.event_date + "T12:00:00").toLocaleDateString("en-GB", { month: "short" })}</span>
-            <span className="font-heading text-lg leading-none font-semibold tabular-nums">{new Date(a.event_date + "T12:00:00").getDate()}</span>
-          </div>
-        ) : (
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Megaphone className="size-5" /></span>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">{AUDIENCE_LABEL[a.audience]}</span>
-            {cls && (a.audience === "students" || a.audience === "parents") && <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">{cls}</span>}
-            {a.event_date && <span className="rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">Event</span>}
-            <span>{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
-          </div>
-          <h3 className="mt-1.5 font-medium break-words">{a.title}</h3>
-          <p className={`mt-1 text-sm break-words whitespace-pre-line text-muted-foreground ${long && !expanded ? "line-clamp-3" : ""}`}>{a.body}</p>
-          {long && (
-            <button type="button" className="mt-1 text-sm font-medium text-primary hover:underline" onClick={() => setOpen((s) => { const n = new Set(s); if (n.has(a.id)) n.delete(a.id); else n.add(a.id); return n; })}>
-              {expanded ? "Show less" : "Read more"}
-            </button>
+      <li className={`border-l-4 px-4 py-5 sm:px-6 ${ACCENT[a.audience] ?? "border-l-primary"}`}>
+        <article className="flex gap-4">
+          {a.event_date ? (
+            <div className="flex w-14 shrink-0 flex-col items-center self-start rounded-xl border bg-card py-2 text-center shadow-xs" aria-label={`Event on ${a.event_date}`}>
+              <span className="text-[10px] font-semibold tracking-wider text-primary uppercase">{new Date(a.event_date + "T12:00:00").toLocaleDateString("en-GB", { month: "short" })}</span>
+              <span className="font-heading text-xl leading-none font-semibold tabular-nums">{new Date(a.event_date + "T12:00:00").getDate()}</span>
+            </div>
+          ) : (
+            <span className="flex size-14 shrink-0 items-center justify-center self-start rounded-xl bg-primary/10 text-primary"><Megaphone className="size-6" aria-hidden /></span>
           )}
-          {a.event_date && (
-            <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><CalendarDays className="size-3.5" /> {new Date(a.event_date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}{a.event_end_date ? ` to ${new Date(a.event_end_date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long" })}` : ""}</span>
-              {a.location && <span className="flex items-center gap-1"><MapPin className="size-3.5" /> {a.location}</span>}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <h3 className="font-heading text-lg leading-snug font-semibold break-words">{a.title}</h3>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">{AUDIENCE_LABEL[a.audience]}</span>
+                {cls && (a.audience === "students" || a.audience === "parents") && <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">{cls}</span>}
+                {a.event_date && <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">Event</span>}
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {a.created_by_name ? <>Posted by <span className="font-medium text-foreground">{a.created_by_name}</span> · </> : null}
+              <time dateTime={a.created_at} title={posted.toLocaleString("en-GB")}>{ago(a.created_at)}, {posted.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} at {posted.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</time>
             </p>
-          )}
-        </div>
+            <div className="mt-3 rounded-lg bg-muted/40 px-4 py-3">
+              <p className={`max-w-prose text-[0.95rem] leading-relaxed break-words whitespace-pre-line ${long && !expanded ? "line-clamp-4" : ""}`}>{a.body}</p>
+              {long && (
+                <button type="button" className="mt-2 text-sm font-medium text-primary hover:underline" onClick={() => setOpen((s) => { const n = new Set(s); if (n.has(a.id)) n.delete(a.id); else n.add(a.id); return n; })}>
+                  {expanded ? "Show less" : "Read the full message"}
+                </button>
+              )}
+            </div>
+            {a.event_date && (
+              <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5"><CalendarDays className="size-4" aria-hidden /> {new Date(a.event_date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}{a.event_end_date ? ` to ${new Date(a.event_end_date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long" })}` : ""}</span>
+                {a.location && <span className="flex items-center gap-1.5"><MapPin className="size-4" aria-hidden /> {a.location}</span>}
+              </p>
+            )}
+          </div>
+        </article>
       </li>
     );
   };
@@ -258,7 +277,7 @@ export default function AnnouncementsPage() {
       ) : (
         <>
           <section className="overflow-hidden rounded-xl border bg-card">
-            <h2 className="border-b px-4 py-3 font-heading text-lg font-semibold sm:px-5">Recent</h2>
+            <h2 className="flex items-center justify-between border-b bg-muted/30 px-4 py-3 font-heading text-lg font-semibold sm:px-6">Recent<span className="text-sm font-normal text-muted-foreground">last {RECENT_DAYS} days</span></h2>
             {split.recent.length === 0 ? <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nothing in the last {RECENT_DAYS} days.</p> : <ul className="divide-y">{split.recent.map((a) => <Card key={a.id} a={a} />)}</ul>}
           </section>
 

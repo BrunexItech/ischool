@@ -6,6 +6,8 @@ import { api, AcademicTerm, ApiError, FeeInvoice, FeeInvoiceDetail, SchoolClass,
 import { ClassStudentPicker } from "@/components/ClassStudentPicker";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { BalancesView, StructureView } from "@/components/FeesViews";
+import { GradeLevel } from "@/lib/api";
 import { PageLoader } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -124,7 +126,7 @@ function InvoiceDialog({ invoice, studentLabel, onUpdated }: { invoice: FeeInvoi
   );
 }
 
-export default function FeesPage() {
+function InvoicesView() {
   const { user, token } = useAuth();
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -189,7 +191,6 @@ export default function FeesPage() {
   if (loading) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Fees" description="Create invoices and track payments by term." />
         <PageLoader />
       </div>
     );
@@ -197,7 +198,6 @@ export default function FeesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Fees" description="Create invoices and track payments by term." />
 
       <Card>
         <CardContent className="pt-6">
@@ -293,6 +293,54 @@ export default function FeesPage() {
           </TableBody>
         </Table>
       </Card>
+    </div>
+  );
+}
+
+
+const DESK_ROLES = ["head_of_institution", "group_principal", "super_admin", "bursar", "accountant", "staff"];
+
+export default function FeesPage() {
+  const { user, token } = useAuth();
+  const schoolId = user?.school_id ?? null;
+  const [terms, setTerms] = useState<AcademicTerm[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [grades, setGrades] = useState<GradeLevel[]>([]);
+  const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState<string | null>(null);
+  const secretary = user?.role === "secretary";
+
+  useEffect(() => {
+    if (!token || !schoolId) return;
+    let cancelled = false;
+    Promise.all([api.listAcademicTerms(token, schoolId).catch(() => [] as AcademicTerm[]), api.listClasses(token, schoolId).catch(() => [] as SchoolClass[]), api.listGradeLevels(token).catch(() => [] as GradeLevel[])]).then(([t, c, g]) => {
+      if (cancelled) return;
+      setTerms(t);
+      setClasses(c);
+      setGrades(g.sort((a, b) => a.sort_order - b.sort_order));
+      setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, schoolId]);
+
+  if (!user || !schoolId || !ready) return <PageLoader />;
+  const tabs: [string, string][] = secretary
+    ? [["structure", "Fee structure"]]
+    : [["balances", "Balances and arrears"], ["structure", "Fee structure"], ["invoices", "Invoices and payments"]];
+  const view = tab ?? tabs[0][0];
+  return (
+    <div className="flex flex-col gap-5 sm:gap-6">
+      <PageHeader title="Fees" description={secretary ? "Set the fees for each grade and term. The head approves them before they take effect." : "What every learner owes, the fees for each grade, and the payments received."} />
+      {tabs.length > 1 && (
+        <div role="tablist" className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1 print:hidden">
+          {tabs.map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setTab(k)} className={`h-9 shrink-0 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>)}
+        </div>
+      )}
+      {view === "balances" && DESK_ROLES.includes(user.role) && <BalancesView schoolId={schoolId} terms={terms} classes={classes} />}
+      {view === "structure" && <StructureView schoolId={schoolId} terms={terms} grades={grades} />}
+      {view === "invoices" && <InvoicesView />}
     </div>
   );
 }

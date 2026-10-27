@@ -44,6 +44,13 @@ class Student(Base):
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
+    # National-exam identifiers. All optional: a school fills them in as it gets them.
+    upi_number: Mapped[str | None] = mapped_column(String(30), nullable=True)          # NEMIS unique personal identifier
+    assessment_number: Mapped[str | None] = mapped_column(String(30), nullable=True)   # KNEC assessment number (KPSEA / KJSEA)
+    index_number: Mapped[str | None] = mapped_column(String(30), nullable=True)        # KNEC index number (KCSE)
+    birth_certificate_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    nationality: Mapped[str | None] = mapped_column(String(60), nullable=True)
+
     guardian_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     guardian_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     guardian_email: Mapped[str | None] = mapped_column(String(255), nullable=True)

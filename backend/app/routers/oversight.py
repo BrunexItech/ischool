@@ -10,10 +10,10 @@ from app.core.dates import school_today
 from app.core.module_pulse import PULSES, module_pulse, weekly_report
 from app.core.finance_activity import finance_activity
 from app.core.transport_oversight import transport_overview
-from app.core.oversight import performance_overview, attendance_oversight, class_cards, class_detail, head_overview, homework_grid, teacher_cards
+from app.core.oversight import exam_readiness, performance_overview, attendance_oversight, class_cards, class_detail, head_overview, homework_grid, teacher_cards
 from app.models.school import School
 from app.models.user import User, UserRole
-from app.schemas.oversight import FinanceActivity, TransportOverview, PerformanceOverview, ActivityFeed, MarkOverride, PulseSection, WeeklyReport, AttendanceOversight, ClassCard, ClassDetail, HeadOverview, HomeworkGrid, TeacherCard
+from app.schemas.oversight import ExamReadiness, FinanceActivity, TransportOverview, PerformanceOverview, ActivityFeed, MarkOverride, PulseSection, WeeklyReport, AttendanceOversight, ClassCard, ClassDetail, HeadOverview, HomeworkGrid, TeacherCard
 
 router = APIRouter(prefix="/schools/{school_id}/oversight", tags=["oversight"])
 
@@ -87,10 +87,15 @@ def attendance_overview(school_id: int, on: date | None = None, db: Session = De
     response_model=HeadOverview,
     dependencies=[Depends(require_roles(*LEADERSHIP))],
 )
-def head_overview_endpoint(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Today's pulse and everything waiting on the head."""
+def head_overview_endpoint(school_id: int, start: date | None = None, end: date | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """The pulse of the school for a day, or added up over a span of days
+    (default: today), and everything still waiting on the head."""
     ensure_school_access(db, current_user, school_id)
-    return head_overview(db, school_id)
+    if start and end and end < start:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The end date is before the start date")
+    if start and (end or school_today(db, school_id)) - start > timedelta(days=62):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Pick a span of about two months or less")
+    return head_overview(db, school_id, start, end)
 
 
 # The departments the head's office can see a summary of. Money, staff
@@ -230,3 +235,11 @@ def finance_desk_activity(school_id: int, start: date | None = None, end: date |
     if (last - first).days > 92:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Pick a span of three months or less")
     return finance_activity(db, school_id, first, last, actor_id)
+
+
+@router.get("/exam-readiness", response_model=ExamReadiness, dependencies=[Depends(require_roles(*OFFICE)), Depends(require_feature("students_staff"))])
+def exam_readiness_endpoint(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """For Grades 6, 9 and 12: which learners still lack the numbers a national
+    assessment needs (UPI, assessment or index number, birth certificate number)."""
+    ensure_school_access(db, current_user, school_id)
+    return exam_readiness(db, school_id)

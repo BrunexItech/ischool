@@ -2,22 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, BookOpenCheck, CalendarSearch, ChevronRight, ClipboardCheck, FileBarChart, GraduationCap, Inbox, Megaphone, Minus, UserCheck, UserPlus, type LucideIcon } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BookOpenCheck, ChevronRight, ClipboardCheck, FileBarChart, GraduationCap, Inbox, Megaphone, Minus, UserCheck, UserPlus, type LucideIcon } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AcademicTerm, api, ClassCard, DashboardSummary, HeadOverview, HomeworkGrid, Insights } from "@/lib/api";
+import { AcademicTerm, api, ClassCard, DashboardSummary, HeadOverview, Insights } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { localDateStr } from "@/lib/dates";
 import { LEVEL_BAR, LEVEL_LABEL, LEVEL_ORDER, Meter, Pill } from "@/components/oversight";
 import { PageLoader } from "@/components/Spinner";
-import { FindByDate, RecentActivity } from "@/components/ActivityExplorer";
+import { RecentActivity } from "@/components/ActivityExplorer";
+import { PeriodBar, Period, periodLabel } from "@/components/PeriodBar";
 import { Button } from "@/components/ui/button";
 
 interface Data {
-  overview: HeadOverview | null;
   summary: DashboardSummary | null;
   insights: Insights | null;
   cards: ClassCard[] | null;
-  homework: HomeworkGrid | null;
   term: AcademicTerm | null;
 }
 
@@ -82,6 +81,22 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
   const { user, token } = useAuth();
   const [data, setData] = useState<Data | null>(null);
   const [now] = useState(() => Date.now());
+  const [period, setPeriod] = useState<Period>(() => ({ start: localDateStr(), end: localDateStr() }));
+  const [ovState, setOvState] = useState<{ key: string; value: HeadOverview | null } | null>(null);
+  const periodKey = `${period.start}|${period.end}`;
+
+  // The cards follow the date picked at the top; today is the default.
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    api
+      .getHeadOverview(token, schoolId, period)
+      .then((value) => !cancelled && setOvState({ key: periodKey, value }))
+      .catch(() => !cancelled && setOvState({ key: periodKey, value: null }));
+    return () => {
+      cancelled = true;
+    };
+  }, [token, schoolId, period, periodKey]);
 
   useEffect(() => {
     if (!token) return;
@@ -89,14 +104,12 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
     (async () => {
       const terms = await api.listAcademicTerms(token, schoolId).catch(() => [] as AcademicTerm[]);
       const term = terms.find((t) => t.is_current) ?? terms[0] ?? null;
-      const [overview, summary, insights, cards, homework] = await Promise.all([
-        api.getHeadOverview(token, schoolId).catch(() => null),
+      const [summary, insights, cards] = await Promise.all([
         api.getDashboardSummary(token, schoolId).catch(() => null),
         term ? api.getInsights(token, schoolId, { term: term.name }).catch(() => null) : Promise.resolve(null),
         api.getClassCards(token, schoolId).catch(() => null),
-        api.getHomeworkGrid(token, schoolId).catch(() => null),
       ]);
-      if (!cancelled) setData({ overview, summary, insights, cards, homework, term });
+      if (!cancelled) setData({ summary, insights, cards, term });
     })();
     return () => {
       cancelled = true;
@@ -110,12 +123,15 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
   }, [data]);
 
   if (!data) return <PageLoader />;
-  const { overview, summary, insights, cards, homework, term } = data;
+  const { summary, insights, cards, term } = data;
+  const overview = ovState && ovState.key === periodKey ? ovState.value : null;
+  const loadingPeriod = !ovState || ovState.key !== periodKey;
   const p = overview?.pulse;
+  const label = periodLabel(period);
+  const isToday = period.start === period.end && period.end === localDateStr();
   const inboxTotal = overview ? overview.inbox.length : 0;
   const weekOf = term?.start_date && term?.end_date ? { week: Math.max(1, Math.ceil((now - new Date(term.start_date).getTime()) / 604800000)), of: Math.max(1, Math.round((new Date(term.end_date).getTime() - new Date(term.start_date).getTime()) / 604800000)) } : null;
   const trend = (summary?.attendance_trend ?? []).map((t) => ({ date: t.date, label: new Date(t.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" }), rate: t.rate, isToday: t.date === localDateStr() }));
-  const hwRecorded = homework ? homework.summary.given + homework.summary.board + homework.summary.none : 0;
   const sc = insights?.scorecard;
   const attention = insights?.attention;
   const staffIn = p ? p.staff_present + p.staff_late : 0;
@@ -131,49 +147,58 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<a href="#find-by-date"><CalendarSearch /> Find by date</a>} />
           <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/reports"><FileBarChart /> Weekly report</Link>} />
           <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/announcements"><Megaphone /> Announce</Link>} />
           <Button className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/students"><UserPlus /> Enrol a learner</Link>} />
         </div>
       </header>
 
+      <PeriodBar schoolId={schoolId} period={period} onChange={setPeriod} loading={loadingPeriod} />
+
       {p && !p.school_day && (
-        <p className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">{p.holiday ? `${p.holiday} is a holiday on the school calendar.` : "Today is not a school day."} The figures below show the most recent information.</p>
+        <p className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">{p.is_range ? "There were no school days in this period." : p.holiday ? `${p.holiday} was a holiday on the school calendar.` : "That day was not a school day."}</p>
       )}
 
-      {/* Today */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Today at a glance">
+      {/* The period picked above */}
+      <section className={`grid grid-cols-2 gap-3 transition-opacity lg:grid-cols-5 ${loadingPeriod ? "opacity-60" : ""}`} aria-label={`School at a glance, ${label}`} aria-busy={loadingPeriod}>
         <Tile
-          label="Attendance today" icon={ClipboardCheck}
+          label={p?.is_range ? "Attendance" : isToday ? "Attendance today" : "Attendance"} icon={ClipboardCheck}
           value={p?.attendance_rate != null ? `${p.attendance_rate}%` : "—"}
-          sub={p ? (p.school_day ? `${p.registers_taken} of ${p.registers_total} registers in` : "No school today") : "Unavailable"}
+          sub={p ? (p.school_day ? `${p.registers_taken} of ${p.registers_total} registers taken${p.is_range ? ` over ${p.school_days} school days` : ""}` : "No school") : "Unavailable"}
           href="/dashboard/attendance"
           tone={p && p.school_day && p.registers_taken < p.registers_total ? "warn" : undefined}
         >
           {p && p.school_day && p.registers_total > 0 && <Meter value={p.registers_taken} total={p.registers_total} label="Registers taken" />}
         </Tile>
-        <Tile icon={UserCheck} label="Teachers in today" value={p ? String(staffIn) : "—"} sub={p ? `${p.staff_absent} absent · ${p.staff_on_leave} on leave${p.staff_expected ? ` · ${p.staff_expected} not in yet` : ""}` : "Unavailable"} href="/dashboard/staff-attendance" tone={p && p.staff_absent > 0 ? "warn" : undefined} />
         <Tile
-          label="Lessons marked today" icon={GraduationCap}
+          icon={UserCheck}
+          label={p?.is_range ? "Teacher days in" : isToday ? "Teachers in today" : "Teachers in"}
+          value={p ? String(staffIn) : "—"}
+          sub={p ? `${p.staff_absent} absent · ${p.staff_on_leave} on leave${p.is_range ? " (teacher days)" : ""}${p.staff_expected ? ` · ${p.staff_expected} not in yet` : ""}` : "Unavailable"}
+          href="/dashboard/staff-attendance"
+          tone={p && p.staff_absent > 0 ? "warn" : undefined}
+        />
+        <Tile
+          label={p?.is_range ? "Lessons marked" : isToday ? "Lessons marked today" : "Lessons marked"} icon={GraduationCap}
           value={p ? `${p.lessons_marked}/${p.lessons_scheduled}` : "—"}
-          sub={p ? (p.unmarked_yesterday > 0 ? `${p.unmarked_yesterday} from yesterday not marked` : "Nothing outstanding from yesterday") : "Unavailable"}
+          sub={p ? (p.is_range || !isToday ? (p.lessons_unmarked > 0 ? `${p.lessons_unmarked} lessons never marked` : "Every past lesson is marked") : p.unmarked_yesterday > 0 ? `${p.unmarked_yesterday} from yesterday not marked` : "Nothing outstanding from yesterday") : "Unavailable"}
           href="/dashboard/lesson-plans"
+          tone={p && p.lessons_unmarked > 0 && (p.is_range || !isToday) ? "warn" : undefined}
         />
         <Tile
-          label="Homework this week" icon={BookOpenCheck}
-          value={homework ? `${hwRecorded}/${homework.summary.expected}` : "—"}
-          sub={homework ? (homework.summary.missing > 0 ? `${homework.summary.missing} lessons with nothing recorded` : "Every lesson accounted for") : "Unavailable"}
+          label={p?.is_range ? "Homework" : isToday ? "Homework today" : "Homework"} icon={BookOpenCheck}
+          value={p ? `${p.homework_recorded}/${p.homework_expected}` : "—"}
+          sub={p ? (p.homework_missing > 0 ? `${p.homework_missing} lessons with nothing recorded` : "Every lesson accounted for") : "Unavailable"}
           href="/dashboard/homework"
-          tone={homework && homework.summary.missing > 0 ? "warn" : undefined}
+          tone={p && p.homework_missing > 0 ? "warn" : undefined}
         />
-        <Tile icon={Inbox} label="Waiting for you" value={String(inboxTotal)} sub={inboxTotal ? "decisions and replies" : "Nothing needs your decision"} href="#decisions" tone={inboxTotal > 0 ? "warn" : undefined} />
+        <Tile icon={Inbox} label="Waiting for you" value={String(inboxTotal)} sub={inboxTotal ? "decisions and replies, open right now" : "Nothing needs your decision"} href="#decisions" tone={inboxTotal > 0 ? "warn" : undefined} />
       </section>
 
       {/* Decisions and exceptions */}
       <div className="grid items-start gap-5 lg:grid-cols-[1.3fr_1fr]">
         <div id="decisions">
-          <Panel title="Needs your decision" caption="Oldest first. Each opens the item so you can approve, decline or reply.">
+          <Panel title="Needs your decision" caption="Open right now, oldest first. Each opens the item so you can approve, decline or reply.">
             {!overview ? (
               <p className="px-4 py-10 text-center text-sm text-muted-foreground">We couldn&apos;t load this just now.</p>
             ) : overview.inbox.length === 0 ? (
@@ -195,31 +220,31 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
           </Panel>
         </div>
 
-        <Panel title="Today's exceptions" caption="What to chase this morning">
+        <Panel title={isToday ? "Today's exceptions" : "Exceptions"} caption={isToday ? "What to chase this morning" : `What was missed, ${label}`}>
           <ul className="divide-y">
             <li className="px-4 py-3 sm:px-5">
               <p className="text-sm font-medium">Registers not taken</p>
-              {summary && summary.pending_registers.length > 0 ? (
+              {p && p.missing_registers.length > 0 ? (
                 <ul className="mt-1.5 flex flex-col gap-1">
-                  {summary.pending_registers.slice(0, 5).map((r) => (
-                    <li key={r.class_id} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="min-w-0 break-words">{r.class_name}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">{r.teacher_name ?? "No class teacher"}</span>
+                  {p.missing_registers.slice(0, 6).map((r) => (
+                    <li key={r.class_name} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="min-w-0 break-words">{r.class_name}{p.is_range ? <span className="text-muted-foreground"> · {r.days} day{r.days === 1 ? "" : "s"}</span> : null}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{r.teacher ?? "No class teacher"}</span>
                     </li>
                   ))}
-                  {summary.pending_registers.length > 5 && <li className="text-xs text-muted-foreground">+{summary.pending_registers.length - 5} more</li>}
+                  {p.missing_registers.length > 6 && <li className="text-xs text-muted-foreground">+{p.missing_registers.length - 6} more</li>}
                 </ul>
               ) : (
-                <p className="text-xs text-muted-foreground">{p && !p.school_day ? "No school today." : "Every class has taken its register."}</p>
+                <p className="text-xs text-muted-foreground">{p && !p.school_day ? "No school." : "Every class took its register."}</p>
               )}
             </li>
             <li className="px-4 py-3 sm:px-5">
-              <p className="text-sm font-medium">Teachers away today</p>
-              <p className="text-xs text-muted-foreground">{p ? (p.staff_absent + p.staff_on_leave > 0 ? `${p.staff_absent} absent, ${p.staff_on_leave} on leave` : "Everyone expected is in.") : "Unavailable"}</p>
+              <p className="text-sm font-medium">Teachers away</p>
+              <p className="text-xs text-muted-foreground">{p ? (p.staff_absent + p.staff_on_leave > 0 ? `${p.staff_absent} absent, ${p.staff_on_leave} on leave${p.is_range ? " (teacher days)" : ""}` : "Everyone expected was in.") : "Unavailable"}</p>
             </li>
             <li className="px-4 py-3 sm:px-5">
-              <p className="text-sm font-medium">Lessons from yesterday not marked</p>
-              <p className="text-xs text-muted-foreground">{p ? (p.unmarked_yesterday > 0 ? `${p.unmarked_yesterday} lessons have no taught or not-taught mark` : "All marked.") : "Unavailable"}</p>
+              <p className="text-sm font-medium">Lessons not marked</p>
+              <p className="text-xs text-muted-foreground">{p ? ((p.is_range || !isToday ? p.lessons_unmarked : p.unmarked_yesterday) > 0 ? `${p.is_range || !isToday ? p.lessons_unmarked : p.unmarked_yesterday} lessons have no taught or not-taught mark` : "All marked.") : "Unavailable"}</p>
             </li>
           </ul>
         </Panel>
@@ -300,6 +325,7 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
               <div>
                 <p className="font-heading text-3xl font-semibold tabular-nums">{summary.fee_collection_rate.toFixed(1)}%</p>
                 <p className="mb-2 text-xs text-muted-foreground">KES {summary.amount_paid.toLocaleString()} of {summary.amount_billed.toLocaleString()} billed</p>
+                {p && <p className="mb-2 text-sm"><span className="font-semibold tabular-nums">KES {Math.round(p.fees_collected).toLocaleString()}</span> <span className="text-muted-foreground">received {label.toLowerCase()}</span></p>}
                 <Meter value={summary.amount_paid} total={Math.max(summary.amount_billed, 1)} label="Fees collected" />
               </div>
               {summary.top_balances.length > 0 && (
@@ -337,7 +363,6 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
         </Panel>
       </div>
 
-      <div id="find-by-date" className="scroll-mt-4"><FindByDate schoolId={schoolId} /></div>
       <RecentActivity schoolId={schoolId} />
     </div>
   );

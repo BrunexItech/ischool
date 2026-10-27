@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ExamNumbers } from "@/components/ExamNumbers";
+import { ExamReadinessPanel } from "@/components/ExamReadinessPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ResetPasswordDialog } from "@/components/ResetPasswordDialog";
@@ -409,6 +411,7 @@ function LearnerDrawer({
                       </>
                     )}
                   </div>
+                  <ExamNumbers key={`${student.id}-${student.upi_number ?? ""}`} student={student} canEdit={canManage} onUpdated={onUpdated} />
                   <AwardsList studentId={student.id} />
                 </>
               )}
@@ -939,6 +942,7 @@ function StudentsView() {
       </Banner>
 
       <DepartmentPulse dept="students" />
+      {canEnrol && user?.role !== "staff" && user?.school_id && <ExamReadinessPanel schoolId={user.school_id} onOpenLearner={setOpenId} />}
 
       {entries.length > 0 && (
         <div className="relative max-w-md">

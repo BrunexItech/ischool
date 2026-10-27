@@ -17,7 +17,7 @@ from app.models.user import User, UserRole
 
 Applier = Callable[[Session, int, dict, User], None]
 APPLIERS: dict[str, Applier] = {}
-LINKS = {"bell_schedule": "/dashboard/timetable", "meal_menu": "/dashboard/meals"}
+LINKS = {"bell_schedule": "/dashboard/timetable", "meal_menu": "/dashboard/meals", "fee_structure": "/dashboard/fees"}
 
 DECIDERS = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 
@@ -30,10 +30,10 @@ def register(kind: str):
     return wrap
 
 
-def submit_or_apply(db: Session, school_id: int, user: User, *, kind: str, scope: str | None, title: str, summary: str, payload: dict) -> ChangeRequest | None:
+def submit_or_apply(db: Session, school_id: int, user: User, *, kind: str, scope: str | None, title: str, summary: str, payload: dict, direct_roles: tuple = DECIDERS) -> ChangeRequest | None:
     """Apply now for the head; queue for approval for anyone else. Returns the
     request when one was queued, None when the change took effect."""
-    if user.role in DECIDERS:
+    if user.role in direct_roles:
         APPLIERS[kind](db, school_id, payload, user)
         return None
     # A newer proposal for the same thing replaces an older one still waiting.

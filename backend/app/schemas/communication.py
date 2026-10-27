@@ -30,6 +30,7 @@ class AnnouncementOut(BaseModel):
     event_end_date: date | None
     location: str | None
     created_by: int | None
+    created_by_name: str | None = None
     created_at: datetime
 
 

@@ -198,3 +198,23 @@ def test_the_weekly_report_goes_out_on_saturday_morning():
     assert not _due(fri_evening, None) and not _due(sat_early, None)
     assert _due(sat_morning, None) and _due(sun, None)
     assert not _due(sun, sat_morning.isocalendar()[:2])
+
+
+# --- The overview for any day or span ---
+
+
+def test_the_overview_can_be_read_for_a_past_day_and_for_a_week(client, db_session, school, school_admin_token):
+    d = _setup(db_session, school)
+    h = auth_headers(school_admin_token)
+    today = d["today"]
+    now = client.get(f"/schools/{school.id}/oversight/overview", headers=h).json()["pulse"]
+    assert now["is_range"] is False and now["start"] == now["end"] == str(today)
+    past = client.get(f"/schools/{school.id}/oversight/overview?start={today - timedelta(days=30)}&end={today - timedelta(days=30)}", headers=h)
+    assert past.status_code == 200
+    assert past.json()["pulse"]["attendance_rate"] is None          # nothing was recorded that day
+    week = client.get(f"/schools/{school.id}/oversight/overview?start={today - timedelta(days=6)}&end={today}", headers=h).json()["pulse"]
+    assert week["is_range"] is True and week["start"] == str(today - timedelta(days=6))
+    assert week["attendance_rate"] == 100.0                          # today's three present learners
+    assert set(week) >= {"homework_expected", "homework_missing", "fees_collected", "missing_registers", "lessons_unmarked"}
+    assert client.get(f"/schools/{school.id}/oversight/overview?start={today}&end={today - timedelta(days=3)}", headers=h).status_code == 422
+    assert client.get(f"/schools/{school.id}/oversight/overview?start={today - timedelta(days=200)}", headers=h).status_code == 422

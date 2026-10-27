@@ -8,6 +8,7 @@ import { GitBranch, GraduationCap, LogOut, Mail, Pencil, Plus, ShieldCheck, User
 import { api, ApiError, ModuleToggle, Plan, PlatformOverview, School } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { LeadershipDialog } from "@/components/LeadershipDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -546,7 +547,7 @@ export default function AdminSchoolsPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <header className="flex items-center justify-between border-b bg-background px-6 py-4">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-background px-6 py-4">
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <GraduationCap className="size-4.5" />
@@ -556,7 +557,7 @@ export default function AdminSchoolsPage() {
             <p className="text-xs text-muted-foreground">Super Admin</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Link href="/admin/supervisors"><Button variant="outline" size="sm"><ShieldCheck /> Supervisors</Button></Link>
           <Button variant="outline" size="sm" disabled={sendingReports} onClick={handleSendWeeklyReports}>
             {sendingReports ? <Spinner size={14} className="text-current" /> : <Mail />} {sendingReports ? "Sending..." : "Send weekly reports now"}
@@ -643,6 +644,7 @@ export default function AdminSchoolsPage() {
                       <Badge variant={school.is_active ? "default" : "secondary"}>
                         {school.is_active ? "Active" : "Inactive"}
                       </Badge>
+                      <LeadershipDialog school={school} />
                       <EditSchoolDialog school={school} onUpdated={handleSchoolUpdated} />
                     </div>
                   </div>

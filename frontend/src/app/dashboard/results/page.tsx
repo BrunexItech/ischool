@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, LayoutList, Lock, Pencil, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import { FileText, LayoutList, Lock, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { DepartmentPulse } from "@/components/DepartmentPulse";
 import { ViewOnly } from "@/components/oversight";
@@ -434,7 +434,7 @@ export default function ResultsPage() {
         <Card>
           <CardContent className="flex flex-wrap items-center gap-3 pt-6">
             <Button type="button" variant="outline" onClick={handleSeedLearningAreas} disabled={seeding}>
-              <Sparkles /> {seeding ? "Adding..." : "Add official PP1/PP2 learning areas"}
+               {seeding ? "Adding..." : "Add official PP1/PP2 learning areas"}
             </Button>
           </CardContent>
         </Card>

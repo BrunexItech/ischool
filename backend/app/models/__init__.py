@@ -13,6 +13,7 @@ from app.models.library import Book, BookCopy, Loan
 from app.models.school_period import SchoolPeriod
 from app.models.change_request import ChangeRequest, ChangeStatus
 from app.models.results import Subject, SubjectLevel, Result
+from app.models.fee_structure import FeeStructureLine
 from app.models.fees import FeeInvoice, FeePayment
 from app.models.communication import Announcement, AnnouncementAudience
 from app.models.live_classes import LiveClass, LiveClassStatus
@@ -100,6 +101,7 @@ __all__ = [
     "Result",
     "FeeInvoice",
     "FeePayment",
+    "FeeStructureLine",
     "Announcement",
     "AnnouncementAudience",
     "LiveClass",

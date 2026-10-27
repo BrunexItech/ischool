@@ -189,6 +189,12 @@ class InboxItem(BaseModel):
     href: str
 
 
+class MissingRegister(BaseModel):
+    class_name: str
+    teacher: str | None
+    days: int
+
+
 class Pulse(BaseModel):
     school_day: bool
     holiday: str | None
@@ -206,6 +212,17 @@ class Pulse(BaseModel):
     lessons_scheduled: int
     lessons_marked: int
     unmarked_yesterday: int
+    # The period being shown: a single day, or a span of days added together.
+    start: date | None = None
+    end: date | None = None
+    is_range: bool = False
+    school_days: int = 0
+    lessons_unmarked: int = 0
+    homework_recorded: int = 0
+    homework_expected: int = 0
+    homework_missing: int = 0
+    fees_collected: float = 0.0
+    missing_registers: list["MissingRegister"] = []
 
 
 class HeadOverview(BaseModel):
@@ -398,3 +415,25 @@ class FinanceActivity(BaseModel):
     people: list[FinancePerson]
     events: list[FinanceEvent]
     totals: dict[str, float]
+
+
+class ReadinessLearner(BaseModel):
+    student_id: int
+    name: str
+    admission_number: str
+    class_name: str
+    missing: list[str]
+
+
+class ReadinessGroup(BaseModel):
+    grade_code: str
+    grade_name: str
+    exam: str
+    needs: list[str]
+    learners: int
+    complete: int
+    rows: list[ReadinessLearner]
+
+
+class ExamReadiness(BaseModel):
+    groups: list[ReadinessGroup]

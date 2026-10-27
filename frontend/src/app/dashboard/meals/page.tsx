@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Pencil, Plus, Sparkles, Trash2, UtensilsCrossed } from "lucide-react";
+import { Clock, Pencil, Plus, Trash2, UtensilsCrossed } from "lucide-react";
 import { api, ApiError, MenuSlot } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHead, Pill } from "@/components/oversight";
@@ -105,7 +105,7 @@ function Editor({ initial, schoolId, canApply, onDone, onCancel }: { initial: Me
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" className="h-10" onClick={template}><Sparkles /> Suggest meal times</Button>
+        <Button variant="outline" className="h-10" onClick={template}> Suggest meal times</Button>
         <Button variant="outline" className="h-10" onClick={() => setSlots((s) => [...s, { name: "", start_time: "12:00", end_time: "12:30", audience: "all", items: {} }])}><Plus /> Add a meal</Button>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={weekend} onChange={(e) => setWeekend(e.target.checked)} className="size-4 accent-[var(--primary)]" /> Include weekends</label>
       </div>

@@ -134,7 +134,7 @@ const NAV_SECTIONS = [
   {
     label: "Finance",
     items: [
-      { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["head_of_institution", "bursar", "accountant", "group_principal"] },
+      { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["head_of_institution", "staff", "bursar", "accountant", "group_principal", "secretary"] },
       { href: "/dashboard/finance", label: "Finance", icon: Wallet2, roles: ["head_of_institution", "bursar", "group_principal"] },
       { href: "/dashboard/ledger", label: "Ledger", icon: BookOpenCheck, roles: ["head_of_institution", "bursar", "accountant", "group_principal"] },
       { href: "/dashboard/finance-activity", label: "Finance Desk Activity", icon: History, roles: ["head_of_institution", "group_principal"] },

@@ -136,6 +136,11 @@ export interface Student {
   gender: string | null;
   class_id: number | null;
   guardian_name: string | null;
+  upi_number?: string | null;
+  assessment_number?: string | null;
+  index_number?: string | null;
+  birth_certificate_number?: string | null;
+  nationality?: string | null;
   guardian_phone: string | null;
   guardian_email: string | null;
   is_active: boolean;
@@ -144,6 +149,10 @@ export interface Student {
   user_id: number | null;
   guardian_user_id: number | null;
   transport_route_id: number | null;
+}
+
+export interface ExamReadiness {
+  groups: { grade_code: string; grade_name: string; exam: string; needs: string[]; learners: number; complete: number; rows: { student_id: number; name: string; admission_number: string; class_name: string; missing: string[] }[] }[];
 }
 
 export interface Staff {
@@ -321,6 +330,7 @@ export interface Announcement {
   event_end_date: string | null;
   location: string | null;
   created_by: number | null;
+  created_by_name?: string | null;
   created_at: string;
 }
 
@@ -457,6 +467,41 @@ export interface LibOverview {
   overdue_loans: LibLoan[];
   recent: LibLoan[];
   popular: { title: string; loans: number }[];
+}
+
+export interface FeeStructure {
+  term: string;
+  lines: { id: number; grade_level_id: number; category: string; amount: number; grade_code: string; grade_name: string }[];
+  learners_by_grade: Record<string, number>;
+}
+
+export interface FeeBalanceRow {
+  student_id: number;
+  name: string;
+  admission_number: string;
+  class_name: string | null;
+  guardian_name: string | null;
+  guardian_phone: string | null;
+  guardian_email: string | null;
+  billed: number;
+  paid: number;
+  balance: number;
+  arrears: number;
+  total_owed: number;
+}
+
+export interface FeeBalances {
+  term: string | null;
+  rows: FeeBalanceRow[];
+  totals: Record<string, number>;
+}
+
+export interface LeadershipAccount {
+  user_id: number;
+  full_name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
 }
 
 export interface PeriodDraft {
@@ -1110,6 +1155,16 @@ export interface HeadOverview {
     lessons_scheduled: number;
     lessons_marked: number;
     unmarked_yesterday: number;
+    start: string | null;
+    end: string | null;
+    is_range: boolean;
+    school_days: number;
+    lessons_unmarked: number;
+    homework_recorded: number;
+    homework_expected: number;
+    homework_missing: number;
+    fees_collected: number;
+    missing_registers: { class_name: string; teacher: string | null; days: number }[];
   };
   inbox: { kind: string; title: string; detail: string; age_days: number; href: string }[];
   inbox_counts: Record<string, number>;
@@ -2210,6 +2265,9 @@ export const api = {
       token
     ),
 
+  updateStudent: (token: string, schoolId: number, studentId: number, body: Partial<Student>) =>
+    request<Student>(`/schools/${schoolId}/students/${studentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  getExamReadiness: (token: string, schoolId: number) => request<ExamReadiness>(`/schools/${schoolId}/oversight/exam-readiness`, {}, token),
   createStudentAccount: (token: string, schoolId: number, studentId: number, payload: { email: string; password: string }) =>
     request<Student>(
       `/schools/${schoolId}/students/${studentId}/student-account`,
@@ -2368,7 +2426,8 @@ export const api = {
     if (q.kinds?.length) p.set("kinds", q.kinds.join(","));
     return request<ActivityFeed>(`/schools/${schoolId}/oversight/activity?${p}`, {}, token);
   },
-  getHeadOverview: (token: string, schoolId: number) => request<HeadOverview>(`/schools/${schoolId}/oversight/overview`, {}, token),
+  getHeadOverview: (token: string, schoolId: number, range?: { start: string; end: string }) =>
+    request<HeadOverview>(`/schools/${schoolId}/oversight/overview${range ? `?start=${range.start}&end=${range.end}` : ""}`, {}, token),
 
   addStreams: (token: string, schoolId: number, gradeLevelId: number, streams: string[]) =>
     request<{ created: string[]; skipped: string[] }>(
@@ -2793,6 +2852,23 @@ export const api = {
   libMine: (token: string, schoolId: number) => request<{ sets: LibClassSet[]; learner_loans: LibLoan[] }>(`/schools/${schoolId}/library/mine`, {}, token),
   libMyBooks: (token: string, schoolId: number) => request<LibLoan[]>(`/schools/${schoolId}/library/my-books`, {}, token),
   libOverview: (token: string, schoolId: number) => request<LibOverview>(`/schools/${schoolId}/library/overview`, {}, token),
+  getFeeStructure: (token: string, schoolId: number, term: string) => request<FeeStructure>(`/schools/${schoolId}/fees/structure?term=${encodeURIComponent(term)}`, {}, token),
+  saveFeeStructure: (token: string, schoolId: number, term: string, lines: { grade_level_id: number; category: string; amount: number }[]) =>
+    request<{ applied: boolean; request_id: number | null; message: string }>(`/schools/${schoolId}/fees/structure`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ term, lines }) }, token),
+  generateInvoices: (token: string, schoolId: number, term: string, dueDate?: string) =>
+    request<{ created: number; skipped_existing: number; learners_without_grade: number; total_billed: number }>(`/schools/${schoolId}/fees/structure/generate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ term, due_date: dueDate || null }) }, token),
+  getFeeBalances: (token: string, schoolId: number, q: { term?: string; class_id?: number; min_owed?: number; max_owed?: number; exact_owed?: number; arrears_only?: boolean; owing_only?: boolean; q?: string }) => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== "" && v !== null) p.set(k, String(v));
+    return request<FeeBalances>(`/schools/${schoolId}/fees/balances?${p}`, {}, token);
+  },
+  remindParents: (token: string, schoolId: number, body: { term?: string; student_ids: number[]; message?: string; sms: boolean; email: boolean }) =>
+    request<{ sms_sent: number; email_sent: number; no_contact: string[]; sms_error: string | null; email_error: string | null }>(`/schools/${schoolId}/fees/balances/remind`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  listSchoolAccounts: (token: string, schoolId: number) => request<LeadershipAccount[]>(`/schools/${schoolId}/leadership/accounts`, {}, token),
+  switchAccount: (token: string, schoolId: number, userId: number, active: boolean, reason?: string) =>
+    request<LeadershipAccount>(`/schools/${schoolId}/leadership/accounts/${userId}/active`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active, reason: reason || null }) }, token),
+  handOverSchool: (token: string, schoolId: number, body: { outgoing_user_id: number; existing_user_id?: number; new_head?: { full_name: string; email: string; password: string }; reason: string }) =>
+    request<{ outgoing: LeadershipAccount; incoming: LeadershipAccount; message: string }>(`/schools/${schoolId}/leadership/handover`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
   listSchoolPeriods: (token: string, schoolId: number) => request<SchoolPeriod[]>(`/schools/${schoolId}/timetable/periods`, {}, token),
   getPeriodTemplate: (token: string, schoolId: number, levelGroup: string, withPrep: boolean) =>
     request<PeriodDraft[]>(`/schools/${schoolId}/timetable/periods/template?level_group=${levelGroup}&with_prep=${withPrep}`, {}, token),

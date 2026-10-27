@@ -87,11 +87,11 @@ export default function AcademicTermsPage() {
             </div>
             <div className="grid gap-1.5">
               <Label>Start date</Label>
-              <Input type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} className="w-44" />
+              <Input type="date" min={`${new Date().getFullYear()}-01-01`} value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} className="w-44" />
             </div>
             <div className="grid gap-1.5">
               <Label>End date</Label>
-              <Input type="date" value={form.end_date} onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))} className="w-44" />
+              <Input type="date" min={form.start_date || `${new Date().getFullYear()}-01-01`} value={form.end_date} onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))} className="w-44" />
             </div>
             <Button type="submit" disabled={submitting}>
               <Plus /> {submitting ? "Adding..." : "Add term"}

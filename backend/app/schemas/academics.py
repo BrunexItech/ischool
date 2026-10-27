@@ -46,6 +46,11 @@ class StudentCreate(BaseModel):
     date_of_birth: date | None = None
     gender: str | None = None
     class_id: int | None = None
+    upi_number: str | None = None
+    assessment_number: str | None = None
+    index_number: str | None = None
+    birth_certificate_number: str | None = None
+    nationality: str | None = None
     guardian_name: str | None = None
     guardian_phone: str | None = None
     guardian_email: str | None = None
@@ -57,6 +62,11 @@ class StudentUpdate(BaseModel):
     date_of_birth: date | None = None
     gender: str | None = None
     class_id: int | None = None
+    upi_number: str | None = None
+    assessment_number: str | None = None
+    index_number: str | None = None
+    birth_certificate_number: str | None = None
+    nationality: str | None = None
     guardian_name: str | None = None
     guardian_phone: str | None = None
     guardian_email: str | None = None
@@ -74,6 +84,11 @@ class StudentOut(BaseModel):
     date_of_birth: date | None
     gender: str | None
     class_id: int | None
+    upi_number: str | None
+    assessment_number: str | None
+    index_number: str | None
+    birth_certificate_number: str | None
+    nationality: str | None
     guardian_name: str | None
     guardian_phone: str | None
     guardian_email: str | None
