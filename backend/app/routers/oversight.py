@@ -6,14 +6,17 @@ from app.core.deps import ensure_school_access, get_current_user, require_featur
 from datetime import date
 
 from app.core.dates import school_today
+from app.core.module_pulse import PULSES, module_pulse, weekly_report
 from app.core.oversight import attendance_oversight, class_cards, class_detail, head_overview, homework_grid, teacher_cards
+from app.models.school import School
 from app.models.user import User, UserRole
-from app.schemas.oversight import AttendanceOversight, ClassCard, ClassDetail, HeadOverview, HomeworkGrid, TeacherCard
+from app.schemas.oversight import MarkOverride, PulseSection, WeeklyReport, AttendanceOversight, ClassCard, ClassDetail, HeadOverview, HomeworkGrid, TeacherCard
 
 router = APIRouter(prefix="/schools/{school_id}/oversight", tags=["oversight"])
 
 LEADERSHIP = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
-CLASS_VIEWERS = LEADERSHIP + (UserRole.STAFF,)
+OFFICE = LEADERSHIP + (UserRole.SECRETARY,)
+CLASS_VIEWERS = OFFICE + (UserRole.STAFF,)
 
 
 @router.get(
@@ -44,7 +47,7 @@ def class_overview(school_id: int, class_id: int, db: Session = Depends(get_db),
 @router.get(
     "/teachers",
     response_model=list[TeacherCard],
-    dependencies=[Depends(require_roles(*LEADERSHIP)), Depends(require_feature("students_staff"))],
+    dependencies=[Depends(require_roles(*OFFICE)), Depends(require_feature("students_staff"))],
 )
 def teachers_overview(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Every teacher at a glance: contact details, what and where they teach,
@@ -68,7 +71,7 @@ def homework_overview(school_id: int, week: date | None = None, db: Session = De
 @router.get(
     "/attendance",
     response_model=AttendanceOversight,
-    dependencies=[Depends(require_roles(*LEADERSHIP)), Depends(require_feature("attendance"))],
+    dependencies=[Depends(require_roles(*OFFICE)), Depends(require_feature("attendance"))],
 )
 def attendance_overview(school_id: int, on: date | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Which registers were taken, by whom, and who is away, class by class."""
@@ -85,3 +88,78 @@ def head_overview_endpoint(school_id: int, db: Session = Depends(get_db), curren
     """Today's pulse and everything waiting on the head."""
     ensure_school_access(db, current_user, school_id)
     return head_overview(db, school_id)
+
+
+# The departments the head's office can see a summary of. Money, staff
+# conduct and complaints stay with the head.
+OFFICE_PULSES = {"students", "calendar", "announcements", "admissions", "activities", "awards", "trips", "attendance", "exams"}
+
+
+@router.get("/pulse/{key}", response_model=PulseSection, dependencies=[Depends(require_roles(*OFFICE))])
+def department_pulse(school_id: int, key: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """One department's week in a few figures, with what needs a look."""
+    ensure_school_access(db, current_user, school_id)
+    if key not in PULSES:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown department")
+    if current_user.role == UserRole.SECRETARY and key not in OFFICE_PULSES:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not permitted for this role")
+    return module_pulse(db, school_id, key)
+
+
+@router.get("/weekly-report", response_model=WeeklyReport, dependencies=[Depends(require_roles(*LEADERSHIP))])
+def weekly_report_endpoint(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """The combined report of every department, as it will be emailed on Friday."""
+    ensure_school_access(db, current_user, school_id)
+    school = db.get(School, school_id)
+    return weekly_report(db, school)
+
+
+@router.post("/weekly-report/email-me", dependencies=[Depends(require_roles(*LEADERSHIP))])
+def email_me_the_report(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Sends this week's report to the signed-in head right now."""
+    from app.services.weekly_reports import email_digest
+
+    ensure_school_access(db, current_user, school_id)
+    school = db.get(School, school_id)
+    return {"sent": bool(email_digest(db, school, [current_user]))}
+
+
+@router.post("/overrides/mark", dependencies=[Depends(require_roles(*LEADERSHIP)), Depends(require_feature("results"))])
+def override_mark(school_id: int, payload: MarkOverride, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Leadership corrects a recorded mark. Marks belong to the teacher, so this
+    only changes a mark that already exists, needs a written reason, is kept in
+    the activity log, and the teacher who entered it is notified."""
+    from app.core.audit import record_audit
+    from app.core.grading import level_for_score
+    from app.core.notify import notify
+    from app.models.academics import Student
+    from app.models.results import Result, Subject
+
+    ensure_school_access(db, current_user, school_id)
+    reason = payload.reason.strip()
+    if len(reason) < 10:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Give a reason of at least a few words, so the teacher understands the change")
+    if not 0 <= payload.score <= 100:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "A mark must be between 0 and 100")
+    result = db.query(Result).filter_by(school_id=school_id, student_id=payload.student_id, subject_id=payload.subject_id, term=payload.term, exam_type=payload.exam_type).first()
+    if result is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "There is no recorded mark to correct. The teacher enters new marks.")
+
+    before = {"score": float(result.score), "grade": result.grade}
+    result.score = payload.score
+    result.grade = level_for_score(db, school_id, payload.score)
+    after = {"score": payload.score, "grade": result.grade, "reason": reason}
+    record_audit(db, school_id=school_id, actor_id=current_user.id, action="result.override", entity_type="result", entity_id=result.id, before=before, after=after)
+    if result.recorded_by and result.recorded_by != current_user.id:
+        student = db.get(Student, payload.student_id)
+        subject = db.get(Subject, payload.subject_id)
+        notify(
+            db,
+            school_id=school_id,
+            user_id=result.recorded_by,
+            title=f"{current_user.full_name} corrected a mark",
+            body=f"{subject.name if subject else 'Subject'}, {student.first_name if student else 'learner'} {student.last_name if student else ''}: {before['score']:g} became {payload.score:g}. Reason: {reason}"[:300],
+            link="/dashboard/results",
+        )
+    db.commit()
+    return {"score": result.score, "grade": result.grade}

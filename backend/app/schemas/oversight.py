@@ -210,3 +210,50 @@ class HeadOverview(BaseModel):
     pulse: Pulse
     inbox: list[InboxItem]
     inbox_counts: dict[str, int]
+
+
+# --- Module pulses and the weekly report ---
+
+
+class Tile(BaseModel):
+    label: str
+    value: str
+    hint: str | None = None
+    tone: str = "neutral"      # neutral | good | warn | bad
+
+
+class Attention(BaseModel):
+    text: str
+    tone: str = "warn"         # warn | bad | good
+    href: str | None = None
+
+
+class PulseSection(BaseModel):
+    key: str
+    title: str
+    href: str
+    summary: str               # one line: the headline for this area
+    tiles: list[Tile]
+    attention: list[Attention]
+
+
+class WeeklyReport(BaseModel):
+    school_name: str
+    term: str | None
+    week_start: date
+    week_end: date
+    headline: str
+    attention_count: int
+    sections: list[PulseSection]
+
+
+class MarkOverride(BaseModel):
+    """A head's correction to a mark a teacher recorded. The reason is required
+    and kept in the activity log; the teacher is told."""
+
+    student_id: int
+    subject_id: int
+    term: str
+    exam_type: str
+    score: float
+    reason: str

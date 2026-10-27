@@ -18,10 +18,11 @@ ALL_ROLES = (
     UserRole.GROUP_PRINCIPAL,
     UserRole.TEACHER,
     UserRole.STAFF,
+    UserRole.SECRETARY,
     UserRole.STUDENT,
     UserRole.PARENT,
 )
-EDIT_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+EDIT_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.SECRETARY)
 
 
 @router.get(

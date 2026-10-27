@@ -9,6 +9,7 @@ plain text when no AI key is configured)."""
 
 from __future__ import annotations
 
+import logging
 from datetime import date, timedelta
 
 from sqlalchemy import func
@@ -19,11 +20,12 @@ from app.core.mailer import send_email
 from app.models.boarding import BoardingIncident, BoardingRollCall, Exeat, ExeatStatus, SickBayVisit
 from app.models.expense import Expense, ExpenseStatus
 from app.models.fees import FeePayment
+from app.models.report_run import WeeklyReportRun
 from app.models.school import School
 from app.models.security import SecurityIncident, SecurityIncidentStatus, VehicleLog, VisitorLog
 from app.models.trip import Trip
 from app.models.user import User, UserRole
-from app.routers.dashboard import _compute_summary, _lean_branch_summary
+from app.routers.dashboard import _lean_branch_summary
 from app.schemas.dashboard import GroupBranchSummary
 
 NAVY = "#0B1B3F"
@@ -199,52 +201,91 @@ def _send_role_reports(db: Session, school: School) -> int:
 # ---------- principal (full school) report ----------
 
 
-def _principal_week_data(db: Session, school: School) -> tuple[dict[str, object], str]:
-    full = _compute_summary(db, school.id)
-    security = _security_week(db, school.id)
-    boarding = _boarding_week(db, school.id)
-    transport = _transport_week(db, school.id)
-    finance = _finance_week(db, school.id)
-
-    attendance = f"{full.today_attendance_rate:.0f}%" if full.today_attendance_rate is not None else "—"
-    metrics: dict[str, object] = {
-        "Students": full.total_students,
-        "Active staff": full.active_staff,
-        "Attendance today": attendance,
-        "Fee collection rate": f"{full.fee_collection_rate:.0f}%",
-        "Fees collected this week": finance["Fees collected this week"],
-        "Pending expense approvals": finance["Pending approvals"],
-        "Security incidents this week": security["Incidents this week"],
-        "Boarding exeats awaiting approval": boarding["Awaiting approval"],
-        "Transport trips this week": transport["Trips requested this week"],
-    }
-    data_summary = "\n".join(f"{k}: {v}" for k, v in metrics.items())
-    return metrics, data_summary
+_TONE = {"good": "#047857", "warn": "#B45309", "bad": "#B91C1C", "neutral": "#111827"}
 
 
-_PRINCIPAL_PROMPT = (
-    "You write a concise, professional weekly briefing for a school principal/head teacher, covering "
-    "everything that happened across academics, fees, security, boarding and transport this week. "
-    "In 3-4 sentences, summarize the week and flag anything that specifically needs the principal's "
-    "attention (pending approvals, open incidents, low attendance or collection). "
-    "No greeting, no sign-off — just the paragraph."
-)
+def _digest_html(report, base_url: str) -> str:
+    """The head's weekly report: first what needs a decision, then each
+    department in the order a head reads them."""
+    def link(href: str | None) -> str:
+        return f' <a href="{base_url}{href}" style="color:{BLUE};text-decoration:none;font-size:12px;">Open</a>' if href else ""
+
+    needs = [(sec.title, a) for sec in report.sections for a in sec.attention]
+    needs.sort(key=lambda x: 0 if x[1].tone == "bad" else 1)
+    if needs:
+        items = "".join(
+            f'<tr><td style="padding:8px 0;border-bottom:1px solid {BORDER};font-size:13px;color:#111827;">'
+            f'<span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:{_TONE["bad"] if a.tone == "bad" else "#D97706"};margin-right:8px;"></span>'
+            f'<span style="color:{MUTED};font-size:11px;text-transform:uppercase;letter-spacing:.04em;">{title}</span><br>{a.text}{link(a.href)}</td></tr>'
+            for title, a in needs[:12]
+        )
+        more = f'<div style="margin-top:6px;font-size:12px;color:{MUTED};">and {len(needs) - 12} more in the full report online.</div>' if len(needs) > 12 else ""
+        attention = (
+            f'<h2 style="margin:22px 0 4px;font-size:15px;color:#111827;">Needs your attention</h2>'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{items}</table>{more}'
+        )
+    else:
+        attention = f'<div style="margin-top:18px;padding:14px;background:#ECFDF5;border-radius:8px;font-size:13px;color:#065F46;">Nothing needs your attention this week.</div>'
+
+    blocks = ""
+    for sec in report.sections:
+        rows = "".join(
+            f'<tr><td style="padding:5px 0;font-size:12px;color:{MUTED};">{t.label}</td>'
+            f'<td style="padding:5px 0;font-size:13px;font-weight:600;text-align:right;color:{_TONE.get(t.tone, "#111827")};">{t.value}</td></tr>'
+            for t in sec.tiles
+        )
+        blocks += (
+            f'<div style="margin-top:20px;padding-top:14px;border-top:1px solid {BORDER};">'
+            f'<div style="font-size:14px;font-weight:700;color:#111827;">{sec.title}{link(sec.href)}</div>'
+            f'<div style="font-size:12px;color:{MUTED};margin:2px 0 6px;">{sec.summary}</div>'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table></div>'
+        )
+    term = f" · {report.term}" if report.term else ""
+    top = (
+        f'<div style="margin-top:6px;font-size:12px;color:{MUTED};">Week of {report.week_start:%d %b} to {report.week_end:%d %b %Y}{term}</div>'
+        f'<div style="margin-top:14px;padding:14px 16px;border-left:3px solid {BLUE};background:#F8FAFF;border-radius:0 8px 8px 0;font-size:14px;font-weight:600;color:#111827;">{report.headline}</div>'
+    )
+    full = f'<div style="margin-top:22px;"><a href="{base_url}/dashboard/reports" style="display:inline-block;background:{NAVY};color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:10px 18px;border-radius:8px;">Open the full report</a></div>'
+    return top + attention + blocks + full
+
+
+def _digest_text(report, base_url: str) -> str:
+    lines = [f"{report.school_name} — weekly summary", f"Week of {report.week_start:%d %b} to {report.week_end:%d %b %Y}", "", report.headline, ""]
+    needs = [(sec.title, a) for sec in report.sections for a in sec.attention]
+    if needs:
+        lines.append("NEEDS YOUR ATTENTION")
+        lines += [f"  - [{title}] {a.text}" for title, a in needs]
+        lines.append("")
+    for sec in report.sections:
+        lines.append(f"{sec.title.upper()} — {sec.summary}")
+        lines += [f"  {t.label}: {t.value}" for t in sec.tiles]
+        lines.append("")
+    lines.append(f"Full report: {base_url}/dashboard/reports")
+    return "\n".join(lines)
+
+
+def email_digest(db: Session, school: School, recipients: list[User]) -> int:
+    """Emails the combined report of every department to the given people.
+    Never raises: one school's failure must not stop the others."""
+    from app.core.config import settings
+    from app.core.module_pulse import weekly_report
+
+    if not recipients:
+        return 0
+    try:
+        report = weekly_report(db, school)
+    except Exception:
+        logging.getLogger("ischool.reports").exception("Could not build the weekly report for %s", school.name)
+        return 0
+    base = settings.frontend_url.rstrip("/")
+    subject = f"{school.name} — weekly summary: {report.headline}"
+    html = _email_shell("Weekly school report", school.name, _digest_html(report, base))
+    text = _digest_text(report, base)
+    return sum(send_email(u.email, subject, text, html=html) for u in recipients)
 
 
 def send_branch_report(db: Session, school: School) -> int:
-    recipients = _users_with_role(db, school.id, UserRole.HEAD_OF_INSTITUTION)
-    sent = 0
-    if recipients:
-        metrics, data_summary = _principal_week_data(db, school)
-        fallback = f"This week: {data_summary.replace(chr(10), ', ')}."
-        narrative = generate_narrative(_PRINCIPAL_PROMPT, data_summary, fallback)
-
-        subject = f"{school.name} — weekly summary"
-        html = _email_shell("Weekly school summary", school.name, _metric_row(list(metrics.items())) + _narrative_block(narrative))
-        text = f"{school.name} — weekly summary\n\n" + "\n".join(f"  {k}: {v}" for k, v in metrics.items()) + f"\n\n{narrative}\n"
-        for user in recipients:
-            sent += send_email(user.email, subject, text, html=html)
-
+    sent = email_digest(db, school, _users_with_role(db, school.id, UserRole.HEAD_OF_INSTITUTION))
     sent += _send_role_reports(db, school)
     return sent
 
@@ -318,7 +359,7 @@ def send_group_report(db: Session, group: School) -> int:
     return sum(send_email(u.email, subject, text, html=html) for u in recipients)
 
 
-def send_all_weekly_reports(db: Session) -> dict:
+def send_all_weekly_reports(db: Session, once_per_week: bool = False) -> dict:
     """Every active school's own admin(s) get the full picture for their
     school, plus every security/boarding/transport/bursar staff member gets
     a report for their own area; a school with branches (a group) also gets
@@ -326,13 +367,22 @@ def send_all_weekly_reports(db: Session) -> dict:
     schools = db.query(School).filter_by(is_active=True).all()
     branch_emails_sent = 0
     group_emails_sent = 0
+    iso_year, iso_week = date.today().isocalendar()[:2]
+    skipped = 0
     for school in schools:
-        branch_emails_sent += send_branch_report(db, school)
+        if once_per_week and db.query(WeeklyReportRun).filter_by(school_id=school.id, iso_year=iso_year, iso_week=iso_week).first():
+            skipped += 1
+            continue
+        count = send_branch_report(db, school)
+        branch_emails_sent += count
+        if once_per_week:
+            db.add(WeeklyReportRun(school_id=school.id, iso_year=iso_year, iso_week=iso_week, emails_sent=count))
+            db.commit()
         has_branches = db.query(School).filter_by(parent_school_id=school.id).count() > 0
         if has_branches:
             group_emails_sent += send_group_report(db, school)
     return {
-        "schools_processed": len(schools),
+        "schools_processed": len(schools) - skipped,
         "branch_reports_sent": branch_emails_sent,
         "group_reports_sent": group_emails_sent,
     }

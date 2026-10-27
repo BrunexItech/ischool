@@ -22,9 +22,12 @@ _lock = threading.Lock()
 
 
 def _due(now: datetime, last_run_iso_week: tuple[int, int] | None) -> bool:
+    """Friday afternoon onwards. If the server was down at the hour, the report
+    is caught up on the next tick (Friday evening, Saturday or Sunday); the
+    per-school run log keeps it from ever going twice in the same week."""
     if now.isocalendar()[:2] == last_run_iso_week:
         return False
-    return now.weekday() == REPORT_WEEKDAY and now.hour == REPORT_HOUR_UTC
+    return now.weekday() > REPORT_WEEKDAY or (now.weekday() == REPORT_WEEKDAY and now.hour >= REPORT_HOUR_UTC)
 
 
 def _run_loop() -> None:
@@ -37,7 +40,7 @@ def _run_loop() -> None:
             if _due(now, last_run_iso_week):
                 db = SessionLocal()
                 try:
-                    result = send_all_weekly_reports(db)
+                    result = send_all_weekly_reports(db, once_per_week=True)
                     logger.info("Weekly reports sent: %s", result)
                 finally:
                     db.close()

@@ -20,8 +20,8 @@ from app.schemas.award import AwardOut
 
 router = APIRouter(prefix="/schools/{school_id}/activities", tags=["activities"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.TEACHER, UserRole.STAFF, UserRole.GROUP_PRINCIPAL)
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.TEACHER, UserRole.STAFF, UserRole.GROUP_PRINCIPAL, UserRole.SECRETARY)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.SECRETARY)
 
 
 def _get_activity(db: Session, school_id: int, activity_id: int) -> Activity:

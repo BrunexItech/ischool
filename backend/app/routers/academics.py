@@ -40,13 +40,18 @@ VIEW_ROLES = (
     UserRole.TRANSPORT_STAFF,
     UserRole.BURSAR,
     UserRole.GROUP_PRINCIPAL,
+    UserRole.SECRETARY,
 )
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 # A supervisor may register staff in a school they're linked to (their one
 # named "edit" power) without getting the rest of ADMIN_ROLES' reach
 # (class management, password resets).
 STAFF_MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
-ENROLL_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF)
+# The head's office can look staff up (to pick a class teacher, a timetable slot) but not create accounts.
+STAFF_LOOKUP_ROLES = STAFF_MANAGE_ROLES + (UserRole.SECRETARY,)
+ENROLL_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF, UserRole.SECRETARY)
+# Setting up classes and streams is office work; resetting passwords stays with ADMIN_ROLES.
+CLASS_SETUP_ROLES = ADMIN_ROLES + (UserRole.SECRETARY,)
 # Job-function roles an admin may hand out when adding a staff account —
 # each narrows that login to its own working view (see require_roles usage
 # in security.py / boarding.py / transport.py / finance.py / fees.py).
@@ -57,6 +62,7 @@ STAFF_CREATABLE_ROLES = (
     UserRole.BOARDING_STAFF,
     UserRole.TRANSPORT_STAFF,
     UserRole.BURSAR,
+    UserRole.SECRETARY,
 )
 
 
@@ -83,7 +89,7 @@ def list_classes(school_id: int, db: Session = Depends(get_db), current_user: Us
     "/classes",
     response_model=SchoolClassOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+    dependencies=[Depends(require_roles(*CLASS_SETUP_ROLES)), Depends(require_feature("students_staff"))],
 )
 def create_class(
     school_id: int,
@@ -109,7 +115,7 @@ def create_class(
 @router.patch(
     "/classes/{class_id}",
     response_model=SchoolClassOut,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+    dependencies=[Depends(require_roles(*CLASS_SETUP_ROLES)), Depends(require_feature("students_staff"))],
 )
 def update_class(
     school_id: int,
@@ -145,7 +151,7 @@ def update_class(
     "/classes/streams",
     response_model=StreamsResult,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+    dependencies=[Depends(require_roles(*CLASS_SETUP_ROLES)), Depends(require_feature("students_staff"))],
 )
 def add_streams(
     school_id: int,
@@ -179,7 +185,7 @@ def add_streams(
 @router.post(
     "/classes/{class_id}/promote",
     response_model=PromoteClassResult,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+    dependencies=[Depends(require_roles(*CLASS_SETUP_ROLES)), Depends(require_feature("students_staff"))],
 )
 def promote_class(
     school_id: int,
@@ -446,7 +452,7 @@ def _staff_out(profile: StaffProfile) -> StaffOut:
 @router.get(
     "/staff",
     response_model=list[StaffOut],
-    dependencies=[Depends(require_roles(*STAFF_MANAGE_ROLES)), Depends(require_feature("students_staff"))],
+    dependencies=[Depends(require_roles(*STAFF_LOOKUP_ROLES)), Depends(require_feature("students_staff"))],
 )
 def list_staff(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)

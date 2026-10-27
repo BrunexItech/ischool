@@ -12,8 +12,8 @@ from app.schemas.timetable import MyTimetableSlotOut, TimetableSlotCreate, Timet
 
 router = APIRouter(prefix="/schools/{school_id}/timetable", tags=["timetable"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
-MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF, UserRole.SECRETARY)
+MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.SECRETARY)
 
 
 def _detail_out(slot: TimetableSlot) -> TimetableSlotDetailOut:

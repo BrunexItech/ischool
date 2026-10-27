@@ -18,6 +18,7 @@ class UserRole(str, enum.Enum):
     BOARDING_STAFF = "boarding_staff"
     TRANSPORT_STAFF = "transport_staff"
     BURSAR = "bursar"
+    SECRETARY = "secretary"  # the head's office: terms, calendar, notices, admissions, enrolment — no money, no approvals
     GROUP_PRINCIPAL = "group_principal"  # group-wide oversight across every school under the umbrella (formerly supervisor)
 
 

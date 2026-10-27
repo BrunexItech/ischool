@@ -15,7 +15,7 @@ from app.schemas.attendance import AttendanceMarkRequest, AttendanceRecordOut
 
 router = APIRouter(prefix="/schools/{school_id}/attendance", tags=["attendance"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.TEACHER, UserRole.STAFF, UserRole.GROUP_PRINCIPAL)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.TEACHER, UserRole.STAFF, UserRole.GROUP_PRINCIPAL, UserRole.SECRETARY)
 # Heads of Institution and Group Principals can see attendance but not record
 # or change it — that stays with whoever actually took the register.
 MARK_ROLES = (UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.STAFF)

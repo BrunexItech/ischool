@@ -20,7 +20,7 @@ router = APIRouter(prefix="/schools/{school_id}", tags=["communication"])
 
 AUDIENCE_ROLES: dict[AnnouncementAudience, tuple[UserRole, ...]] = {
     AnnouncementAudience.TEACHERS: (UserRole.TEACHER,),
-    AnnouncementAudience.STAFF: (UserRole.STAFF,),
+    AnnouncementAudience.STAFF: (UserRole.STAFF, UserRole.SECRETARY),
     AnnouncementAudience.STUDENTS: (UserRole.STUDENT,),
     AnnouncementAudience.PARENTS: (UserRole.PARENT,),
 }
@@ -31,11 +31,14 @@ VIEW_ROLES = (
     UserRole.GROUP_PRINCIPAL,
     UserRole.TEACHER,
     UserRole.STAFF,
+    UserRole.SECRETARY,
     UserRole.STUDENT,
     UserRole.PARENT,
 )
-POST_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER)
+POST_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.SECRETARY)
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+# The secretary posts school-wide notices on the head's behalf.
+NOTICE_ROLES = ADMIN_ROLES + (UserRole.SECRETARY,)
 
 
 @router.get(
@@ -49,7 +52,7 @@ def list_announcements(school_id: int, db: Session = Depends(get_db), current_us
     their own class or child's class."""
     ensure_school_access(db, current_user, school_id)
     rows = db.query(Announcement).filter_by(school_id=school_id).order_by(Announcement.created_at.desc()).all()
-    if current_user.role in ADMIN_ROLES:
+    if current_user.role in NOTICE_ROLES:
         return rows
 
     own_role = {

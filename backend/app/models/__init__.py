@@ -4,6 +4,7 @@ from app.models.communication_config import SchoolCommunicationConfig
 from app.models.lesson_plan import LessonPlan, LessonPlanEntry, LessonPlanEntryStatus
 from app.models.lesson_delivery import LessonDelivery
 from app.models.feedback import LeadershipFeedback
+from app.models.report_run import WeeklyReportRun
 from app.models.module import SchoolModule, MODULE_KEYS
 from app.models.user import User, UserRole
 from app.models.academics import SchoolClass, Student, StaffProfile

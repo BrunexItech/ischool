@@ -10,7 +10,7 @@ from app.schemas.grade_level import GradeLevelOut, SchoolEnabledGradesUpdate
 
 router = APIRouter(tags=["grade levels"])
 
-CONFIGURE_ROLES = (UserRole.SUPER_ADMIN, UserRole.GROUP_PRINCIPAL, UserRole.HEAD_OF_INSTITUTION)
+CONFIGURE_ROLES = (UserRole.SUPER_ADMIN, UserRole.GROUP_PRINCIPAL, UserRole.HEAD_OF_INSTITUTION, UserRole.SECRETARY)
 
 
 @router.get("/grade-levels", response_model=list[GradeLevelOut])

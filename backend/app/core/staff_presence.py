@@ -34,6 +34,7 @@ TRACKED_ROLES = (
     UserRole.SECURITY,
     UserRole.BOARDING_STAFF,
     UserRole.TRANSPORT_STAFF,
+    UserRole.SECRETARY,
 )
 DEFAULT_LATE = time(7, 45)
 DEFAULT_ABSENT = time(10, 0)

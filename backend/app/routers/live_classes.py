@@ -26,7 +26,7 @@ from app.schemas.live_classes import (
 router = APIRouter(prefix="/schools/{school_id}/live-classes", tags=["live classes"])
 public_router = APIRouter(prefix="/live-classes", tags=["live classes"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF, UserRole.SECRETARY)
 SCHEDULE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER)
 
 
