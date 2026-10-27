@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   GraduationCap,
+  Library,
   LayoutDashboard,
   Users,
   Users2,
@@ -102,6 +103,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/exams", label: "Exams", icon: FileText, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["head_of_institution", "teacher", "staff", "bursar", "group_principal"] },
       { href: "/dashboard/academic-terms", label: "Academic Terms", icon: CalendarRange, roles: ["head_of_institution", "group_principal", "secretary"] },
+      { href: "/dashboard/subjects", label: "Subjects", icon: Library, roles: ["head_of_institution", "group_principal", "secretary"] },
       { href: "/dashboard/teacher-assignments", label: "Teaching Assignments", icon: ClipboardList, roles: ["head_of_institution", "group_principal", "secretary"] },
       { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, roles: ["head_of_institution", "group_principal", "secretary"] },
     ],

@@ -508,6 +508,11 @@ def head_overview(db: Session, school_id: int):
         inbox.append(InboxItem(kind="complaint", title=f"Complaint: {c.subject}", detail=f"From {c.raised_by_name}", age_days=age(c.created_at), href="/dashboard/complaints"))
     for r in db.query(ConductReport).filter_by(school_id=school_id, status=ConductStatus.OPEN).order_by(ConductReport.created_at).limit(10):
         inbox.append(InboxItem(kind="conduct", title="Conduct report awaiting your response", detail=f"{r.student.first_name} {r.student.last_name}: {r.category.value.replace('_', ' ')}", age_days=age(r.created_at), href="/dashboard/conduct"))
+    from app.core.approvals import LINKS
+    from app.models.change_request import ChangeRequest, ChangeStatus
+
+    for cr in db.query(ChangeRequest).filter_by(school_id=school_id, status=ChangeStatus.PENDING).order_by(ChangeRequest.requested_at).limit(10):
+        inbox.append(InboxItem(kind="approval", title=f"To approve: {cr.title}", detail=f"{cr.summary} · prepared by {cr.requester.full_name if cr.requester else 'the office'}", age_days=age(cr.requested_at), href=LINKS.get(cr.kind, "/dashboard")))
     absent_unexplained = [r for r in day["rows"] if r["status"] == "absent" and not r["reason"]]
     if absent_unexplained and day["school_day"]:
         inbox.append(InboxItem(kind="staff", title=f"{len(absent_unexplained)} staff absent with no reason recorded", detail=", ".join(r["name"] for r in absent_unexplained[:3]) + ("..." if len(absent_unexplained) > 3 else ""), age_days=0, href="/dashboard/staff-attendance"))
@@ -537,4 +542,90 @@ def head_overview(db: Session, school_id: int):
         ),
         inbox=inbox[:12],
         inbox_counts=dict(counts),
+    )
+
+
+# --- How each class is performing, before opening any report card ---
+
+PASS_MARK = 50.0
+
+
+def performance_overview(db: Session, school_id: int, term: str | None, exam_types: list[str]):
+    from app.core.grading import level_for_score
+    from app.core.results_board import competition_ranks, subject_means
+    from app.models.grade_level import LevelGroup
+    from app.models.results import Result
+    from app.schemas.oversight import ClassPerformance, PerformanceOverview, SubjectMean, TopLearner
+
+    chosen = term or (current_term(db, school_id).name if current_term(db, school_id) else None)
+    available = (
+        sorted({r[0] for r in db.query(Result.exam_type).filter(Result.school_id == school_id, Result.term == chosen).distinct()}) if chosen else []
+    )
+    if chosen is None:
+        return PerformanceOverview(term=None, exam_types=[], available_exam_types=[], school_average=None, classes=[], top_learners=[])
+
+    classes = db.query(SchoolClass).filter_by(school_id=school_id).all()
+    classes.sort(key=lambda c: ((c.grade.sort_order if c.grade else 999), c.name))
+    students = db.query(Student).filter_by(school_id=school_id, is_active=True).all()
+    by_class: dict[int, list[Student]] = defaultdict(list)
+    for s in students:
+        if s.class_id:
+            by_class[s.class_id].append(s)
+    subject_names = {s.id: s.name for s in db.query(Subject).filter_by(school_id=school_id)}
+    users = {u.id: u.full_name for u in db.query(User).filter_by(school_id=school_id)}
+    means = subject_means(db, school_id, [s.id for s in students], chosen, exam_types)
+
+    rows: list[ClassPerformance] = []
+    everyone: list[TopLearner] = []
+    all_averages: list[float] = []
+    for c in classes:
+        roster = by_class.get(c.id, [])
+        averages = {s.id: sum(means[s.id].values()) / len(means[s.id]) for s in roster if means.get(s.id)}
+        all_averages.extend(averages.values())
+        ranked = not (c.grade is not None and c.grade.level_group == LevelGroup.PRE_PRIMARY)
+        ranks = competition_ranks(averages) if ranked else {}
+        names = {s.id: s for s in roster}
+        top = []
+        if ranked:
+            for sid in sorted(averages, key=lambda i: -averages[i])[:3]:
+                s = names[sid]
+                lvl = level_for_score(db, school_id, averages[sid])
+                top.append(TopLearner(student_id=sid, name=f"{s.first_name} {s.last_name}", class_name=c.name, admission_number=s.admission_number, average=round(averages[sid], 1), rank=ranks[sid], level=lvl))
+        everyone.extend(top)
+        per_subject: dict[int, list[float]] = defaultdict(list)
+        for sid in averages:
+            for subj, v in means[sid].items():
+                per_subject[subj].append(v)
+        subj_avgs = [SubjectMean(subject=subject_names.get(k, "?"), average=round(sum(v) / len(v), 1)) for k, v in per_subject.items()]
+        subj_avgs.sort(key=lambda m: -m.average)
+        dist: dict[str, int] = defaultdict(int)
+        for a in averages.values():
+            lvl = level_for_score(db, school_id, a)
+            if lvl:
+                dist[lvl] += 1
+        rows.append(
+            ClassPerformance(
+                class_id=c.id,
+                class_name=c.name,
+                level=c.grade.level_group.value if c.grade else "other",
+                teacher=users.get(c.homeroom_teacher_id) if c.homeroom_teacher_id else None,
+                learners=len(roster),
+                marked=len(averages),
+                average=round(sum(averages.values()) / len(averages), 1) if averages else None,
+                pass_rate=round(100 * sum(1 for a in averages.values() if a >= PASS_MARK) / len(averages), 1) if averages else None,
+                ranked=ranked,
+                top=top,
+                best_subject=subj_avgs[0] if subj_avgs else None,
+                weakest_subject=subj_avgs[-1] if len(subj_avgs) > 1 else None,
+                distribution=dict(dist),
+            )
+        )
+    everyone.sort(key=lambda t: -t.average)
+    return PerformanceOverview(
+        term=chosen,
+        exam_types=exam_types,
+        available_exam_types=available,
+        school_average=round(sum(all_averages) / len(all_averages), 1) if all_averages else None,
+        classes=rows,
+        top_learners=everyone[:10],
     )

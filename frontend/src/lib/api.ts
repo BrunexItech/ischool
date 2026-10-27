@@ -171,6 +171,50 @@ export interface Subject {
   id: number;
   school_id: number;
   name: string;
+  grade_level_ids?: number[];
+}
+
+export interface TopLearner {
+  student_id: number;
+  name: string;
+  class_name: string;
+  admission_number: string;
+  average: number;
+  rank: number;
+  level: string | null;
+}
+
+export interface ClassPerformance {
+  class_id: number;
+  class_name: string;
+  level: string;
+  teacher: string | null;
+  learners: number;
+  marked: number;
+  average: number | null;
+  pass_rate: number | null;
+  ranked: boolean;
+  top: TopLearner[];
+  best_subject: { subject: string; average: number } | null;
+  weakest_subject: { subject: string; average: number } | null;
+  distribution: Record<string, number>;
+}
+
+export interface PerformanceOverview {
+  term: string | null;
+  exam_types: string[];
+  available_exam_types: string[];
+  school_average: number | null;
+  classes: ClassPerformance[];
+  top_learners: TopLearner[];
+}
+
+export interface ClassTeacherRow {
+  class_id: number;
+  class_name: string;
+  level: string;
+  teacher_user_id: number | null;
+  teacher_name: string | null;
 }
 
 export interface Result {
@@ -317,7 +361,34 @@ export interface MyClass {
   attendance_marked_today: boolean;
 }
 
+export interface PeriodDraft {
+  name: string;
+  kind: string;
+  start_time: string;
+  end_time: string;
+  days: number[];
+}
+
+export interface SchoolPeriod extends PeriodDraft {
+  id: number;
+  level_group: string;
+  position: number;
+}
+
+export interface ChangeRequest {
+  id: number;
+  kind: string;
+  scope: string | null;
+  title: string;
+  summary: string;
+  status: "pending" | "approved" | "rejected";
+  requested_by_name: string | null;
+  requested_at: string;
+  decision_note: string | null;
+}
+
 export interface TimetableSlot {
+  period_id?: number | null;
   id: number;
   school_id: number;
   class_id: number;
@@ -772,6 +843,24 @@ export interface HomeworkGrid {
   days: string[];
   rows: { class_id: number; class_name: string; subject_id: number; subject: string; teacher: string | null; cells: { date: string; status: "given" | "board" | "none" | "missing" | "upcoming" | "no_lesson"; count: number; titles: string[] }[] }[];
   summary: { given: number; board: number; none: number; missing: number; expected: number };
+}
+
+export interface ActivityEvent {
+  kind: string;
+  label: string;
+  at: string;
+  title: string;
+  detail: string;
+  actor: string | null;
+  href: string;
+}
+
+export interface ActivityFeed {
+  start: string;
+  end: string;
+  total: number;
+  counts: Record<string, number>;
+  events: ActivityEvent[];
 }
 
 export interface AttendanceOversight {
@@ -1974,10 +2063,22 @@ export const api = {
 
   listSubjects: (token: string, schoolId: number) => request<Subject[]>(`/schools/${schoolId}/subjects`, {}, token),
 
-  createSubject: (token: string, schoolId: number, name: string) =>
+  updateSubject: (token: string, schoolId: number, id: number, body: { name?: string; grade_level_ids?: number[] }) =>
+    request<Subject>(`/schools/${schoolId}/subjects/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  deleteSubject: (token: string, schoolId: number, id: number) => request<void>(`/schools/${schoolId}/subjects/${id}`, { method: "DELETE" }, token),
+  getPerformance: (token: string, schoolId: number, q: { term?: string; exam_types?: string[] } = {}) => {
+    const p = new URLSearchParams();
+    if (q.term) p.set("term", q.term);
+    if (q.exam_types?.length) p.set("exam_types", q.exam_types.join(","));
+    return request<PerformanceOverview>(`/schools/${schoolId}/oversight/performance?${p}`, {}, token);
+  },
+  listClassTeachers: (token: string, schoolId: number) => request<ClassTeacherRow[]>(`/schools/${schoolId}/teacher-assignments/class-teachers`, {}, token),
+  setClassTeacher: (token: string, schoolId: number, classId: number, teacherId: number | null, replace = false) =>
+    request<ClassTeacherRow>(`/schools/${schoolId}/teacher-assignments/class-teachers/${classId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ teacher_user_id: teacherId, replace }) }, token),
+  createSubject: (token: string, schoolId: number, name: string, gradeLevelIds: number[] = []) =>
     request<Subject>(
       `/schools/${schoolId}/subjects`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) },
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, grade_level_ids: gradeLevelIds }) },
       token
     ),
 
@@ -2043,6 +2144,12 @@ export const api = {
   acknowledgeFeedback: (token: string, schoolId: number, id: number, reply?: string) =>
     request<LeadershipFeedback>(`/schools/${schoolId}/feedback/${id}/acknowledge`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reply: reply || null }) }, token),
 
+  getSchoolActivity: (token: string, schoolId: number, q: { start: string; end?: string; kinds?: string[] }) => {
+    const p = new URLSearchParams({ start: q.start });
+    if (q.end) p.set("end", q.end);
+    if (q.kinds?.length) p.set("kinds", q.kinds.join(","));
+    return request<ActivityFeed>(`/schools/${schoolId}/oversight/activity?${p}`, {}, token);
+  },
   getHeadOverview: (token: string, schoolId: number) => request<HeadOverview>(`/schools/${schoolId}/oversight/overview`, {}, token),
 
   addStreams: (token: string, schoolId: number, gradeLevelId: number, streams: string[]) =>
@@ -2421,10 +2528,24 @@ export const api = {
   listMyTimetable: (token: string, schoolId: number) =>
     request<MyTimetableSlot[]>(`/schools/${schoolId}/timetable/mine`, {}, token),
 
+  listSchoolPeriods: (token: string, schoolId: number) => request<SchoolPeriod[]>(`/schools/${schoolId}/timetable/periods`, {}, token),
+  getPeriodTemplate: (token: string, schoolId: number, levelGroup: string, withPrep: boolean) =>
+    request<PeriodDraft[]>(`/schools/${schoolId}/timetable/periods/template?level_group=${levelGroup}&with_prep=${withPrep}`, {}, token),
+  saveSchoolDay: (token: string, schoolId: number, levelGroup: string, periods: PeriodDraft[]) =>
+    request<{ applied: boolean; request_id: number | null; message: string }>(
+      `/schools/${schoolId}/timetable/periods/${levelGroup}`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ periods }) },
+      token
+    ),
+  listApprovals: (token: string, schoolId: number, kind?: string, pendingOnly = false) =>
+    request<ChangeRequest[]>(`/schools/${schoolId}/approvals?${new URLSearchParams({ ...(kind ? { kind } : {}), ...(pendingOnly ? { pending_only: "true" } : {}) })}`, {}, token),
+  decideApproval: (token: string, schoolId: number, id: number, approve: boolean, note?: string) =>
+    request<ChangeRequest>(`/schools/${schoolId}/approvals/${id}/${approve ? "approve" : "reject"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: note || null }) }, token),
+
   createTimetableSlot: (
     token: string,
     schoolId: number,
-    payload: { class_id: number; subject_id: number; teacher_user_id?: number; day_of_week: number; start_time: string; end_time: string; room?: string }
+    payload: { class_id: number; subject_id: number; teacher_user_id?: number; day_of_week: number; period_id?: number; start_time?: string; end_time?: string; room?: string }
   ) =>
     request<TimetableSlot>(
       `/schools/${schoolId}/timetable`,

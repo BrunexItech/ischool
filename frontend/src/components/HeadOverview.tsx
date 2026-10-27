@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, ChevronRight, FileBarChart, Megaphone, Minus, UserPlus } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BookOpenCheck, CalendarSearch, ChevronRight, ClipboardCheck, FileBarChart, GraduationCap, Inbox, Megaphone, Minus, UserCheck, UserPlus, type LucideIcon } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AcademicTerm, api, ClassCard, DashboardSummary, HeadOverview, HomeworkGrid, Insights } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { localDateStr } from "@/lib/dates";
 import { LEVEL_BAR, LEVEL_LABEL, LEVEL_ORDER, Meter, Pill } from "@/components/oversight";
 import { PageLoader } from "@/components/Spinner";
+import { FindByDate, RecentActivity } from "@/components/ActivityExplorer";
 import { Button } from "@/components/ui/button";
 
 interface Data {
@@ -25,14 +26,6 @@ function greet() {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
-function ago(iso: string, now: number) {
-  const mins = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000));
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
-  if (mins < 1440) return `${Math.round(mins / 60)} h ago`;
-  return `${Math.round(mins / 1440)} d ago`;
-}
-
 function Delta({ value, previous, goodWhen = "up", unit = "" }: { value: number | null; previous: number | null; goodWhen?: "up" | "down"; unit?: string }) {
   if (value === null || previous === null) return <span className="text-xs text-muted-foreground">No earlier term</span>;
   const diff = Math.round((value - previous) * 10) / 10;
@@ -46,12 +39,23 @@ function Delta({ value, previous, goodWhen = "up", unit = "" }: { value: number 
   );
 }
 
-function Tile({ label, value, sub, href, tone, children }: { label: string; value: string; sub: React.ReactNode; href: string; tone?: "warn"; children?: React.ReactNode }) {
+function Tile({ label, value, sub, href, tone, icon: Icon, children }: { label: string; value: string; sub: React.ReactNode; href: string; tone?: "warn"; icon: LucideIcon; children?: React.ReactNode }) {
+  const warn = tone === "warn";
   return (
-    <Link href={href} className="group flex flex-col gap-1 rounded-xl border bg-card p-4 transition-colors outline-none hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring">
-      <span className="flex items-center justify-between text-sm text-muted-foreground">{label}<ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden /></span>
-      <span className={`font-heading text-3xl font-semibold tabular-nums ${tone === "warn" ? "text-amber-700 dark:text-amber-400" : ""}`}>{value}</span>
-      <span className="text-xs text-muted-foreground">{sub}</span>
+    <Link
+      href={href}
+      className={`group relative flex flex-col gap-3 overflow-hidden rounded-xl border bg-card p-4 shadow-xs transition-all outline-none hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring ${warn ? "border-amber-300/70 dark:border-amber-700/50" : "hover:border-primary/40"}`}
+    >
+      <span className={`absolute inset-x-0 top-0 h-1 ${warn ? "bg-amber-500" : "bg-primary/70"}`} aria-hidden />
+      <span className="flex items-center justify-between gap-2">
+        <span className={`flex size-9 items-center justify-center rounded-lg ${warn ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" : "bg-primary/10 text-primary"}`}><Icon className="size-4.5" aria-hidden /></span>
+        <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+      </span>
+      <span className="flex flex-col gap-0.5">
+        <span className="text-sm font-medium text-muted-foreground">{label}</span>
+        <span className={`font-heading text-3xl leading-none font-semibold tabular-nums ${warn ? "text-amber-700 dark:text-amber-400" : ""}`}>{value}</span>
+      </span>
+      <span className="text-xs leading-snug text-muted-foreground">{sub}</span>
       {children}
     </Link>
   );
@@ -72,7 +76,7 @@ function Panel({ title, caption, action, children, className = "" }: { title: st
   );
 }
 
-const INBOX_LABEL: Record<string, string> = { trip: "Trip", expense: "Expense", complaint: "Complaint", conduct: "Conduct", staff: "Staff" };
+const INBOX_LABEL: Record<string, string> = { approval: "Approve", trip: "Trip", expense: "Expense", complaint: "Complaint", conduct: "Conduct", staff: "Staff" };
 
 export function HeadOverviewView({ schoolId }: { schoolId: number }) {
   const { user, token } = useAuth();
@@ -127,6 +131,7 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<a href="#find-by-date"><CalendarSearch /> Find by date</a>} />
           <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/reports"><FileBarChart /> Weekly report</Link>} />
           <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/announcements"><Megaphone /> Announce</Link>} />
           <Button className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/students"><UserPlus /> Enrol a learner</Link>} />
@@ -140,7 +145,7 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
       {/* Today */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Today at a glance">
         <Tile
-          label="Attendance today"
+          label="Attendance today" icon={ClipboardCheck}
           value={p?.attendance_rate != null ? `${p.attendance_rate}%` : "—"}
           sub={p ? (p.school_day ? `${p.registers_taken} of ${p.registers_total} registers in` : "No school today") : "Unavailable"}
           href="/dashboard/attendance"
@@ -148,21 +153,21 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
         >
           {p && p.school_day && p.registers_total > 0 && <Meter value={p.registers_taken} total={p.registers_total} label="Registers taken" />}
         </Tile>
-        <Tile label="Teachers in today" value={p ? String(staffIn) : "—"} sub={p ? `${p.staff_absent} absent · ${p.staff_on_leave} on leave${p.staff_expected ? ` · ${p.staff_expected} not in yet` : ""}` : "Unavailable"} href="/dashboard/staff-attendance" tone={p && p.staff_absent > 0 ? "warn" : undefined} />
+        <Tile icon={UserCheck} label="Teachers in today" value={p ? String(staffIn) : "—"} sub={p ? `${p.staff_absent} absent · ${p.staff_on_leave} on leave${p.staff_expected ? ` · ${p.staff_expected} not in yet` : ""}` : "Unavailable"} href="/dashboard/staff-attendance" tone={p && p.staff_absent > 0 ? "warn" : undefined} />
         <Tile
-          label="Lessons marked today"
+          label="Lessons marked today" icon={GraduationCap}
           value={p ? `${p.lessons_marked}/${p.lessons_scheduled}` : "—"}
           sub={p ? (p.unmarked_yesterday > 0 ? `${p.unmarked_yesterday} from yesterday not marked` : "Nothing outstanding from yesterday") : "Unavailable"}
           href="/dashboard/lesson-plans"
         />
         <Tile
-          label="Homework this week"
+          label="Homework this week" icon={BookOpenCheck}
           value={homework ? `${hwRecorded}/${homework.summary.expected}` : "—"}
           sub={homework ? (homework.summary.missing > 0 ? `${homework.summary.missing} lessons with nothing recorded` : "Every lesson accounted for") : "Unavailable"}
           href="/dashboard/homework"
           tone={homework && homework.summary.missing > 0 ? "warn" : undefined}
         />
-        <Tile label="Waiting for you" value={String(inboxTotal)} sub={inboxTotal ? "decisions and replies" : "Nothing needs your decision"} href="#decisions" tone={inboxTotal > 0 ? "warn" : undefined} />
+        <Tile icon={Inbox} label="Waiting for you" value={String(inboxTotal)} sub={inboxTotal ? "decisions and replies" : "Nothing needs your decision"} href="#decisions" tone={inboxTotal > 0 ? "warn" : undefined} />
       </section>
 
       {/* Decisions and exceptions */}
@@ -332,18 +337,8 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
         </Panel>
       </div>
 
-      {summary && summary.recent_activity.length > 0 && (
-        <Panel title="Recent activity" caption="Across finance, academics and admissions">
-          <ul className="divide-y">
-            {summary.recent_activity.slice(0, 8).map((a, i) => (
-              <li key={i} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
-                <span className="min-w-0 break-words"><span className="capitalize">{a.action}</span> {a.entity_type.replace(/_/g, " ")}{a.actor_name ? <span className="text-muted-foreground"> by {a.actor_name}</span> : null}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">{ago(a.created_at, now)}</span>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      )}
+      <div id="find-by-date" className="scroll-mt-4"><FindByDate schoolId={schoolId} /></div>
+      <RecentActivity schoolId={schoolId} />
     </div>
   );
 }

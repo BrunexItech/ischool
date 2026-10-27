@@ -152,3 +152,49 @@ def test_a_head_cannot_invent_a_mark_and_a_teacher_cannot_override(client, db_se
     assert client.post(f"/schools/{school.id}/oversight/overrides/mark", headers=auth_headers(school_admin_token), json=body).status_code == 404
     t, pw = _make_user(db_session, school, UserRole.TEACHER, "override.teacher@test-academy.test")
     assert client.post(f"/schools/{school.id}/oversight/overrides/mark", headers=auth_headers(_login(client, t.email, pw)), json=body).status_code == 403
+
+
+# --- Find by date, and the Saturday send ---
+
+
+def test_the_head_can_find_everything_recorded_on_a_date(client, db_session, school, school_admin_token):
+    _setup(db_session, school)
+    today = school_today(db_session, school.id)
+    h = auth_headers(school_admin_token)
+    r = client.get(f"/schools/{school.id}/oversight/activity?start={today}", headers=h)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["start"] == body["end"] == str(today)
+    assert body["total"] == len(body["events"]) == sum(body["counts"].values())
+    only = next(iter(body["counts"]), None)
+    if only:
+        filtered = client.get(f"/schools/{school.id}/oversight/activity?start={today}&kinds={only}", headers=h).json()
+        assert {e["kind"] for e in filtered["events"]} == {only}
+    quiet = client.get(f"/schools/{school.id}/oversight/activity?start=2001-01-02", headers=h).json()
+    assert quiet["events"] == []
+
+
+def test_the_date_search_rejects_a_backwards_or_huge_span(client, school, school_admin_token):
+    h = auth_headers(school_admin_token)
+    assert client.get(f"/schools/{school.id}/oversight/activity?start=2026-03-10&end=2026-03-01", headers=h).status_code == 422
+    assert client.get(f"/schools/{school.id}/oversight/activity?start=2026-01-01&end=2026-12-31", headers=h).status_code == 422
+
+
+def test_a_teacher_cannot_search_the_schools_activity(client, db_session, school):
+    t, pw = _make_user(db_session, school, UserRole.TEACHER, "curious.teacher@test-academy.test")
+    h = auth_headers(_login(client, t.email, pw))
+    assert client.get(f"/schools/{school.id}/oversight/activity", headers=h).status_code == 403
+
+
+def test_the_weekly_report_goes_out_on_saturday_morning():
+    from datetime import datetime, timezone
+
+    from app.core.scheduler import _due
+
+    fri_evening = datetime(2026, 10, 23, 18, 0, tzinfo=timezone.utc)
+    sat_early = datetime(2026, 10, 24, 2, 0, tzinfo=timezone.utc)
+    sat_morning = datetime(2026, 10, 24, 5, 0, tzinfo=timezone.utc)
+    sun = datetime(2026, 10, 25, 9, 0, tzinfo=timezone.utc)
+    assert not _due(fri_evening, None) and not _due(sat_early, None)
+    assert _due(sat_morning, None) and _due(sun, None)
+    assert not _due(sun, sat_morning.isocalendar()[:2])

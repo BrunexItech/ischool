@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
-import { api, ApiError, SchoolClass, Staff, Subject, TeacherAssignment } from "@/lib/api";
+import { Crown, Plus, Trash2 } from "lucide-react";
+import { api, ApiError, ClassTeacherRow, SchoolClass, Staff, Subject, TeacherAssignment } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/Spinner";
@@ -28,6 +28,8 @@ export default function TeacherAssignmentsPage() {
   const [subjectId, setSubjectId] = useState(ANY_SUBJECT);
   const [submitting, setSubmitting] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [classTeachers, setClassTeachers] = useState<ClassTeacherRow[]>([]);
+  const [confirmSwap, setConfirmSwap] = useState<{ classId: number; teacherId: number; message: string } | null>(null);
 
   useEffect(() => {
     if (!loading && user && user.role !== "head_of_institution" && user.role !== "group_principal" && user.role !== "secretary") router.replace("/dashboard");
@@ -40,6 +42,7 @@ export default function TeacherAssignmentsPage() {
       api.listStaff(token, user.school_id).then((s) => setTeachers(s.filter((x) => x.role === "teacher"))),
       api.listClasses(token, user.school_id).then(setClasses),
       api.listSubjects(token, user.school_id).then(setSubjects),
+      api.listClassTeachers(token, user.school_id).then(setClassTeachers).catch(() => setClassTeachers([])),
     ]).finally(() => setDataLoading(false));
   }, [token, user?.school_id]);
 
@@ -73,6 +76,22 @@ export default function TeacherAssignmentsPage() {
     }
   }
 
+  async function setClassTeacher(classId: number, teacherId: number | null, replace = false) {
+    if (!token || !user?.school_id) return;
+    try {
+      const row = await api.setClassTeacher(token, user.school_id, classId, teacherId, replace);
+      setClassTeachers((rows) => rows.map((r) => (r.class_id === classId ? row : r)));
+      setConfirmSwap(null);
+      toast.success(teacherId === null ? "Class teacher removed" : `${row.teacher_name} is now the class teacher of ${row.class_name}`);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && teacherId !== null && err.message.includes("Confirm to replace")) {
+        setConfirmSwap({ classId, teacherId, message: err.message });
+      } else {
+        toast.error(err instanceof ApiError ? err.message : "We couldn't change the class teacher.");
+      }
+    }
+  }
+
   async function handleDelete(id: number) {
     if (!token || !user?.school_id) return;
     try {
@@ -102,6 +121,42 @@ export default function TeacherAssignmentsPage() {
         title="Teaching Assignments"
         description="Control which classes and subjects each teacher can mark attendance for or grade."
       />
+
+      <Card>
+        <CardContent className="flex flex-col gap-4 pt-6">
+          <div>
+            <h2 className="flex items-center gap-2 font-heading text-lg font-semibold"><Crown className="size-4.5 text-primary" aria-hidden /> Class teachers</h2>
+            <p className="text-sm text-muted-foreground">Each class has exactly one class teacher. They take the register, write the report-card remark and see the class results board.</p>
+          </div>
+          {confirmSwap && (
+            <div role="alert" className="flex flex-col gap-3 rounded-lg border border-amber-300/70 bg-amber-50/70 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between dark:border-amber-700/50 dark:bg-amber-950/30">
+              <span>{confirmSwap.message}</span>
+              <span className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setConfirmSwap(null)}>Keep current</Button>
+                <Button size="sm" onClick={() => setClassTeacher(confirmSwap.classId, confirmSwap.teacherId, true)}>Replace</Button>
+              </span>
+            </div>
+          )}
+          <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {classTeachers.map((c) => (
+              <li key={c.class_id} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5">
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium break-words">{c.class_name}</span>
+                  <span className={`block text-xs ${c.teacher_name ? "text-muted-foreground" : "text-amber-700 dark:text-amber-400"}`}>{c.teacher_name ?? "No class teacher yet"}</span>
+                </span>
+                <Select value={c.teacher_user_id ? String(c.teacher_user_id) : ""} onValueChange={(v) => v && setClassTeacher(c.class_id, v === "none" ? null : Number(v))}>
+                  <SelectTrigger className="h-9 w-40" aria-label={`Class teacher for ${c.class_name}`}><SelectValue placeholder="Choose" /></SelectTrigger>
+                  <SelectContent>
+                    {c.teacher_user_id && <SelectItem value="none">Remove class teacher</SelectItem>}
+                    {teachers.map((t) => <SelectItem key={t.user_id} value={String(t.user_id)}>{t.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </li>
+            ))}
+            {classTeachers.length === 0 && <li className="text-sm text-muted-foreground">No classes yet.</li>}
+          </ul>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="pt-6">

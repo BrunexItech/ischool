@@ -8,7 +8,7 @@ from app.core.database import Base
 
 class WeeklyReportRun(Base):
     """Remembers that a school's weekly report went out for an ISO week, so a
-    restart or a late wake-up never sends it twice, and a missed Friday is
+    restart or a late wake-up never sends it twice, and a missed Saturday is
     caught up the next time the scheduler ticks."""
 
     __tablename__ = "weekly_report_runs"

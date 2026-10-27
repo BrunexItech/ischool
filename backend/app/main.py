@@ -20,11 +20,13 @@ if settings.sentry_dsn:
         # A bad DSN should degrade to "no error tracking", never take the
         # whole backend down at boot.
         logging.getLogger(__name__).exception("Failed to initialize Sentry — continuing without it")
+import app.core.day_structure  # noqa: F401  (registers the bell-schedule approval)
 from app.routers import (
     academic_terms,
     academics,
     activities,
     analytics,
+    approvals,
     asset,
     attendance,
     audit,
@@ -129,6 +131,7 @@ app.include_router(store.router)
 app.include_router(payroll.router)
 app.include_router(asset.router)
 app.include_router(timetable.router)
+app.include_router(approvals.router)
 app.include_router(staff_attendance.router)
 app.include_router(supervisors.router)
 app.include_router(homework.router)

@@ -30,3 +30,17 @@ class MyClassOut(BaseModel):
     subjects: list[MyClassSubjectOut]
     student_count: int
     attendance_marked_today: bool
+
+
+class ClassTeacherSet(BaseModel):
+    teacher_user_id: int | None = None  # null clears the class teacher
+    replace: bool = False
+
+
+class ClassTeacherRow(BaseModel):
+    class_id: int
+    class_name: str
+    level: str
+    teacher_user_id: int | None
+    teacher_name: str | None
+    other_class_of_teacher: str | None = None

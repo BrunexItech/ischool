@@ -5,6 +5,12 @@ from app.schemas.competency_assessment import CompetencyAssessmentOut
 
 class SubjectCreate(BaseModel):
     name: str
+    grade_level_ids: list[int] = []
+
+
+class SubjectUpdate(BaseModel):
+    name: str | None = None
+    grade_level_ids: list[int] | None = None
 
 
 class SubjectOut(BaseModel):
@@ -13,6 +19,7 @@ class SubjectOut(BaseModel):
     id: int
     school_id: int
     name: str
+    grade_level_ids: list[int] = []
 
 
 class ResultUpsert(BaseModel):

@@ -14,16 +14,16 @@ from app.core.database import SessionLocal
 logger = logging.getLogger("ischool.scheduler")
 
 CHECK_INTERVAL_SECONDS = 3600  # hourly tick is plenty for a once-a-week job
-REPORT_WEEKDAY = 4  # Friday — end of the school week
-REPORT_HOUR_UTC = 13  # 16:00 Africa/Nairobi (UTC+3)
+REPORT_WEEKDAY = 5  # Saturday — the school week is over and the head reads it over the weekend
+REPORT_HOUR_UTC = 4  # 07:00 Africa/Nairobi (UTC+3)
 
 _started = False
 _lock = threading.Lock()
 
 
 def _due(now: datetime, last_run_iso_week: tuple[int, int] | None) -> bool:
-    """Friday afternoon onwards. If the server was down at the hour, the report
-    is caught up on the next tick (Friday evening, Saturday or Sunday); the
+    """Saturday morning onwards. If the server was down at the hour, the report
+    is caught up on the next tick (later Saturday or Sunday); the
     per-school run log keeps it from ever going twice in the same week."""
     if now.isocalendar()[:2] == last_run_iso_week:
         return False
@@ -59,4 +59,4 @@ def start() -> None:
             return
         _started = True
     threading.Thread(target=_run_loop, name="weekly-reports-scheduler", daemon=True).start()
-    logger.info("Weekly report scheduler started (Fridays %02d:00 UTC)", REPORT_HOUR_UTC)
+    logger.info("Weekly report scheduler started (Saturdays %02d:00 UTC)", REPORT_HOUR_UTC)

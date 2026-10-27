@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Mail, Phone, Search } from "lucide-react";
+import { ChevronRight, LayoutGrid, Mail, Phone, Rows3, Search } from "lucide-react";
 import { api, TeacherCard } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ErrorBox, Initials, Meter, PageHead, Pill } from "@/components/oversight";
@@ -52,6 +52,7 @@ export default function TeachersPage() {
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState("name");
   const [openId, setOpenId] = useState<number | null>(null);
+  const [layout, setLayout] = useState<"cards" | "rows">("cards");
 
   useEffect(() => {
     if (!loading && user && user.role !== "head_of_institution" && user.role !== "group_principal" && user.role !== "super_admin" && user.role !== "secretary") router.replace("/dashboard");
@@ -125,7 +126,12 @@ export default function TeachersPage() {
                 </button>
               ))}
             </div>
-            <div className="lg:ml-auto lg:w-52">
+            <div role="group" aria-label="Layout" className="inline-flex w-fit rounded-lg border p-0.5 lg:ml-auto">
+              {([["cards", "Cards", LayoutGrid], ["rows", "Rows", Rows3]] as const).map(([k, label, Icon]) => (
+                <button key={k} type="button" aria-pressed={layout === k} onClick={() => setLayout(k)} className={`flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring ${layout === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}><Icon className="size-4" aria-hidden />{label}</button>
+              ))}
+            </div>
+            <div className="lg:w-52">
               <Select value={sort} onValueChange={(v) => v && setSort(v)}>
                 <SelectTrigger className="h-10 w-full" aria-label="Sort"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -139,6 +145,49 @@ export default function TeachersPage() {
 
           {shown.length === 0 ? (
             <p className="rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground">No teachers match.</p>
+          ) : layout === "rows" ? (
+            <div className="overflow-x-auto rounded-xl border bg-card">
+              <table className="w-full min-w-[68rem] text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    <th scope="col" className="px-4 py-2.5">Teacher</th>
+                    <th scope="col" className="px-3 py-2.5">Contact</th>
+                    <th scope="col" className="px-3 py-2.5">Staff / TSC no.</th>
+                    <th scope="col" className="px-3 py-2.5">Class teacher of</th>
+                    <th scope="col" className="px-3 py-2.5">Subjects</th>
+                    <th scope="col" className="px-3 py-2.5">Classes</th>
+                    <th scope="col" className="px-3 py-2.5">Today</th>
+                    <th scope="col" className="px-3 py-2.5">Syllabus</th>
+                    <th scope="col" className="px-3 py-2.5 text-right">Lessons marked</th>
+                    <th scope="col" className="px-4 py-2.5 text-right">Homework</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {shown.map((t) => (
+                    <tr key={t.user_id} onClick={() => setOpenId(t.user_id)} className="cursor-pointer align-top transition-colors hover:bg-accent/40">
+                      <th scope="row" className="px-4 py-3 text-left font-normal">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setOpenId(t.user_id); }} className="flex items-center gap-2.5 text-left outline-none focus-visible:underline">
+                          <Initials name={t.name} seed={t.user_id} size="sm" />
+                          <span><span className="block font-medium">{t.name}</span><span className="block text-xs text-muted-foreground">{t.categories.length ? t.categories.join(" · ") : NO_CATEGORY}{t.department ? ` · ${t.department}` : ""}</span></span>
+                        </button>
+                      </th>
+                      <td className="px-3 py-3"><span className="block break-all">{t.email}</span><span className="block text-xs text-muted-foreground">{t.phone ?? "No phone"}</span></td>
+                      <td className="px-3 py-3 whitespace-nowrap"><span className="block">{t.staff_number ?? "—"}</span><span className="block text-xs text-muted-foreground">{t.tsc_number ?? "—"}</span></td>
+                      <td className="px-3 py-3">{t.class_teacher_of.length ? t.class_teacher_of.join(", ") : <span className="text-muted-foreground">—</span>}</td>
+                      <td className="px-3 py-3">{t.subjects.length ? t.subjects.join(", ") : <span className="text-muted-foreground">None</span>}</td>
+                      <td className="px-3 py-3">{t.classes.length ? t.classes.join(", ") : <span className="text-muted-foreground">None</span>}</td>
+                      <td className="px-3 py-3 whitespace-nowrap">{todayPill(t)}</td>
+                      <td className="min-w-36 px-3 py-3">
+                        <Meter value={t.topics_covered} total={t.topics_total} expected={t.topics_expected} label={`${t.name} syllabus covered`} />
+                        <span className="mt-1 flex justify-between gap-2 text-[11px] text-muted-foreground"><span>{t.topics_total ? `${t.topics_covered}/${t.topics_total}` : "No plan"}</span>{planNote(t)}</span>
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums">{t.lessons_marked_week}<span className="text-muted-foreground">/{t.lessons_scheduled_week}</span></td>
+                      <td className="px-4 py-3 text-right tabular-nums">{t.homework_week}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
               {shown.map((t) => (

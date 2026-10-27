@@ -9,7 +9,9 @@ from app.models.module import SchoolModule, MODULE_KEYS
 from app.models.user import User, UserRole
 from app.models.academics import SchoolClass, Student, StaffProfile
 from app.models.attendance import AttendanceRecord, AttendanceStatus
-from app.models.results import Subject, Result
+from app.models.school_period import SchoolPeriod
+from app.models.change_request import ChangeRequest, ChangeStatus
+from app.models.results import Subject, SubjectLevel, Result
 from app.models.fees import FeeInvoice, FeePayment
 from app.models.communication import Announcement, AnnouncementAudience
 from app.models.live_classes import LiveClass, LiveClassStatus
@@ -85,6 +87,10 @@ __all__ = [
     "AttendanceRecord",
     "AttendanceStatus",
     "Subject",
+    "SubjectLevel",
+    "SchoolPeriod",
+    "ChangeRequest",
+    "ChangeStatus",
     "Result",
     "FeeInvoice",
     "FeePayment",

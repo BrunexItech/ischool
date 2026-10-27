@@ -20,6 +20,7 @@ import { FileText, LayoutList, Lock, Pencil, Plus, Save, Sparkles, Trash2 } from
 import Link from "next/link";
 import { DepartmentPulse } from "@/components/DepartmentPulse";
 import { ViewOnly } from "@/components/oversight";
+import { ClassPerformance } from "@/components/ClassPerformance";
 
 const EXAM_TYPES = ["Opener", "CAT 1", "CAT 2", "Mid Term", "End Term", "Mock", "Other"];
 
@@ -187,7 +188,6 @@ export default function ResultsPage() {
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [myClasses, setMyClasses] = useState<MyClass[]>([]);
   const [classSubjects, setClassSubjects] = useState<Subject[]>([]);
-  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
   const [classId, setClassId] = useState<number | null>(null);
   const [pickedSubject, setPickedSubject] = useState<number | null>(null);
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
@@ -201,11 +201,11 @@ export default function ResultsPage() {
   const [original, setOriginal] = useState<Record<number, string>>({});
   const [remarks, setRemarks] = useState<Record<number, string>>({});
   const [lockedIds, setLockedIds] = useState<Set<number>>(new Set());
-  const [newSubject, setNewSubject] = useState("");
   const [saving, setSaving] = useState(false);
   const [fixing, setFixing] = useState<Student | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"performance" | "gradebook">("performance");
 
   const isTeacher = user?.role === "teacher";
   const canConfigure = user?.role === "super_admin" || user?.role === "head_of_institution" || user?.role === "group_principal";
@@ -229,15 +229,13 @@ export default function ResultsPage() {
     Promise.all([
       api.listClasses(token, user.school_id),
       user.role === "teacher" ? api.listMyClasses(token, user.school_id).catch(() => [] as MyClass[]) : Promise.resolve([] as MyClass[]),
-      api.listSubjects(token, user.school_id),
       api.listAcademicTerms(token, user.school_id),
       api.listGradingBands(token, user.school_id),
     ])
-      .then(([cs, mine, ss, ts, bs]) => {
+      .then(([cs, mine, ts, bs]) => {
         if (cancelled) return;
         setClasses(cs);
         setMyClasses(mine);
-        setAllSubjects(ss);
         setTerms(ts);
         setBands(bs);
         const current = ts.find((t) => t.is_current) ?? ts[0];
@@ -307,28 +305,12 @@ export default function ResultsPage() {
     };
   }, [token, user?.school_id, user?.id, subjectId, term, activeType, isClassTeacherHere]);
 
-  async function handleAddSubject(e: React.FormEvent) {
-    e.preventDefault();
-    if (!token || !user?.school_id || !newSubject.trim()) return;
-    try {
-      const subject = await api.createSubject(token, user.school_id, newSubject.trim());
-      setAllSubjects((s) => [...s, subject]);
-      setNewSubject("");
-      toast.success(`${subject.name} added. Allocate it to a class under Teaching Assignments.`);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Failed to add subject");
-    }
-  }
-
   async function handleSeedLearningAreas() {
     if (!token || !user?.school_id) return;
     setSeeding(true);
     try {
       const seeded = await api.seedPrePrimaryLearningAreas(token, user.school_id);
-      setAllSubjects((s) => {
-        const existingNames = new Set(s.map((x) => x.name));
-        return [...s, ...seeded.filter((x) => !existingNames.has(x.name))];
-      });
+      void seeded;
       toast.success("Official PP1/PP2 learning areas added");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to add learning areas");
@@ -413,6 +395,16 @@ export default function ResultsPage() {
 
       {!canRecord && !isTeacher && <ViewOnly>Teachers record marks for the subjects they teach. You see every mark and the class results boards.</ViewOnly>}
 
+      {canConfigure && (
+        <div role="tablist" className="flex w-fit gap-1 rounded-lg bg-muted p-1">
+          {([["performance", "Class performance"], ["gradebook", "Marks by subject"]] as const).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setView(k)} className={`h-9 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+          ))}
+        </div>
+      )}
+      {canConfigure && view === "performance" && user?.school_id && <ClassPerformance schoolId={user.school_id} terms={terms} />}
+      {(!canConfigure || view === "gradebook") && (
+        <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {bands.map((b, i) => (
           <Card key={b.id} className={`border ${BAND_STYLES[i % BAND_STYLES.length]}`}>
@@ -432,28 +424,20 @@ export default function ResultsPage() {
         ))}
       </div>
 
-      {(canConfigure || canSeedPrePrimary) && (
-      <Card>
-        <CardContent className="flex flex-wrap items-end gap-3 pt-6">
-          {canConfigure && (
-          <form onSubmit={handleAddSubject} className="flex items-end gap-3">
-            <div className="grid gap-1.5">
-              <Label>Add subject</Label>
-              <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="e.g. English" className="w-48" />
-            </div>
-            <Button type="submit" variant="secondary"><Plus /> Add</Button>
-          </form>
-          )}
-          {canSeedPrePrimary && (
+      {canConfigure && (
+        <p className="flex flex-wrap items-center gap-x-2 rounded-xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          Subjects are managed in their own module, where each one is tied to the grades it is taught in.
+          <Link href="/dashboard/subjects" className="font-medium text-primary hover:underline">Open Subjects</Link>
+        </p>
+      )}
+      {!canConfigure && canSeedPrePrimary && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-3 pt-6">
             <Button type="button" variant="outline" onClick={handleSeedLearningAreas} disabled={seeding}>
               <Sparkles /> {seeding ? "Adding..." : "Add official PP1/PP2 learning areas"}
             </Button>
-          )}
-          {canConfigure && allSubjects.length > 0 && (
-            <p className="basis-full text-xs text-muted-foreground">{allSubjects.length} subjects in the school. A subject appears in a class&apos;s gradebook once it is allocated to that class under Teaching Assignments.</p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
       )}
 
       <Card>
@@ -607,6 +591,8 @@ export default function ResultsPage() {
           </TableBody>
         </Table>
       </Card>
+        </>
+      )}
       {fixing && subjectId !== null && (
         <CorrectMarkDialog
           student={fixing}

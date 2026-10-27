@@ -1048,6 +1048,72 @@ const CELL: Record<string, { label: string; cls: string }> = {
   no_lesson: { label: "", cls: "" },
 };
 
+type HwRow = HomeworkGrid["rows"][number];
+
+function weekFacts(r: HwRow) {
+  const typed = r.cells.filter((c) => c.status === "given").reduce((n, c) => n + c.count, 0);
+  const board = r.cells.filter((c) => c.status === "board").reduce((n, c) => n + c.count, 0);
+  const days = r.cells.filter((c) => c.status === "given" || c.status === "board").length;
+  const none = r.cells.some((c) => c.status === "none");
+  const missing = r.cells.filter((c) => c.status === "missing").length;
+  const titles = r.cells.flatMap((c) => c.titles);
+  return { typed, board, days, none, missing, titles, has: typed + board > 0 };
+}
+
+/** Who has set homework this week on the left, who has not on the right. */
+function HomeworkSplit({ rows, by }: { rows: HwRow[]; by: "subject" | "teacher" }) {
+  type Item = { key: string; title: string; sub: string; note: string };
+  const withHw: Item[] = [];
+  const without: Item[] = [];
+  if (by === "subject") {
+    for (const r of rows) {
+      const f = weekFacts(r);
+      const base = { key: `${r.class_id}-${r.subject_id}`, title: `${r.subject} · ${r.class_name}`, sub: r.teacher ?? "No teacher" };
+      if (f.has) withHw.push({ ...base, note: `${f.typed + f.board} set on ${f.days} day${f.days === 1 ? "" : "s"}${f.board ? ` (${f.board} on the board)` : ""}${f.titles.length ? `: ${f.titles.slice(0, 2).join("; ")}` : ""}` });
+      else without.push({ ...base, note: f.none ? "Teacher recorded no homework" : f.missing ? `Nothing recorded on ${f.missing} lesson day${f.missing === 1 ? "" : "s"}` : "No lessons due yet" });
+    }
+  } else {
+    const groups = new Map<string, HwRow[]>();
+    for (const r of rows) groups.set(r.teacher ?? "No teacher", [...(groups.get(r.teacher ?? "No teacher") ?? []), r]);
+    for (const [teacher, rs] of groups) {
+      const facts = rs.map(weekFacts);
+      const setCount = facts.filter((f) => f.has).length;
+      const total = facts.reduce((n, f) => n + f.typed + f.board, 0);
+      const subjects = [...new Set(rs.map((r) => r.subject))].join(", ");
+      const base = { key: teacher, title: teacher, sub: `${subjects} · ${rs.length} class${rs.length === 1 ? "" : "es"}/subject${rs.length === 1 ? "" : "s"}` };
+      if (setCount > 0) withHw.push({ ...base, note: `${setCount} of ${rs.length} have homework, ${total} set this week` });
+      else without.push({ ...base, note: facts.some((f) => f.none) ? "Recorded no homework" : "Nothing recorded this week" });
+    }
+  }
+  const column = (title: string, items: Item[], tone: "good" | "warn") => (
+    <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card" aria-label={title}>
+      <header className={`flex items-center justify-between gap-2 border-b px-4 py-3 sm:px-5 ${tone === "good" ? "bg-emerald-50/70 dark:bg-emerald-950/30" : "bg-amber-50/70 dark:bg-amber-950/30"}`}>
+        <h3 className="font-heading text-base font-semibold">{title}</h3>
+        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums ${tone === "good" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"}`}>{items.length}</span>
+      </header>
+      {items.length === 0 ? (
+        <p className="px-4 py-10 text-center text-sm text-muted-foreground">{tone === "good" ? "No homework has been set yet this week." : "Everyone has set homework."}</p>
+      ) : (
+        <ul className="divide-y">
+          {items.map((i) => (
+            <li key={i.key} className="flex flex-col gap-0.5 px-4 py-2.5 sm:px-5">
+              <span className="text-sm font-medium break-words">{i.title}</span>
+              <span className="text-xs break-words text-muted-foreground">{i.sub}</span>
+              <span className={`text-xs break-words ${tone === "good" ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>{i.note}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+  return (
+    <div className="grid items-start gap-4 md:grid-cols-2">
+      {column("Has set homework", withHw, "good")}
+      {column("Has not set homework", without, "warn")}
+    </div>
+  );
+}
+
 function HomeworkWeek() {
   const { token, user } = useAuth();
   const schoolId = user?.school_id ?? null;
@@ -1056,6 +1122,8 @@ function HomeworkWeek() {
   const [data, setData] = useState<{ key: string; grid: HomeworkGrid | null } | null>(null);
   const [search, setSearch] = useState("");
   const [onlyMissing, setOnlyMissing] = useState(false);
+  const [layout, setLayout] = useState<"split" | "days">("split");
+  const [by, setBy] = useState<"subject" | "teacher">("subject");
   const key = `${week ?? "now"}/${reloadKey}`;
 
   useEffect(() => {
@@ -1081,6 +1149,21 @@ function HomeworkWeek() {
         <p className="min-w-44 text-center text-sm font-medium">{grid ? `Week of ${new Date(grid.week_start + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long" })}` : "Loading..."}</p>
         <Button variant="outline" size="icon" className="size-10" aria-label="Next week" disabled={!grid || addDaysStr(grid.week_start, 7) > localDateStr()} onClick={() => grid && setWeek(addDaysStr(grid.week_start, 7))}><ChevronRight /></Button>
         {week && <Button variant="ghost" className="h-10" onClick={() => setWeek(undefined)}>This week</Button>}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div role="group" aria-label="Layout" className="inline-flex rounded-lg border p-0.5">
+          {([["split", "Given and not given"], ["days", "Day by day"]] as const).map(([k, label]) => (
+            <button key={k} type="button" aria-pressed={layout === k} onClick={() => setLayout(k)} className={`h-9 rounded-md px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring ${layout === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+          ))}
+        </div>
+        {layout === "split" && (
+          <div role="group" aria-label="Group by" className="inline-flex rounded-lg border p-0.5">
+            {([["subject", "By class and subject"], ["teacher", "By teacher"]] as const).map(([k, label]) => (
+              <button key={k} type="button" aria-pressed={by === k} onClick={() => setBy(k)} className={`h-9 rounded-md px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring ${by === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       {!ready ? (
@@ -1111,6 +1194,10 @@ function HomeworkWeek() {
             ))}
           </section>
 
+          {layout === "split" ? (
+            <HomeworkSplit rows={rows} by={by} />
+          ) : (
+          <>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative sm:w-80">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -1150,6 +1237,8 @@ function HomeworkWeek() {
               </ul>
             )}
           </section>
+          </>
+          )}
           <p className="text-xs text-muted-foreground">A day is only expected when the subject is on that class&apos;s timetable. &ldquo;Board&rdquo; means the teacher recorded homework written on the board or said aloud.</p>
         </>
       )}

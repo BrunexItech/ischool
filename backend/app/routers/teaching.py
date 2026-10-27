@@ -1,3 +1,4 @@
+from app.core.subjects import ensure_subject_fits_class
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -8,7 +9,7 @@ from app.models.academics import SchoolClass, Student
 from app.models.attendance import AttendanceRecord
 from app.models.teacher_assignment import TeacherAssignment
 from app.models.user import User, UserRole
-from app.schemas.teaching import MyClassOut, MyClassSubjectOut, TeacherAssignmentCreate, TeacherAssignmentOut
+from app.schemas.teaching import ClassTeacherRow, ClassTeacherSet, MyClassOut, MyClassSubjectOut, TeacherAssignmentCreate, TeacherAssignmentOut
 
 router = APIRouter(prefix="/schools/{school_id}/teacher-assignments", tags=["teacher assignments"])
 
@@ -99,6 +100,9 @@ def create_assignment(
     if teacher is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That user is not a teacher at this school")
 
+    if payload.subject_id is not None:
+        ensure_subject_fits_class(db, school_id, payload.subject_id, payload.class_id)
+
     existing = (
         db.query(TeacherAssignment)
         .filter_by(teacher_user_id=payload.teacher_user_id, class_id=payload.class_id, subject_id=payload.subject_id)
@@ -131,3 +135,65 @@ def delete_assignment(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Assignment not found")
     db.delete(assignment)
     db.commit()
+
+
+# --- Class teachers ---
+
+
+def _class_teacher_rows(db: Session, school_id: int) -> list[ClassTeacherRow]:
+    classes = db.query(SchoolClass).filter_by(school_id=school_id).all()
+    classes.sort(key=lambda c: ((c.grade.sort_order if c.grade else 999), c.name))
+    return [
+        ClassTeacherRow(
+            class_id=c.id,
+            class_name=c.name,
+            level=c.grade.level_group.value if c.grade else "other",
+            teacher_user_id=c.homeroom_teacher_id,
+            teacher_name=c.homeroom_teacher.full_name if c.homeroom_teacher else None,
+            other_class_of_teacher=None,
+        )
+        for c in classes
+    ]
+
+
+@router.get(
+    "/class-teachers",
+    response_model=list[ClassTeacherRow],
+    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+)
+def list_class_teachers(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Every class with its one class teacher (or none yet)."""
+    ensure_school_access(db, current_user, school_id)
+    return _class_teacher_rows(db, school_id)
+
+
+@router.put(
+    "/class-teachers/{class_id}",
+    response_model=ClassTeacherRow,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+)
+def set_class_teacher(school_id: int, class_id: int, payload: ClassTeacherSet, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """A class has exactly one class teacher. Naming someone when the class
+    already has another is refused unless the caller says to replace them,
+    and a teacher already running a different class is refused outright, so
+    the change is always deliberate."""
+    ensure_school_access(db, current_user, school_id)
+    cls = db.query(SchoolClass).filter_by(school_id=school_id, id=class_id).first()
+    if cls is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Class not found")
+    if payload.teacher_user_id is None:
+        cls.homeroom_teacher_id = None
+    else:
+        teacher = db.query(User).filter_by(id=payload.teacher_user_id, school_id=school_id, role=UserRole.TEACHER, is_active=True).first()
+        if teacher is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "That teacher was not found at this school")
+        if cls.homeroom_teacher_id == teacher.id:
+            return next(r for r in _class_teacher_rows(db, school_id) if r.class_id == class_id)
+        elsewhere = db.query(SchoolClass).filter(SchoolClass.school_id == school_id, SchoolClass.homeroom_teacher_id == teacher.id, SchoolClass.id != class_id).first()
+        if elsewhere:
+            raise HTTPException(status.HTTP_409_CONFLICT, f"{teacher.full_name} is already the class teacher of {elsewhere.name}. A teacher can be class teacher of one class; remove them there first.")
+        if cls.homeroom_teacher_id is not None and not payload.replace:
+            raise HTTPException(status.HTTP_409_CONFLICT, f"{cls.name} already has a class teacher, {cls.homeroom_teacher.full_name}. Confirm to replace them.")
+        cls.homeroom_teacher_id = teacher.id
+    db.commit()
+    return next(r for r in _class_teacher_rows(db, school_id) if r.class_id == class_id)

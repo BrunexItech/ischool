@@ -5,12 +5,13 @@ from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from datetime import date
 
+from app.core.activity_feed import KINDS, activity_counts, build_activity
 from app.core.dates import school_today
 from app.core.module_pulse import PULSES, module_pulse, weekly_report
-from app.core.oversight import attendance_oversight, class_cards, class_detail, head_overview, homework_grid, teacher_cards
+from app.core.oversight import performance_overview, attendance_oversight, class_cards, class_detail, head_overview, homework_grid, teacher_cards
 from app.models.school import School
 from app.models.user import User, UserRole
-from app.schemas.oversight import MarkOverride, PulseSection, WeeklyReport, AttendanceOversight, ClassCard, ClassDetail, HeadOverview, HomeworkGrid, TeacherCard
+from app.schemas.oversight import PerformanceOverview, ActivityFeed, MarkOverride, PulseSection, WeeklyReport, AttendanceOversight, ClassCard, ClassDetail, HeadOverview, HomeworkGrid, TeacherCard
 
 router = APIRouter(prefix="/schools/{school_id}/oversight", tags=["oversight"])
 
@@ -108,7 +109,7 @@ def department_pulse(school_id: int, key: str, db: Session = Depends(get_db), cu
 
 @router.get("/weekly-report", response_model=WeeklyReport, dependencies=[Depends(require_roles(*LEADERSHIP))])
 def weekly_report_endpoint(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """The combined report of every department, as it will be emailed on Friday."""
+    """The combined report of every department, as it will be emailed on Saturday morning."""
     ensure_school_access(db, current_user, school_id)
     school = db.get(School, school_id)
     return weekly_report(db, school)
@@ -163,3 +164,40 @@ def override_mark(school_id: int, payload: MarkOverride, db: Session = Depends(g
         )
     db.commit()
     return {"score": result.score, "grade": result.grade}
+
+
+@router.get("/activity", response_model=ActivityFeed, dependencies=[Depends(require_roles(*LEADERSHIP))])
+def activity_feed(
+    school_id: int,
+    start: date | None = None,
+    end: date | None = None,
+    kinds: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """What happened across the school between two dates (default: today).
+    One day gives the "Find by date" view; a few days gives recent activity."""
+    ensure_school_access(db, current_user, school_id)
+    today = school_today(db, school_id)
+    first = start or end or today
+    last = end or first
+    if last < first:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "End date is before the start date")
+    if (last - first).days > 92:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Pick a span of three months or less")
+    wanted = {k for k in (kinds or "").split(",") if k in KINDS} or None
+    events = build_activity(db, school_id, first, last, wanted)
+    return ActivityFeed(start=first, end=last, total=len(events), counts=activity_counts(events), events=events)
+
+
+@router.get(
+    "/performance",
+    response_model=PerformanceOverview,
+    dependencies=[Depends(require_roles(*LEADERSHIP)), Depends(require_feature("results"))],
+)
+def performance(school_id: int, term: str | None = None, exam_types: str | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Every class's average, pass rate and top learners with their positions,
+    so the head sees how each class is doing before opening a report card."""
+    ensure_school_access(db, current_user, school_id)
+    chosen = [t.strip() for t in (exam_types or "").split(",") if t.strip()]
+    return performance_overview(db, school_id, term, chosen)

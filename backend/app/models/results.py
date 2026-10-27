@@ -15,6 +15,23 @@ class Subject(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
 
     school: Mapped["School"] = relationship("School")
+    levels: Mapped[list["SubjectLevel"]] = relationship("SubjectLevel", cascade="all, delete-orphan")
+
+    @property
+    def grade_level_ids(self) -> list[int]:
+        return sorted(l.grade_level_id for l in self.levels)
+
+
+class SubjectLevel(Base):
+    """A grade a subject is taught in. A subject with no levels is treated
+    as open to every class (how subjects worked before this existed)."""
+
+    __tablename__ = "subject_levels"
+    __table_args__ = (UniqueConstraint("subject_id", "grade_level_id", name="uq_subject_level"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subject_id: Mapped[int] = mapped_column(ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    grade_level_id: Mapped[int] = mapped_column(ForeignKey("grade_levels.id", ondelete="CASCADE"), nullable=False)
 
 
 class Result(Base):

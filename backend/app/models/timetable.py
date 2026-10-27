@@ -25,6 +25,9 @@ class TimetableSlot(Base):
     start_time: Mapped[time] = mapped_column(Time, nullable=False)
     end_time: Mapped[time] = mapped_column(Time, nullable=False)
     room: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # The block of the school day this lesson sits in. Null on lessons placed
+    # before the school defined its day.
+    period_id: Mapped[int | None] = mapped_column(ForeignKey("school_periods.id", ondelete="SET NULL"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -257,3 +257,61 @@ class MarkOverride(BaseModel):
     exam_type: str
     score: float
     reason: str
+
+
+class ActivityEvent(BaseModel):
+    kind: str
+    label: str
+    at: datetime
+    title: str
+    detail: str
+    actor: str | None
+    href: str
+
+
+class ActivityFeed(BaseModel):
+    start: date
+    end: date
+    total: int
+    counts: dict[str, int]
+    events: list[ActivityEvent]
+
+
+class TopLearner(BaseModel):
+    student_id: int
+    name: str
+    class_name: str
+    admission_number: str
+    average: float
+    rank: int          # position within their own class
+    level: str | None
+
+
+class SubjectMean(BaseModel):
+    subject: str
+    average: float
+
+
+class ClassPerformance(BaseModel):
+    class_id: int
+    class_name: str
+    level: str
+    teacher: str | None
+    learners: int
+    marked: int
+    average: float | None
+    pass_rate: float | None        # share of marked learners averaging 50 or more
+    ranked: bool                   # pre-primary classes are not ranked
+    top: list[TopLearner]
+    best_subject: SubjectMean | None
+    weakest_subject: SubjectMean | None
+    distribution: dict[str, int]   # grading level code -> learners
+
+
+class PerformanceOverview(BaseModel):
+    term: str | None
+    exam_types: list[str]
+    available_exam_types: list[str]
+    school_average: float | None
+    classes: list[ClassPerformance]
+    top_learners: list[TopLearner]

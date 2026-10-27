@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
@@ -14,7 +15,9 @@ from app.models.academics import SchoolClass, Student
 from app.models.grade_level import LevelGroup
 from app.models.report_card_remark import ReportCardRemark
 from app.models.teacher_assignment import TeacherAssignment
-from app.models.results import Result, Subject
+from app.core.subjects import ensure_subject_fits_class  # noqa: F401  (used by sibling routers)
+from app.models.grade_level import GradeLevel
+from app.models.results import Result, Subject, SubjectLevel
 from app.models.user import User, UserRole
 from app.schemas.results import (
     BoardBand,
@@ -27,11 +30,12 @@ from app.schemas.results import (
     ResultUpsert,
     SubjectCreate,
     SubjectOut,
+    SubjectUpdate,
 )
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["results"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.STAFF, UserRole.SECRETARY)
 MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER)
 # Entering a score is the teacher's own job — leadership can view the
@@ -39,6 +43,7 @@ RECORD_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GRO
 # principal's remark, handled separately above (RECORD_ROLES there is
 # fine since that endpoint enforces who may set which field itself).
 GRADE_ENTRY_ROLES = (UserRole.SUPER_ADMIN, UserRole.TEACHER)
+SUBJECT_ROLES = MANAGE_ROLES + (UserRole.SECRETARY,)
 
 
 # --- Subjects ---
@@ -54,11 +59,19 @@ def list_subjects(school_id: int, db: Session = Depends(get_db), current_user: U
     return db.query(Subject).filter_by(school_id=school_id).all()
 
 
+def _valid_levels(db: Session, ids: list[int]) -> list[int]:
+    wanted = sorted(set(ids))
+    found = {g.id for g in db.query(GradeLevel).filter(GradeLevel.id.in_(wanted))} if wanted else set()
+    if found != set(wanted):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "One of the selected grades does not exist")
+    return wanted
+
+
 @router.post(
     "/subjects",
     response_model=SubjectOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*MANAGE_ROLES)), Depends(require_feature("results"))],
+    dependencies=[Depends(require_roles(*SUBJECT_ROLES)), Depends(require_feature("results"))],
 )
 def create_subject(
     school_id: int,
@@ -67,14 +80,72 @@ def create_subject(
     current_user: User = Depends(get_current_user),
 ):
     ensure_school_access(db, current_user, school_id)
-    if db.query(Subject).filter_by(school_id=school_id, name=payload.name).first():
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Give the subject a name")
+    if db.query(Subject).filter(Subject.school_id == school_id, func.lower(Subject.name) == name.lower()).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That subject already exists")
 
-    subject = Subject(school_id=school_id, name=payload.name)
+    subject = Subject(school_id=school_id, name=name)
+    subject.levels = [SubjectLevel(grade_level_id=g) for g in _valid_levels(db, payload.grade_level_ids)]
     db.add(subject)
     db.commit()
     db.refresh(subject)
     return subject
+
+
+@router.patch(
+    "/subjects/{subject_id}",
+    response_model=SubjectOut,
+    dependencies=[Depends(require_roles(*SUBJECT_ROLES)), Depends(require_feature("results"))],
+)
+def update_subject(school_id: int, subject_id: int, payload: SubjectUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Rename a subject or change the grades it is taught in. Taking a grade
+    away is refused while a class in that grade still has the subject assigned."""
+    ensure_school_access(db, current_user, school_id)
+    subject = db.query(Subject).filter_by(school_id=school_id, id=subject_id).first()
+    if subject is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Subject not found")
+    if payload.name is not None:
+        name = payload.name.strip()
+        clash = db.query(Subject).filter(Subject.school_id == school_id, func.lower(Subject.name) == name.lower(), Subject.id != subject_id).first()
+        if not name or clash:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "That name is empty or already used by another subject")
+        subject.name = name
+    if payload.grade_level_ids is not None:
+        keep = _valid_levels(db, payload.grade_level_ids)
+        if keep:
+            in_use = (
+                db.query(SchoolClass)
+                .join(TeacherAssignment, TeacherAssignment.class_id == SchoolClass.id)
+                .filter(TeacherAssignment.school_id == school_id, TeacherAssignment.subject_id == subject_id, SchoolClass.grade_level_id.notin_(keep))
+                .first()
+            )
+            if in_use:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{subject.name} is still assigned in {in_use.name}. Remove that assignment first.")
+        subject.levels = [l for l in subject.levels if l.grade_level_id in keep] + [
+            SubjectLevel(grade_level_id=g) for g in keep if g not in subject.grade_level_ids
+        ]
+    db.commit()
+    db.refresh(subject)
+    return subject
+
+
+@router.delete(
+    "/subjects/{subject_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_roles(*SUBJECT_ROLES)), Depends(require_feature("results"))],
+)
+def delete_subject(school_id: int, subject_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Only a subject nothing has been recorded against can be removed."""
+    ensure_school_access(db, current_user, school_id)
+    subject = db.query(Subject).filter_by(school_id=school_id, id=subject_id).first()
+    if subject is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Subject not found")
+    if db.query(Result.id).filter_by(subject_id=subject_id).first() or db.query(TeacherAssignment.id).filter_by(subject_id=subject_id).first():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This subject has marks or teacher assignments, so it cannot be deleted")
+    db.delete(subject)
+    db.commit()
 
 
 # The five official Pre-Primary learning areas — Kenya School Readiness

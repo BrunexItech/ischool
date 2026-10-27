@@ -123,7 +123,7 @@ export default function ReportsPage() {
 
       <p className="no-print flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
         <CalendarCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-        This report is emailed to you automatically every Friday afternoon, so you have it even if you have not opened the system.
+        This report is emailed to you automatically every Saturday morning, so you have it even if you have not opened the system.
       </p>
 
       <section className={`print-avoid-break rounded-xl border p-4 sm:p-5 ${needs.length ? "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30" : "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30"}`}>

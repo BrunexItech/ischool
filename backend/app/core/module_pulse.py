@@ -1,6 +1,6 @@
 """One-screen summaries of every department, written for the head of
 institution. The same sections feed the in-app module pages, the printable
-weekly report and the Friday email, so the numbers never disagree.
+weekly report and the Saturday email, so the numbers never disagree.
 
 Everything is read-only and derived from the records each department already
 keeps. Each section says in one line how the area is doing, shows a handful of
