@@ -18,23 +18,22 @@ from app.schemas.communication_config import CommunicationConfigOut, Communicati
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["communication"])
 
+# Everyone who works at the school but does not teach: they all read "staff" notices.
+STAFF_ROLES = (
+    UserRole.STAFF, UserRole.SECRETARY, UserRole.SECURITY, UserRole.BOARDING_STAFF, UserRole.TRANSPORT_STAFF,
+    UserRole.TRANSPORT_ATTENDANT, UserRole.LIBRARIAN, UserRole.STORE_KEEPER, UserRole.ACCOUNTANT,
+    UserRole.PROCUREMENT_OFFICER, UserRole.BURSAR,
+)
+TARGETABLE = {r.value for r in STAFF_ROLES} | {UserRole.TEACHER.value}
+
 AUDIENCE_ROLES: dict[AnnouncementAudience, tuple[UserRole, ...]] = {
     AnnouncementAudience.TEACHERS: (UserRole.TEACHER,),
-    AnnouncementAudience.STAFF: (UserRole.STAFF, UserRole.SECRETARY),
+    AnnouncementAudience.STAFF: tuple(STAFF_ROLES),
     AnnouncementAudience.STUDENTS: (UserRole.STUDENT,),
     AnnouncementAudience.PARENTS: (UserRole.PARENT,),
 }
 
-VIEW_ROLES = (
-    UserRole.SUPER_ADMIN,
-    UserRole.HEAD_OF_INSTITUTION,
-    UserRole.GROUP_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.STAFF,
-    UserRole.SECRETARY,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-)
+VIEW_ROLES = tuple(UserRole)
 POST_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.TEACHER, UserRole.SECRETARY)
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
 # The secretary posts school-wide notices on the head's behalf.
@@ -57,9 +56,9 @@ def list_announcements(school_id: int, db: Session = Depends(get_db), current_us
 
     own_role = {
         UserRole.TEACHER: AnnouncementAudience.TEACHERS,
-        UserRole.STAFF: AnnouncementAudience.STAFF,
         UserRole.STUDENT: AnnouncementAudience.STUDENTS,
         UserRole.PARENT: AnnouncementAudience.PARENTS,
+        **{r: AnnouncementAudience.STAFF for r in STAFF_ROLES},
     }.get(current_user.role)
     my_classes: set[int] = set()
     if current_user.role == UserRole.TEACHER:
@@ -70,6 +69,10 @@ def list_announcements(school_id: int, db: Session = Depends(get_db), current_us
 
     def can_see(a: Announcement) -> bool:
         if a.created_by == current_user.id:
+            return True
+        if a.target_roles and current_user.role.value not in a.target_roles:
+            return False   # the sender picked particular roles, and this is not one of them
+        if a.target_roles:
             return True
         addressed = a.audience == AnnouncementAudience.ALL or a.audience == own_role
         colleagues_class = current_user.role == UserRole.TEACHER and a.audience in (AnnouncementAudience.STUDENTS, AnnouncementAudience.PARENTS)
@@ -100,6 +103,12 @@ def create_announcement(
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Teachers can announce to the learners or parents of their own classes. School-wide announcements are made by the head of institution.")
         if payload.class_id is None or payload.class_id not in teacher_class_ids(db, school_id, current_user):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Choose one of your own classes")
+    if payload.target_roles:
+        bad = [r for r in payload.target_roles if r not in TARGETABLE]
+        if bad or payload.audience not in (AnnouncementAudience.STAFF, AnnouncementAudience.ALL):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose specific roles only for staff or school-wide notices, and only staff or teacher roles")
+        if current_user.role == UserRole.TEACHER:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Teachers write to the learners or parents of their own classes")
     if payload.class_id is not None:
         class_exists = db.query(Student.id).filter_by(school_id=school_id, class_id=payload.class_id).first()
         if class_exists is None:
@@ -116,6 +125,8 @@ def create_announcement(
 
     recipients_query = db.query(User).filter_by(school_id=school_id, is_active=True)
     roles = AUDIENCE_ROLES.get(payload.audience)
+    if payload.target_roles:
+        roles = tuple(UserRole(r) for r in payload.target_roles)
     if roles is not None:
         recipients_query = recipients_query.filter(User.role.in_(roles))
     if class_scoped:

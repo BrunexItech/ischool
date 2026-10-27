@@ -1,5 +1,6 @@
 "use client";
 
+import { useModuleTab } from "@/lib/moduleTabs";
 import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -157,7 +158,7 @@ export default function StoresPage() {
   const [items, setItems] = useState<StockItem[]>([]);
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
-  const [tab, setTab] = useState<string | null>(null);
+  const tabParam = useModuleTab("stores");
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
@@ -179,18 +180,13 @@ export default function StoresPage() {
   const isHead = ["head_of_institution", "group_principal"].includes(user.role);
   const canSeeStock = isKeeper || isHead || ["procurement_officer", "bursar", "accountant"].includes(user.role);
   const tabs: [string, string][] = [...(canSeeStock ? ([["stock", "Stock"]] as [string, string][]) : []), ["requests", isKeeper || isHead ? "Requests" : "My requests"], ...(isKeeper ? ([["count", "Stocktake"]] as [string, string][]) : []), ...(canSeeStock ? ([["history", "Movements"]] as [string, string][]) : [])];
-  const view = tab ?? tabs[0][0];
+  const view = tabParam || tabs[0][0];
   const inventoryValue = items.reduce((a, i) => a + i.quantity * i.unit_cost, 0);
   const lowStock = items.filter((i) => i.quantity <= i.reorder_level);
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Stores" description={canSeeStock ? "Stock on hand, requests from classes and departments, issues and stocktakes." : "Ask the store for what you need, and follow your requests."} action={isKeeper || isHead ? <NewItemDialog accounts={accounts} onCreated={(i) => setItems((is) => [i, ...is])} /> : undefined} />
-      {tabs.length > 1 && (
-        <div role="tablist" className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1">
-          {tabs.map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setTab(k)} className={`h-9 shrink-0 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>)}
-        </div>
-      )}
       {view === "requests" && user.school_id && <RequestsPanel schoolId={user.school_id} items={items} isKeeper={isKeeper} canAsk={true} onStockChanged={() => setVersion((v) => v + 1)} />}
       {view === "count" && user.school_id && <CountPanel schoolId={user.school_id} items={items} onCounted={() => setVersion((v) => v + 1)} />}
       {view === "history" && user.school_id && <MovementsPanel schoolId={user.school_id} items={items} />}

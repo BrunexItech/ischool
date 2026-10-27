@@ -1,5 +1,6 @@
 "use client";
 
+import { useModuleTab } from "@/lib/moduleTabs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, AcademicTerm, ApiError, FeeInvoice, FeeInvoiceDetail, SchoolClass, Student } from "@/lib/api";
@@ -307,8 +308,8 @@ export default function FeesPage() {
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [grades, setGrades] = useState<GradeLevel[]>([]);
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<string | null>(null);
   const secretary = user?.role === "secretary";
+  const tabParam = useModuleTab("fees");
 
   useEffect(() => {
     if (!token || !schoolId) return;
@@ -329,15 +330,10 @@ export default function FeesPage() {
   const tabs: [string, string][] = secretary
     ? [["structure", "Fee structure"]]
     : [["balances", "Balances and arrears"], ["structure", "Fee structure"], ["invoices", "Invoices and payments"]];
-  const view = tab ?? tabs[0][0];
+  const view = tabParam || tabs[0][0];
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       <PageHeader title="Fees" description={secretary ? "Set the fees for each grade and term. The head approves them before they take effect." : "What every learner owes, the fees for each grade, and the payments received."} />
-      {tabs.length > 1 && (
-        <div role="tablist" className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1 print:hidden">
-          {tabs.map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setTab(k)} className={`h-9 shrink-0 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>)}
-        </div>
-      )}
       {view === "balances" && DESK_ROLES.includes(user.role) && <BalancesView schoolId={schoolId} terms={terms} classes={classes} />}
       {view === "structure" && <StructureView schoolId={schoolId} terms={terms} grades={grades} />}
       {view === "invoices" && <InvoicesView />}

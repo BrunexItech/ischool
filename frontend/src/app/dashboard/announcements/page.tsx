@@ -38,6 +38,11 @@ async function fetchAll(token: string, schoolId: number, isTeacher: boolean): Pr
   return { data: { announcements, classes, myClasses }, failed };
 }
 
+const STAFF_TARGETS: [string, string][] = [
+  ["teacher", "Teachers"], ["security", "Security"], ["boarding_staff", "Boarding"], ["transport_staff", "Transport"], ["transport_attendant", "Bus attendants"],
+  ["librarian", "Librarian"], ["store_keeper", "Store keeper"], ["bursar", "Bursar"], ["accountant", "Accountant"], ["procurement_officer", "Procurement"], ["secretary", "Secretary"], ["staff", "Other staff"],
+];
+
 function ComposeDialog({ data, isTeacher, onClose, onPosted }: { data: Loaded; isTeacher: boolean; onClose: () => void; onPosted: (a: Announcement) => void }) {
   const { token, user } = useAuth();
   const audiences: AnnouncementAudience[] = isTeacher ? ["parents", "students"] : ["all", "teachers", "staff", "students", "parents"];
@@ -54,7 +59,9 @@ function ComposeDialog({ data, isTeacher, onClose, onPosted }: { data: Loaded; i
   const [sendSms, setSendSms] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
 
+  const roleEligible = !isTeacher && (audience === "staff" || audience === "all");
   const classEligible = audience === "students" || audience === "parents";
   const msgEligible = audience === "all" || audience === "parents";
 
@@ -72,6 +79,7 @@ function ComposeDialog({ data, isTeacher, onClose, onPosted }: { data: Loaded; i
         body: body.trim(),
         audience,
         class_id: classEligible && classId && classId !== "__all_classes__" ? Number(classId) : undefined,
+        target_roles: roleEligible && picked.length > 0 ? picked : undefined,
         event_date: isEvent && eventDate ? eventDate : undefined,
         event_end_date: isEvent && eventEndDate ? eventEndDate : undefined,
         location: isEvent && location.trim() ? location.trim() : undefined,
@@ -121,6 +129,19 @@ function ComposeDialog({ data, isTeacher, onClose, onPosted }: { data: Loaded; i
               </div>
             )}
           </div>
+          {roleEligible && (
+            <fieldset className="grid gap-2 rounded-xl border bg-muted/20 p-3">
+              <legend className="px-1 text-sm font-medium">Only these roles <span className="font-normal text-muted-foreground">(leave empty to reach everyone in the group above)</span></legend>
+              <div className="flex flex-wrap gap-1.5">
+                {STAFF_TARGETS.map(([role, label]) => {
+                  const on = picked.includes(role);
+                  return (
+                    <button key={role} type="button" aria-pressed={on} onClick={() => setPicked((p) => (on ? p.filter((r) => r !== role) : [...p, role]))} className={`h-9 rounded-full border px-3 text-sm font-medium transition-colors ${on ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-accent"}`}>{label}</button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
           {isTeacher && <p className="-mt-2 text-xs text-muted-foreground">You can write to the learners or parents of your own classes. The head of institution sends school-wide announcements.</p>}
           <div className="grid gap-1.5"><Label>Title</Label><Input required value={title} onChange={(e) => setTitle(e.target.value)} autoFocus /></div>
           <div className="grid gap-1.5"><Label>Message</Label><Textarea required value={body} onChange={(e) => setBody(e.target.value)} rows={4} /></div>
@@ -222,7 +243,7 @@ export default function AnnouncementsPage() {
             <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
               <h3 className="font-heading text-lg leading-snug font-semibold break-words">{a.title}</h3>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">{AUDIENCE_LABEL[a.audience]}</span>
+                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">{a.target_roles && a.target_roles.length > 0 ? a.target_roles.map((r) => STAFF_TARGETS.find(([k]) => k === r)?.[1] ?? r).join(", ") : AUDIENCE_LABEL[a.audience]}</span>
                 {cls && (a.audience === "students" || a.audience === "parents") && <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">{cls}</span>}
                 {a.event_date && <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">Event</span>}
               </div>

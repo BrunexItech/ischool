@@ -1,5 +1,6 @@
 "use client";
 
+import { useModuleTab } from "@/lib/moduleTabs";
 import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -30,7 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const PURPOSES = ["Parent visit", "Delivery", "Meeting", "Contractor", "Interview", "Inspection", "Other"];
@@ -870,6 +871,7 @@ function PatrolsTab() {
 
 export default function SecurityPage() {
   const { user, loading } = useAuth();
+  const view = useModuleTab("security");
   const [refreshKey, setRefreshKey] = useState(0);
   if (loading) return <PageLoader />;
   if (!user) return null;
@@ -890,14 +892,7 @@ export default function SecurityPage() {
 
       <AlertsBanner key={`alerts-${refreshKey}`} />
 
-      <Tabs defaultValue="visitors">
-        <TabsList>
-          <TabsTrigger value="visitors">Visitors</TabsTrigger>
-          <TabsTrigger value="passes">Gate passes &amp; pick-ups</TabsTrigger>
-          <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
-          <TabsTrigger value="incidents">Incidents</TabsTrigger>
-          <TabsTrigger value="patrols">Patrols</TabsTrigger>
-        </TabsList>
+      <Tabs value={view}>
         <TabsContent value="visitors"><VisitorsTab key={`visitors-${refreshKey}`} /></TabsContent>
         <TabsContent value="passes"><PassesTab /></TabsContent>
         <TabsContent value="vehicles"><VehiclesTab /></TabsContent>

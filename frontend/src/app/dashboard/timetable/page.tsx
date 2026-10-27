@@ -1,5 +1,6 @@
 "use client";
 
+import { useGoToTab, useModuleTab } from "@/lib/moduleTabs";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -123,7 +124,8 @@ export default function TimetablePage() {
   const [periods, setPeriods] = useState<SchoolPeriod[]>([]);
   const [everySlot, setEverySlot] = useState<TimetableSlot[]>([]);
   const [classId, setClassId] = useState<number | null>(null);
-  const [tab, setTab] = useState<"week" | "day">("week");
+  const tab = (useModuleTab("timetable") || "week") as "week" | "day";
+  const setTab = useGoToTab() as (k: "week" | "day") => void;
   const [placing, setPlacing] = useState<{ period: SchoolPeriod; day: number } | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [version, setVersion] = useState(0);
@@ -192,12 +194,6 @@ export default function TimetablePage() {
     <div className="flex flex-col gap-5 sm:gap-6">
       <PageHead title="Timetable" subtitle="The school day is set once for each level. Teachers and subjects are then placed into its lesson blocks, and nothing can clash." />
       {schoolId && <PendingApprovals kind="bell_schedule" schoolId={schoolId} onDecided={() => setVersion((v) => v + 1)} />}
-
-      <div role="tablist" className="flex w-fit gap-1 rounded-lg bg-muted p-1">
-        {([["week", "Weekly timetable"], ["day", "School day"]] as const).map(([k, label]) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`h-9 rounded-md px-4 text-sm font-medium transition-colors ${tab === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
-        ))}
-      </div>
 
       {tab === "day" ? (
         schoolId && <SchoolDayEditor schoolId={schoolId} periods={periods} onSaved={() => setVersion((v) => v + 1)} />

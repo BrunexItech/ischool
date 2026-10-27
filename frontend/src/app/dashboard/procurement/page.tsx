@@ -1,5 +1,6 @@
 "use client";
 
+import { useModuleTab } from "@/lib/moduleTabs";
 import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -14,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 function kes(n: number) {
@@ -253,6 +254,7 @@ function PurchaseOrdersTab({ purchaseOrders, suppliers, onUpdated }: { purchaseO
 
 export default function ProcurementPage() {
   const { user, token, loading } = useAuth();
+  const view = useModuleTab("procurement");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
@@ -274,11 +276,7 @@ export default function ProcurementPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Procurement" description="Requisitions, approvals and purchase orders." />
-      <Tabs defaultValue="requisitions">
-        <TabsList>
-          <TabsTrigger value="requisitions">Requisitions</TabsTrigger>
-          <TabsTrigger value="orders">Purchase orders</TabsTrigger>
-        </TabsList>
+      <Tabs value={view}>
         <TabsContent value="requisitions"><RequisitionsTab suppliers={suppliers} onPoIssued={upsertPo} /></TabsContent>
         <TabsContent value="orders"><PurchaseOrdersTab purchaseOrders={purchaseOrders} suppliers={suppliers} onUpdated={upsertPo} /></TabsContent>
       </Tabs>

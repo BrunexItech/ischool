@@ -10,6 +10,7 @@ class AnnouncementCreate(BaseModel):
     body: str
     audience: AnnouncementAudience = AnnouncementAudience.ALL
     class_id: int | None = None
+    target_roles: list[str] | None = None
     event_date: date | None = None
     event_end_date: date | None = None
     location: str | None = None
@@ -26,6 +27,7 @@ class AnnouncementOut(BaseModel):
     body: str
     audience: AnnouncementAudience
     class_id: int | None
+    target_roles: list[str] | None = None
     event_date: date | None
     event_end_date: date | None
     location: str | None

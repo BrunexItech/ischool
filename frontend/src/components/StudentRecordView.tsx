@@ -353,12 +353,6 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
 
   if (loading) return <PageLoader label="Opening the record..." />;
 
-  const badge = (id: SectionId): ReactNode => {
-    if (id === "homework" && stats.todo.length) return <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${stats.late.length ? "bg-red-100 text-red-700" : "bg-primary/10 text-primary"}`}>{stats.todo.length}</span>;
-    if (id === "fees" && stats.owed > 0) return <span className="ml-auto size-2 rounded-full bg-amber-500" aria-label="Balance due" />;
-    if (id === "conduct" && stats.openConduct) return <span className="ml-auto rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">{stats.openConduct}</span>;
-    return null;
-  };
 
   const name = student ? `${student.first_name} ${student.last_name}` : "";
   const todaySlots = timetable.filter((s) => s.day_of_week === (now.getDay() + 6) % 7).sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -758,28 +752,6 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
       )}
 
       <div className="grid min-w-0 gap-5">
-        <nav aria-label="Sections" className="min-w-0 lg:hidden">
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-5 lg:overflow-visible lg:px-0 lg:pb-0">
-            {NAV.map((g) => {
-              const items = g.items.filter((i) => (!i.parentOnly || isParent) && !(isStudent && i.id === "overview"));
-              return (
-                <div key={g.label || "top"} className="flex shrink-0 gap-2 lg:flex-col lg:gap-1">
-                  {g.label && <p className="hidden px-3 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase lg:block">{g.label}</p>}
-                  {items.map((i) => {
-                    const on = i.id === section;
-                    return (
-                      <button key={i.id} type="button" aria-current={on ? "page" : undefined} onClick={() => go(i.id)} className={`flex h-10 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition-colors lg:rounded-xl ${on ? "bg-primary text-primary-foreground shadow-xs" : "border bg-card text-foreground/80 hover:bg-accent lg:border-transparent lg:bg-transparent"}`}>
-                        <i.icon className="size-4 shrink-0" />
-                        <span>{i.label}</span>
-                        {badge(i.id)}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </nav>
         <div className="min-w-0">
           {section !== "overview" && <h2 className="mb-4 flex items-center gap-2 font-heading text-xl font-semibold tracking-tight"><active.icon className="size-5 text-primary" /> {active.label}</h2>}
           {content[section]}

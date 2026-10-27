@@ -339,6 +339,7 @@ export interface Announcement {
   body: string;
   audience: AnnouncementAudience;
   class_id: number | null;
+  target_roles?: string[] | null;
   event_date: string | null;
   event_end_date: string | null;
   location: string | null;
@@ -2707,6 +2708,7 @@ export const api = {
       body: string;
       audience: AnnouncementAudience;
       class_id?: number;
+      target_roles?: string[];
       event_date?: string;
       event_end_date?: string;
       location?: string;

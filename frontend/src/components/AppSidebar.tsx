@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   GraduationCap,
   Library,
@@ -69,6 +69,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
@@ -79,6 +82,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { FamilyNav } from "@/components/family/FamilyNav";
+import { moduleTabs } from "@/lib/moduleTabs";
+import { useFamily } from "@/lib/family";
+import { Spinner } from "@/components/Spinner";
 
 const NAV_SECTIONS = [
   {
@@ -105,7 +111,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/results", label: "Grading", icon: Award, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/library", label: "Library", icon: BookMarked, roles: ["head_of_institution", "group_principal", "librarian", "teacher", "staff", "student", "parent"] },
       { href: "/dashboard/exams", label: "Exams", icon: FileText, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
-      { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["head_of_institution", "teacher", "staff", "bursar", "group_principal"] },
+      { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/academic-terms", label: "Academic Terms", icon: CalendarRange, roles: ["head_of_institution", "group_principal", "secretary"] },
       { href: "/dashboard/subjects", label: "Subjects", icon: Library, roles: ["head_of_institution", "group_principal", "secretary"] },
       { href: "/dashboard/teacher-assignments", label: "Teaching Assignments", icon: ClipboardList, roles: ["head_of_institution", "group_principal", "secretary"] },
@@ -137,6 +143,7 @@ const NAV_SECTIONS = [
     label: "Finance",
     items: [
       { href: "/dashboard/fees", label: "Fees", icon: Wallet, roles: ["head_of_institution", "staff", "bursar", "accountant", "group_principal", "secretary"] },
+      { href: "/dashboard/analytics", label: "Finance Analytics", icon: BarChart3, roles: ["bursar"] },
       { href: "/dashboard/finance", label: "Finance", icon: Wallet2, roles: ["head_of_institution", "bursar", "group_principal"] },
       { href: "/dashboard/ledger", label: "Ledger", icon: BookOpenCheck, roles: ["head_of_institution", "bursar", "accountant", "group_principal"] },
       { href: "/dashboard/finance-activity", label: "Finance Desk Activity", icon: History, roles: ["head_of_institution", "group_principal"] },
@@ -174,6 +181,25 @@ const NAV_SECTIONS = [
 ];
 
 const G = ["group_principal"];
+
+// Pages reached from inside other pages rather than from the menu.
+const ALSO_OPEN: Record<string, string[]> = {
+  "report-card": ["head_of_institution", "teacher", "staff", "group_principal", "parent", "student", "secretary"],
+  "take-exam": ["student"],
+  children: ["parent"],
+  "my-records": ["student"],
+  group: ["group_principal"],
+  meetings: ["head_of_institution", "group_principal", "teacher"],
+};
+
+/** Whether a role may open a dashboard address at all. The menu hides the rest; this stops a typed address too. */
+export function roleCanOpen(role: string, pathname: string): boolean {
+  if (role === "super_admin") return true;
+  const seg = pathname.split("/")[2] ?? "";
+  if (seg === "") return true;
+  if (ALSO_OPEN[seg]?.includes(role)) return true;
+  return NAV_SECTIONS.some((sec) => sec.items.some((i) => i.href.split("/")[2] === seg && i.roles.includes(role)));
+}
 // What a group principal sees on "All Schools": the group first, then every module compared across the schools.
 const GROUP_SECTIONS: typeof NAV_SECTIONS = [
   {
@@ -263,6 +289,8 @@ function initials(name: string) {
 export function AppSidebar() {
   const { user, logout, schoolOptions, viewingSchoolId, switchSchool, isGroupView } = useAuth();
   const pathname = usePathname();
+  const search = useSearchParams();
+  const family = useFamily();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
   const [query, setQuery] = useState("");
@@ -276,7 +304,7 @@ export function AppSidebar() {
   const q = query.trim().toLowerCase();
   const sections = (isGroupView ? GROUP_SECTIONS : NAV_SECTIONS).map((section) => ({
     ...section,
-    items: section.items.filter((item) => item.roles.includes(user.role) && (!q || item.label.toLowerCase().includes(q))),
+    items: section.items.filter((item) => item.roles.includes(user.role) && (!q || item.label.toLowerCase().includes(q) || moduleTabs(item.href.split("/")[2] ?? "", user.role).some(([, l]) => l.toLowerCase().includes(q)))),
   })).filter((section) => section.items.length > 0);
 
   const isPrincipal = user.role === "group_principal";
@@ -312,7 +340,9 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {sections.map((section, i) => {
+        {(user.role === "parent" || user.role === "student") && family.cards === undefined ? (
+          <div role="status" aria-label="Loading your menu" className="flex flex-col items-center gap-3 py-12 text-sidebar-foreground/80 group-data-[collapsible=icon]:hidden"><Spinner size={26} className="text-sidebar-primary" /><span className="text-xs">Getting your menu ready...</span></div>
+        ) : sections.map((section, i) => {
           const SectionIcon = section.label ? SECTION_ICONS[section.label] : null;
           return (
             <Fragment key={section.label ?? `section-${i}`}>
@@ -326,7 +356,48 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {section.items.map((item) => {
-                    const active = pathname === item.href;
+                    const seg = item.href.split("/")[2] ?? "";
+                    const tabs = isGroupView ? [] : moduleTabs(seg, user.role);
+                    const onModule = pathname === item.href;
+                    if (tabs.length > 1) {
+                      const asked = search.get("tab");
+                      const current = tabs.some(([k]) => k === asked) ? asked : tabs[0][0];
+                      const shown = q && !item.label.toLowerCase().includes(q) ? tabs.filter(([, l]) => l.toLowerCase().includes(q)) : tabs;
+                      return (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton
+                            isActive={false}
+                            tooltip={item.label}
+                            className={`rounded-full ${onModule ? "font-semibold text-sidebar-primary" : "text-sidebar-foreground/85"}`}
+                            render={
+                              <Link href={`${item.href}?tab=${tabs[0][0]}`} onClick={closeOnMobile}>
+                                <item.icon />
+                                <span className="flex-1">{item.label}</span>
+                              </Link>
+                            }
+                          />
+                          <SidebarMenuSub>
+                            {shown.map(([key, label]) => {
+                              const on = onModule && current === key;
+                              return (
+                                <SidebarMenuSubItem key={key}>
+                                  <SidebarMenuSubButton
+                                    isActive={on}
+                                    className={on ? "h-8 bg-sidebar-primary font-semibold text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground" : "h-8"}
+                                    render={
+                                      <Link href={`${item.href}?tab=${key}`} onClick={closeOnMobile}>
+                                        <span>{label}</span>
+                                      </Link>
+                                    }
+                                  />
+                                </SidebarMenuSubItem>
+                              );
+                            })}
+                          </SidebarMenuSub>
+                        </SidebarMenuItem>
+                      );
+                    }
+                    const active = onModule;
                     return (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton

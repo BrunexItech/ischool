@@ -59,3 +59,21 @@ def test_people_only_see_what_was_addressed_to_them(client, db_session, school, 
     assert titles(d["other"]) == {"Whole school", "Teachers only", "Parents of South"}
     everyone = client.get(f"/schools/{school.id}/announcements", headers=head).json()
     assert len(everyone) == 4
+
+
+def test_every_staff_role_reads_notices_and_the_sender_can_pick_roles(client, db_session, school, school_admin_token):
+    bursar, bpw = _make_user(db_session, school, UserRole.BURSAR, "ann.bursar@test-academy.test")
+    guard, gpw = _make_user(db_session, school, UserRole.SECURITY, "ann.guard@test-academy.test")
+    admin = auth_headers(school_admin_token)
+    assert _post(client, school, admin, title="For all staff", audience="staff").status_code == 201
+    assert _post(client, school, admin, title="Gate only", audience="staff", target_roles=["security"]).status_code == 201
+    assert _post(client, school, admin, title="Nonsense", audience="staff", target_roles=["parent"]).status_code == 400
+    assert _post(client, school, admin, title="Wrong audience", audience="parents", target_roles=["security"]).status_code == 400
+
+    def titles(pair):
+        r = client.get(f"/schools/{school.id}/announcements", headers=_h(client, pair))
+        assert r.status_code == 200, r.text
+        return {a["title"] for a in r.json()}
+
+    assert titles((bursar, bpw)) == {"For all staff"}
+    assert titles((guard, gpw)) == {"For all staff", "Gate only"}

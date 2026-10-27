@@ -124,7 +124,7 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
           </div>
         </div>
 
-        <div key={config.audience} className="animate-in fade-in space-y-6 duration-500 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
+        <div className="space-y-6 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
           <h2 className="max-w-sm text-4xl leading-[1.1] font-semibold text-balance">{config.heroTitle}</h2>
           <ul className="flex flex-col gap-3.5">
             {config.features.map((f) => (
@@ -171,7 +171,7 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
           <div role="tablist" aria-label="Who is signing in" className="relative mb-5 grid grid-cols-3 rounded-xl bg-muted p-1">
             <span
               aria-hidden
-              className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-lg bg-background shadow-sm transition-transform duration-300 ease-out"
+              className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-lg bg-background shadow-sm"
               style={{ transform: `translateX(${AUDIENCE_TABS.findIndex((t) => t.key === config.audience) * 100}%)` }}
             />
             {AUDIENCE_TABS.map((tab) => (
@@ -184,7 +184,7 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
                   e.preventDefault();
                   if (tab.key !== config.audience) window.history.replaceState(null, "", tab.href);
                 }}
-                className={`relative z-10 rounded-lg py-1.5 text-center text-sm transition-colors duration-200 ${tab.key === config.audience ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`relative z-10 rounded-lg py-1.5 text-center text-sm ${tab.key === config.audience ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 {tab.label}
               </Link>
@@ -192,7 +192,7 @@ export function LoginForm({ config }: { config: LoginAudienceConfig }) {
           </div>
           )}
           <div className="h-1 w-10 rounded-full bg-[#FFA819]" />
-          <div key={config.audience} className="animate-in fade-in duration-300">
+          <div>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">{config.pageTitle}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{config.pageSubtitle}</p>
           </div>

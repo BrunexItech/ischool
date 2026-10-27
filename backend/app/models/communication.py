@@ -1,7 +1,7 @@
 import enum
 from datetime import date as date_, datetime
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, Text, func
+from sqlalchemy import JSON, Date, DateTime, Enum, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -25,6 +25,8 @@ class Announcement(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     audience: Mapped[AnnouncementAudience] = mapped_column(Enum(AnnouncementAudience), default=AnnouncementAudience.ALL)
     class_id: Mapped[int | None] = mapped_column(ForeignKey("school_classes.id", ondelete="CASCADE"), nullable=True)
+    # When set, only these roles (e.g. security, bursar) receive it. Left empty, the whole audience does.
+    target_roles: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
 
     # Set when this announcement is also a calendar event — e.g. sports day,
     # a mid-term break, a parent-teacher conference. Left null for a plain post.

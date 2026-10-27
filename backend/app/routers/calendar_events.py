@@ -12,16 +12,7 @@ from app.schemas.calendar_event import CalendarEventCreate, CalendarEventOut, Ca
 
 router = APIRouter(prefix="/schools/{school_id}/calendar-events", tags=["calendar"])
 
-ALL_ROLES = (
-    UserRole.SUPER_ADMIN,
-    UserRole.HEAD_OF_INSTITUTION,
-    UserRole.GROUP_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.STAFF,
-    UserRole.SECRETARY,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-)
+ALL_ROLES = tuple(UserRole)   # the school calendar is for everyone who belongs to the school
 EDIT_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.SECRETARY)
 
 

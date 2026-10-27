@@ -1,5 +1,6 @@
 "use client";
 
+import { useModuleTab } from "@/lib/moduleTabs";
 import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -431,8 +432,8 @@ export default function LibraryPage() {
         : learner
           ? [["mine", role === "parent" ? "My child's books" : "My books"], ["catalogue", "Catalogue"]]
           : [["catalogue", "Catalogue"]];
-  const [tab, setTab] = useState<string | null>(null);
-  const view = tab ?? tabs[0][0];
+  const tabParam = useModuleTab("library");
+  const view = tabParam || tabs[0][0];
 
   const [ov, setOv] = useState<LibOverview | null>(null);
   const [loans, setLoans] = useState<LibLoan[] | null>(null);
@@ -471,11 +472,6 @@ export default function LibraryPage() {
         <LibraryIcon className="hidden size-5 text-muted-foreground sm:block" aria-hidden />
       </PageHead>
       {overseer && <ViewOnly label="Oversight">The librarian lends and takes back books. You can see every book and who has it.</ViewOnly>}
-      {tabs.length > 1 && (
-        <div role="tablist" className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1">
-          {tabs.map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setTab(k)} className={`h-9 shrink-0 rounded-md px-4 text-sm font-medium ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>)}
-        </div>
-      )}
       {view === "desk" && <Desk schoolId={schoolId} />}
       {view === "catalogue" && <Catalogue schoolId={schoolId} canAdd={keeper} showHolders={keeper || overseer || teacher} />}
       {view === "shelf" && <TeacherShelf schoolId={schoolId} />}
