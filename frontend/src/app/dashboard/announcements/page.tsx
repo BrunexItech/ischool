@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
 
 const AUDIENCE_LABEL: Record<AnnouncementAudience, string> = { all: "Whole school", teachers: "Teachers", staff: "Staff", students: "Learners", parents: "Parents" };
 const RECENT_DAYS = 30;
@@ -153,7 +154,7 @@ export default function AnnouncementsPage() {
   const { user, token } = useAuth();
   const schoolId = user?.school_id ?? null;
   const isTeacher = user?.role === "teacher";
-  const canPost = isTeacher || user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
+  const canPost = isTeacher || user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal" || user?.role === "secretary";
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -239,6 +240,8 @@ export default function AnnouncementsPage() {
         </div>
         {canPost && <Button className="h-10 w-fit sm:h-9" onClick={() => setComposeOpen(true)}><Plus /> New announcement</Button>}
       </header>
+
+      <DepartmentPulse dept="announcements" />
 
       {failed ? (
         <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border bg-card px-4 py-12 text-center">

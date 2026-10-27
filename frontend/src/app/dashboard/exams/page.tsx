@@ -34,6 +34,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
+import { ViewOnly } from "@/components/oversight";
 
 const NO_CLASS = "all";
 const EXAM_TYPES = ["Opener", "CAT 1", "CAT 2", "Mid Term", "End Term", "Mock", "Other"];
@@ -783,6 +785,10 @@ export default function ExamsPage() {
           )}
         </div>
       </div>
+
+      <DepartmentPulse dept="exams" />
+
+      {!canRecord && <ViewOnly>Teachers set and mark exams. You can see every exam, its results and how each class is doing.</ViewOnly>}
 
       {canRecord && (
         <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">

@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
+import { ViewOnly } from "@/components/oversight";
 
 const CATEGORY_LABEL: Record<ConductCategory, string> = {
   disruption: "Disruption",
@@ -158,7 +160,8 @@ export default function ConductReportsPage() {
   const schoolId = user?.school_id ?? null;
   const isAdmin = user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
   const isTeacher = user?.role === "teacher";
-  const canReport = isAdmin || isTeacher || user?.role === "staff";
+  // Teachers and staff file conduct reports; leadership reads them and responds.
+  const canReport = isTeacher || user?.role === "staff";
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -204,6 +207,10 @@ export default function ConductReportsPage() {
         </div>
         {canReport && <Button className="h-10 w-fit sm:h-9" onClick={() => setFileOpen(true)}><Plus /> File a report</Button>}
       </header>
+
+      <DepartmentPulse dept="conduct" />
+
+      {isAdmin && <ViewOnly label="Your part">Teachers file conduct reports. You read each one and respond to it, and your response is sent back to the teacher.</ViewOnly>}
 
       {data.reports.length > 0 && (
         <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_11rem_13rem]" aria-label="Filters">

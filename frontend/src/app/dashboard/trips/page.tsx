@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
 
 const TRIP_TYPES = ["Field trip", "Sports fixture", "Excursion", "Competition", "Academic trip", "Other"];
 
@@ -323,7 +324,8 @@ export default function TripsPage() {
   if (loading || dataLoading) return <PageLoader />;
   if (!user) return null;
 
-  const canRequest = user.role === "head_of_institution" || user.role === "teacher" || user.role === "group_principal";
+  // Teachers and the head's office request trips; the head approves them.
+  const canRequest = user.role === "teacher" || user.role === "secretary";
   const canManage = user.role === "head_of_institution" || user.role === "group_principal";
   const filtered = statusFilter ? trips.filter((t) => t.status === statusFilter) : trips;
   const statuses: (TripStatus | "")[] = ["", "requested", "approved", "in_progress", "completed", "declined", "cancelled"];
@@ -343,6 +345,8 @@ export default function TripsPage() {
         description="School trips and bus bookings."
         action={canRequest ? <NewTripDialog classes={classes} students={students} onCreated={upsert} /> : undefined}
       />
+
+      <DepartmentPulse dept="trips" />
 
       {failed && (
         <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border bg-card px-4 py-10 text-center">

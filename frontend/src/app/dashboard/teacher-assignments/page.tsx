@@ -30,7 +30,7 @@ export default function TeacherAssignmentsPage() {
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && user && user.role !== "head_of_institution" && user.role !== "group_principal") router.replace("/dashboard");
+    if (!loading && user && user.role !== "head_of_institution" && user.role !== "group_principal" && user.role !== "secretary") router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {

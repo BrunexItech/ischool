@@ -23,6 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
 
 const STAGES: { key: LeadStage; label: string }[] = [
   { key: "enquiry", label: "Enquiry" },
@@ -239,7 +240,7 @@ export default function CrmPage() {
   const [dragStage, setDragStage] = useState<LeadStage | null>(null);
 
   useEffect(() => {
-    if (!loading && user && !["head_of_institution", "super_admin", "group_principal"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["head_of_institution", "super_admin", "group_principal", "secretary"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -273,6 +274,8 @@ export default function CrmPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Admissions CRM" description="Track prospective families from first enquiry to enrolment." action={<NewLeadDialog onCreated={(l) => setLeads((ls) => [l, ...ls])} />} />
+
+      <DepartmentPulse dept="admissions" />
 
       <div className="grid grid-cols-1 gap-4 overflow-x-auto sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {STAGES.map((stage) => {

@@ -383,7 +383,7 @@ function GradesSetup({ grades, enabledIds, classes, onChanged }: { grades: Grade
 export default function ClassesPage() {
   const { user, token } = useAuth();
   const schoolId = user?.school_id ?? null;
-  const canManage = user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
+  const canManage = user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal" || user?.role === "secretary";
 
   const [cards, setCards] = useState<ClassCard[] | null>(null);
   const [failed, setFailed] = useState(false);

@@ -31,6 +31,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ResetPasswordDialog } from "@/components/ResetPasswordDialog";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
 
 const UNASSIGNED = -1;
 
@@ -637,7 +638,7 @@ function StudentsView() {
   const searchParams = useSearchParams();
   const schoolId = user?.school_id ?? null;
   const isTeacher = user?.role === "teacher";
-  const canEnrol = user?.role === "head_of_institution" || user?.role === "staff" || user?.role === "super_admin" || user?.role === "group_principal";
+  const canEnrol = user?.role === "head_of_institution" || user?.role === "secretary" || user?.role === "staff" || user?.role === "super_admin" || user?.role === "group_principal";
 
   const [data, setData] = useState<Loaded>({ classes: [], grades: [], myClasses: [], students: [] });
   const [dataLoading, setDataLoading] = useState(true);
@@ -936,6 +937,8 @@ function StudentsView() {
         </Chip>
         {enrolButton}
       </Banner>
+
+      <DepartmentPulse dept="students" />
 
       {entries.length > 0 && (
         <div className="relative max-w-md">

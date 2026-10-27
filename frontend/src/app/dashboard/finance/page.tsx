@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
 
 function StatusBadge({ status }: { status: Expense["status"] }) {
   if (status === "approved") return <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10"><Check className="size-3" />Approved</Badge>;
@@ -145,6 +146,8 @@ export default function FinancePage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Finance" description="Income from fees vs. expenses — a clear picture of the school's money." />
+
+      <DepartmentPulse dept="finance" />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>

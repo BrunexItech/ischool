@@ -12,6 +12,7 @@ const STAFF_ROLES: UserRole[] = [
   "boarding_staff",
   "transport_staff",
   "bursar",
+  "secretary",
 ];
 
 const config: LoginAudienceConfig = {

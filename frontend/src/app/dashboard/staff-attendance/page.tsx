@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-const EMPLOYEE_ROLES = ["head_of_institution", "super_admin", "teacher", "staff", "security", "boarding_staff", "transport_staff", "bursar"];
+const EMPLOYEE_ROLES = ["head_of_institution", "super_admin", "teacher", "staff", "security", "boarding_staff", "transport_staff", "bursar", "secretary"];
 
 const LEAVE_TYPES: Record<string, string> = {
   annual: "Annual leave",

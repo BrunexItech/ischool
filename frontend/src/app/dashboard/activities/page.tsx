@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
 
 const CATEGORIES = ["Sports", "Academic", "Arts and music", "Clubs", "Community service", "Other"];
 const SCOPE_TEXT = { school: "Whole school", class: "One class", invited: "Invited learners" } as const;
@@ -292,7 +293,7 @@ export default function ActivitiesPage() {
   const [removing, setRemoving] = useState<Activity | null>(null);
 
   useEffect(() => {
-    if (!loading && user && !["head_of_institution", "teacher", "staff", "super_admin", "group_principal"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["head_of_institution", "teacher", "staff", "super_admin", "group_principal", "secretary"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -336,6 +337,8 @@ export default function ActivitiesPage() {
         </div>
         <Button className="h-10 w-fit sm:h-9" onClick={() => setNewOpen(true)}><Plus /> New activity</Button>
       </header>
+
+      <DepartmentPulse dept="activities" />
 
       {data.activities.length > 0 && (
         <div className="relative max-w-md">

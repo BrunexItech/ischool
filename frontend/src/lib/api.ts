@@ -11,6 +11,7 @@ export type UserRole =
   | "boarding_staff"
   | "transport_staff"
   | "bursar"
+  | "secretary"
   | "group_principal";
 
 export interface User {
@@ -795,6 +796,25 @@ export interface AttendanceOversight {
     rate: number | null;
     absentees: { name: string; status: string; reason: string | null }[];
   }[];
+}
+
+export interface PulseTile { label: string; value: string; hint: string | null; tone: "neutral" | "good" | "warn" | "bad" }
+export interface PulseAttention { text: string; tone: "warn" | "bad" | "good"; href: string | null }
+export interface PulseSection { key: string; title: string; href: string; summary: string; tiles: PulseTile[]; attention: PulseAttention[] }
+export interface WeeklyReport { school_name: string; term: string | null; week_start: string; week_end: string; headline: string; attention_count: number; sections: PulseSection[] }
+
+export interface LeadershipFeedback {
+  id: number;
+  recipient_user_id: number;
+  recipient_name: string;
+  author_name: string | null;
+  topic: string;
+  link: string | null;
+  message: string;
+  status: "sent" | "acknowledged";
+  reply: string | null;
+  acknowledged_at: string | null;
+  created_at: string;
 }
 
 export interface HeadOverview {
@@ -1911,7 +1931,7 @@ export const api = {
       email: string;
       full_name: string;
       password: string;
-      role: "teacher" | "staff" | "security" | "boarding_staff" | "transport_staff" | "bursar";
+      role: "teacher" | "staff" | "security" | "boarding_staff" | "transport_staff" | "bursar" | "secretary";
       staff_number: string;
       department?: string;
       phone?: string;
@@ -2009,6 +2029,20 @@ export const api = {
   getTeacherCards: (token: string, schoolId: number) => request<TeacherCard[]>(`/schools/${schoolId}/oversight/teachers`, {}, token),
   getHomeworkGrid: (token: string, schoolId: number, week?: string) => request<HomeworkGrid>(`/schools/${schoolId}/oversight/homework${week ? `?week=${week}` : ""}`, {}, token),
   getAttendanceOversight: (token: string, schoolId: number, on?: string) => request<AttendanceOversight>(`/schools/${schoolId}/oversight/attendance${on ? `?on=${on}` : ""}`, {}, token),
+  overrideMark: (token: string, schoolId: number, body: { student_id: number; subject_id: number; term: string; exam_type: string; score: number; reason: string }) =>
+    request<{ score: number; grade: string | null }>(`/schools/${schoolId}/oversight/overrides/mark`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+
+  getPulse: (token: string, schoolId: number, key: string) => request<PulseSection>(`/schools/${schoolId}/oversight/pulse/${key}`, {}, token),
+  getWeeklyReport: (token: string, schoolId: number) => request<WeeklyReport>(`/schools/${schoolId}/oversight/weekly-report`, {}, token),
+  emailWeeklyReport: (token: string, schoolId: number) => request<{ sent: boolean }>(`/schools/${schoolId}/oversight/weekly-report/email-me`, { method: "POST" }, token),
+
+  listFeedback: (token: string, schoolId: number, recipientUserId?: number) =>
+    request<LeadershipFeedback[]>(`/schools/${schoolId}/feedback${recipientUserId ? `?recipient_user_id=${recipientUserId}` : ""}`, {}, token),
+  sendFeedback: (token: string, schoolId: number, body: { recipient_user_id: number; topic: string; link?: string; message: string }) =>
+    request<LeadershipFeedback>(`/schools/${schoolId}/feedback`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  acknowledgeFeedback: (token: string, schoolId: number, id: number, reply?: string) =>
+    request<LeadershipFeedback>(`/schools/${schoolId}/feedback/${id}/acknowledge`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reply: reply || null }) }, token),
+
   getHeadOverview: (token: string, schoolId: number) => request<HeadOverview>(`/schools/${schoolId}/oversight/overview`, {}, token),
 
   addStreams: (token: string, schoolId: number, gradeLevelId: number, streams: string[]) =>

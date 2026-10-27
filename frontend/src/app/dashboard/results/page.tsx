@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FileText, LayoutList, Lock, Pencil, Plus, Save, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
+import { ViewOnly } from "@/components/oversight";
 
 const EXAM_TYPES = ["Opener", "CAT 1", "CAT 2", "Mid Term", "End Term", "Mock", "Other"];
 
@@ -138,6 +141,47 @@ function GradingBandsDialog({ bands, onSaved }: { bands: GradingBand[]; onSaved:
   );
 }
 
+function CorrectMarkDialog({ student, current, onClose, onSave }: { student: Student; current: string; onClose: () => void; onSave: (score: number, reason: string) => Promise<void> }) {
+  const [score, setScore] = useState(current);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const valid = score !== "" && Number(score) >= 0 && Number(score) <= 100 && reason.trim().length >= 10;
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
+        <DialogHeader><DialogTitle>Correct {student.first_name}&apos;s mark</DialogTitle></DialogHeader>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setSaving(true);
+            try {
+              await onSave(Number(score), reason.trim());
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          <p className="rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">This mark belongs to the teacher who entered it. Your correction is recorded with your reason in the activity log, and the teacher is told.</p>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="fix-score">Correct mark out of 100 (now {current})</Label>
+            <Input id="fix-score" type="number" min={0} max={100} value={score} onChange={(e) => setScore(e.target.value)} className="h-11" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="fix-reason">Reason</Label>
+            <Textarea id="fix-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. The teacher typed 6 instead of 62." />
+          </div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" className="h-11 sm:h-9" onClick={onClose}>Cancel</Button>
+            <Button type="submit" className="h-11 sm:h-9" disabled={!valid || saving}>{saving && <Spinner size={16} className="text-current" />} Save correction</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 export default function ResultsPage() {
   const { user, token } = useAuth();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -159,6 +203,7 @@ export default function ResultsPage() {
   const [lockedIds, setLockedIds] = useState<Set<number>>(new Set());
   const [newSubject, setNewSubject] = useState("");
   const [saving, setSaving] = useState(false);
+  const [fixing, setFixing] = useState<Student | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -364,6 +409,10 @@ export default function ResultsPage() {
         }
       />
 
+      <DepartmentPulse dept="results" />
+
+      {!canRecord && !isTeacher && <ViewOnly>Teachers record marks for the subjects they teach. You see every mark and the class results boards.</ViewOnly>}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {bands.map((b, i) => (
           <Card key={b.id} className={`border ${BAND_STYLES[i % BAND_STYLES.length]}`}>
@@ -538,7 +587,12 @@ export default function ResultsPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/dashboard/report-card/${s.id}`}><FileText /> View</Link>} />
+                    <div className="flex justify-end gap-2">
+                      {canConfigure && !canRecord && scoreValue !== undefined && scoreValue !== "" && (
+                        <Button variant="outline" size="sm" className="h-9" onClick={() => setFixing(s)}><Pencil /> Correct</Button>
+                      )}
+                      <Button variant="outline" size="sm" className="h-9" nativeButton={false} render={<Link href={`/dashboard/report-card/${s.id}`}><FileText /> View</Link>} />
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -553,6 +607,25 @@ export default function ResultsPage() {
           </TableBody>
         </Table>
       </Card>
+      {fixing && subjectId !== null && (
+        <CorrectMarkDialog
+          student={fixing}
+          current={scores[fixing.id] ?? ""}
+          onClose={() => setFixing(null)}
+          onSave={async (score, reason) => {
+            if (!token || !user?.school_id) return;
+            try {
+              await api.overrideMark(token, user.school_id, { student_id: fixing.id, subject_id: subjectId, term, exam_type: activeType, score, reason });
+              setScores((sc) => ({ ...sc, [fixing.id]: String(score) }));
+              setOriginal((sc) => ({ ...sc, [fixing.id]: String(score) }));
+              toast.success("Mark corrected. The teacher has been told.");
+              setFixing(null);
+            } catch (err) {
+              toast.error(err instanceof ApiError ? err.message : "We couldn't save the correction.");
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

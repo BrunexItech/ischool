@@ -7,6 +7,7 @@ import { ChevronRight, Mail, Phone, Search } from "lucide-react";
 import { api, TeacherCard } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ErrorBox, Initials, Meter, PageHead, Pill } from "@/components/oversight";
+import { canGiveFeedback, TeacherFeedback } from "@/components/Feedback";
 import { PageLoader } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +54,7 @@ export default function TeachersPage() {
   const [openId, setOpenId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!loading && user && user.role !== "head_of_institution" && user.role !== "group_principal" && user.role !== "super_admin") router.replace("/dashboard");
+    if (!loading && user && user.role !== "head_of_institution" && user.role !== "group_principal" && user.role !== "super_admin" && user.role !== "secretary") router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -218,6 +219,8 @@ export default function TeachersPage() {
                     <div className="rounded-lg bg-muted/50 py-2"><dt className="text-[11px] text-muted-foreground">Homework given</dt><dd className="font-heading text-lg font-semibold tabular-nums">{open.homework_week}</dd></div>
                   </dl>
                 </section>
+
+                {canGiveFeedback(user?.role) && <TeacherFeedback key={open.user_id} teacherId={open.user_id} teacherName={open.name} />}
 
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" className="h-10" nativeButton={false} render={<Link href="/dashboard/lesson-plans">Lesson plans <ChevronRight /></Link>} />

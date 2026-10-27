@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, ChevronRight, Megaphone, Minus, UserPlus } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ChevronRight, FileBarChart, Megaphone, Minus, UserPlus } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AcademicTerm, api, ClassCard, DashboardSummary, HeadOverview, HomeworkGrid, Insights } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -127,6 +127,7 @@ export function HeadOverviewView({ schoolId }: { schoolId: number }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/reports"><FileBarChart /> Weekly report</Link>} />
           <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/announcements"><Megaphone /> Announce</Link>} />
           <Button className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/students"><UserPlus /> Enrol a learner</Link>} />
         </div>

@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
 
 const EVENT_TYPES: { value: CalendarEventType; label: string; dot: string }[] = [
   { value: "meeting", label: "Meeting", dot: "bg-blue-500" },
@@ -207,7 +208,7 @@ export default function CalendarPage() {
   const [activeDay, setActiveDay] = useState<string | null>(null);
 
   const grid = useMemo(() => monthGrid(cursor.year, cursor.month), [cursor]);
-  const canEdit = user?.role === "head_of_institution" || user?.role === "group_principal";
+  const canEdit = user?.role === "head_of_institution" || user?.role === "group_principal" || user?.role === "secretary";
   const monthEvents = useMemo(() => {
     const first = iso(new Date(cursor.year, cursor.month, 1));
     const last = iso(new Date(cursor.year, cursor.month + 1, 0));
@@ -234,6 +235,8 @@ export default function CalendarPage() {
         description="Meetings, exams, holidays, trips — everything the school has scheduled."
         action={canEdit ? <NewEventDialog onCreated={(e) => setEvents((es) => [...es, e])} /> : undefined}
       />
+
+      <DepartmentPulse dept="calendar" />
 
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="icon" className="size-10" aria-label="Previous month" onClick={() => setCursor((c) => { const m = c.month - 1; return m < 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: m }; })}><ChevronLeft /></Button>

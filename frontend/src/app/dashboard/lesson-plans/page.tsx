@@ -4,10 +4,11 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowRight, BookOpen, ChevronDown, ChevronRight, FileText, Plus, RotateCw, Search } from "lucide-react";
+import { AlertTriangle, ArrowRight, BookOpen, ChevronDown, ChevronRight, FileText, Plus, MessageSquarePlus, RotateCw, Search } from "lucide-react";
 import { api, AcademicTerm, ApiError, Coverage, LessonPlan, MyClass, SchoolClass, Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageLoader, Spinner } from "@/components/Spinner";
+import { canGiveFeedback, FeedbackDialog } from "@/components/Feedback";
 import { TodayLessons } from "@/components/TodayLessons";
 import { ErrorBox, Initials, Meter, Pill } from "@/components/oversight";
 import { Button } from "@/components/ui/button";
@@ -164,6 +165,8 @@ const COV_LABEL: Record<CovStatus, { label: string; tone: "good" | "warn" | "bad
 
 function CoverageView({ terms }: { terms: AcademicTerm[] }) {
   const { user, token } = useAuth();
+  const canFeedback = canGiveFeedback(user?.role);
+  const [feedbackFor, setFeedbackFor] = useState<{ teacherId: number; teacherName: string; topic: string; link: string } | null>(null);
   const schoolId = user?.school_id ?? null;
   const [term, setTerm] = useState(terms.find((t) => t.is_current)?.name ?? terms[0]?.name ?? "");
   const [data, setData] = useState<{ key: string; coverage: Coverage | null } | null>(null);
@@ -324,7 +327,13 @@ function CoverageView({ terms }: { terms: AcademicTerm[] }) {
                             </span>
                             <span>{r.plan_id && <Link href={`/dashboard/lesson-plans/${r.plan_id}`} className="text-xs font-medium text-primary hover:underline">Open plan</Link>}</span>
                             <span className="text-xs text-muted-foreground">{r.taught} taught{r.not_taught ? `, ${r.not_taught} missed` : ""}</span>
-                            <span />
+                            <span className="lg:justify-self-end">
+                              {a.id != null && canFeedback && (
+                                <Button size="sm" variant="outline" className="h-9" onClick={() => setFeedbackFor({ teacherId: a.id as number, teacherName: a.name, topic: `Lesson plan: ${r.subject_name}, ${r.class_name}`, link: r.plan_id ? `/dashboard/lesson-plans/${r.plan_id}` : "/dashboard/lesson-plans" })}>
+                                  <MessageSquarePlus /> Feedback
+                                </Button>
+                              )}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -334,6 +343,7 @@ function CoverageView({ terms }: { terms: AcademicTerm[] }) {
               })}
             </ul>
           )}
+          {feedbackFor && <FeedbackDialog {...feedbackFor} onClose={() => setFeedbackFor(null)} />}
         </>
       )}
     </div>

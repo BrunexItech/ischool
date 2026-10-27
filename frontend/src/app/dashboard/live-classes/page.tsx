@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
+import { ViewOnly } from "@/components/oversight";
 
 function toLocalInputValue(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -127,7 +129,7 @@ export default function LiveClassesPage() {
   const { user, token } = useAuth();
   const schoolId = user?.school_id ?? null;
   const isTeacher = user?.role === "teacher";
-  const canSchedule = isTeacher || user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal";
+  const canSchedule = isTeacher || user?.role === "super_admin";
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -200,6 +202,10 @@ export default function LiveClassesPage() {
         </div>
         {canSchedule && <Button className="h-10 w-fit sm:h-9" onClick={() => setNewOpen(true)}><Plus /> Schedule class</Button>}
       </header>
+
+      <DepartmentPulse dept="live_classes" />
+
+      {!canSchedule && <ViewOnly>Teachers schedule and host live classes. You can see every session, who joined, and step in to watch.</ViewOnly>}
 
       {failed ? (
         <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border bg-card px-4 py-12 text-center">

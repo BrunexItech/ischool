@@ -651,7 +651,7 @@ function AttendanceOversightView() {
 
 export default function AttendancePage() {
   const { user } = useAuth();
-  const isLeadership = user?.role === "head_of_institution" || user?.role === "group_principal";
+  const isLeadership = user?.role === "head_of_institution" || user?.role === "group_principal" || user?.role === "secretary";
   return (
     <Suspense fallback={<PageLoader />}>
       {isLeadership ? <AttendanceOversightView /> : <AttendanceView />}

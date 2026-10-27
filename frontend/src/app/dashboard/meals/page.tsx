@@ -40,7 +40,7 @@ export default function MealsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && !["head_of_institution", "staff", "super_admin", "group_principal"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["head_of_institution", "staff", "super_admin", "group_principal", "secretary"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   const weekDays = Array.from({ length: 7 }, (_, i) => {

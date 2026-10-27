@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
 
 const ROLES_ALLOWED = ["student", "parent", "teacher", "head_of_institution", "super_admin", "group_principal"];
 
@@ -118,6 +119,8 @@ export default function ComplaintsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Complaints" description={user?.role === "teacher" ? "Raise a concern with the principal, and answer concerns sent to you as a class teacher." : isRecipient ? "Concerns sent to you, and your replies." : "Raise a concern with the class teacher or the principal, and track the response."} />
+
+      <DepartmentPulse dept="complaints" />
 
       {canRaise && (
         <Card>

@@ -54,6 +54,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TodayLessons } from "@/components/TodayLessons";
 import { HeadOverviewView } from "@/components/HeadOverview";
+import { OfficeDesk } from "@/components/OfficeDesk";
 
 function todayLabel(d: Date = new Date()) {
   return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -954,6 +955,7 @@ export default function DashboardPage() {
     if (viewingSchoolId === null) return <SupervisorOverview />;
     return <HeadOverviewView schoolId={viewingSchoolId} />;
   }
+  if (user.role === "secretary") return <OfficeDesk />;
   if (user.role === "teacher") return <TeacherDashboard />;
   return <SimpleDashboard />;
 }

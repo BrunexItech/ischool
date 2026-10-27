@@ -4,7 +4,7 @@ import { Building2, ClipboardList, ShieldCheck, Wallet2 } from "lucide-react";
 import { LoginForm, LoginAudienceConfig } from "@/components/LoginForm";
 import { UserRole } from "@/lib/api";
 
-const LEADERSHIP_ROLES: UserRole[] = ["group_principal", "head_of_institution"];
+const LEADERSHIP_ROLES: UserRole[] = ["group_principal", "head_of_institution", "secretary"];
 
 const config: LoginAudienceConfig = {
   audience: "admin",
@@ -16,7 +16,7 @@ const config: LoginAudienceConfig = {
     { icon: ClipboardList, label: "Approvals and consolidated reporting" },
   ],
   pageTitle: "Leadership sign in",
-  pageSubtitle: "For the Group Principal and authorized Heads of Institution.",
+  pageSubtitle: "For the Group Principal, Heads of Institution and their secretaries.",
   allowedRoles: LEADERSHIP_ROLES,
   wrongRoleMessage: "This sign-in is reserved for authorized school leadership.",
 };

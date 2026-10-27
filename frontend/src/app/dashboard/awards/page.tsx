@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DepartmentPulse } from "@/components/DepartmentPulse";
 
 const AWARD_CATEGORIES = ["Academic excellence", "Most improved", "Sports", "Leadership", "Good conduct", "Attendance", "Arts and creativity", "Service", "Other"];
 
@@ -217,7 +218,7 @@ export default function AwardsPage() {
   const [now] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!loading && user && !["head_of_institution", "teacher", "staff", "super_admin", "group_principal"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["head_of_institution", "teacher", "staff", "super_admin", "group_principal", "secretary"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -283,6 +284,8 @@ export default function AwardsPage() {
           <p className="max-w-xs text-sm text-muted-foreground">Staff give awards to learners from an activity they run, under Activities.</p>
         )}
       </header>
+
+      <DepartmentPulse dept="awards" />
 
       {data.awards.length > 0 && (
         <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_11rem_11rem_13rem]" aria-label="Filters">

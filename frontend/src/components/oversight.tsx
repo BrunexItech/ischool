@@ -93,10 +93,10 @@ export function PageHead({ title, subtitle, children }: { title: string; subtitl
   );
 }
 
-export function ViewOnly({ children }: { children?: React.ReactNode }) {
+export function ViewOnly({ children, label = "View only" }: { children?: React.ReactNode; label?: string }) {
   return (
     <p className="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-      <span className="mt-0.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-foreground uppercase">View only</span>
+      <span className="mt-0.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-foreground uppercase">{label}</span>
       <span>{children ?? "You are seeing this as school leadership. Teachers keep this record."}</span>
     </p>
   );

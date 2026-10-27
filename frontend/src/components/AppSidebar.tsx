@@ -51,6 +51,8 @@ import {
   Search,
   Landmark,
   Heart,
+  FileBarChart,
+  MessageSquareText,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -78,7 +80,8 @@ const NAV_SECTIONS = [
   {
     label: null,
     items: [
-      { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "group_principal"] },
+      { href: "/dashboard", label: "Overview", icon: LayoutDashboard, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "group_principal", "secretary"] },
+      { href: "/dashboard/reports", label: "Weekly Report", icon: FileBarChart, roles: ["head_of_institution", "group_principal"] },
     ],
   },
   {
@@ -86,41 +89,42 @@ const NAV_SECTIONS = [
     items: [
       { href: "/dashboard/my-classes", label: "My Classes", icon: LayoutGrid, roles: ["teacher"] },
       { href: "/dashboard/competency", label: "Learner Progress", icon: NotebookPen, roles: ["teacher"] },
-      { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["head_of_institution", "staff", "group_principal"] },
+      { href: "/dashboard/classes", label: "Classes", icon: BookOpen, roles: ["head_of_institution", "staff", "group_principal", "secretary"] },
       { href: "/dashboard/school-grades", label: "School Grades", icon: LayoutGrid, roles: ["group_principal"] },
-      { href: "/dashboard/teachers", label: "Teachers", icon: GraduationCap, roles: ["head_of_institution", "group_principal"] },
+      { href: "/dashboard/teachers", label: "Teachers", icon: GraduationCap, roles: ["head_of_institution", "group_principal", "secretary"] },
+      { href: "/dashboard/feedback", label: "Feedback", icon: MessageSquareText, roles: ["head_of_institution", "group_principal", "teacher", "staff"] },
       { href: "/dashboard/lesson-plans", label: "Lesson Plans", icon: NotebookPen, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/homework", label: "Homework", icon: ClipboardList, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/conduct", label: "Conduct Reports", icon: AlertTriangle, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
-      { href: "/dashboard/students", label: "Students", icon: Users, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
-      { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
+      { href: "/dashboard/students", label: "Students", icon: Users, roles: ["head_of_institution", "teacher", "staff", "group_principal", "secretary"] },
+      { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["head_of_institution", "teacher", "staff", "group_principal", "secretary"] },
       { href: "/dashboard/results", label: "Grading", icon: Award, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/exams", label: "Exams", icon: FileText, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["head_of_institution", "teacher", "staff", "bursar", "group_principal"] },
-      { href: "/dashboard/academic-terms", label: "Academic Terms", icon: CalendarRange, roles: ["head_of_institution", "group_principal"] },
-      { href: "/dashboard/teacher-assignments", label: "Teaching Assignments", icon: ClipboardList, roles: ["head_of_institution", "group_principal"] },
-      { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, roles: ["head_of_institution", "group_principal"] },
+      { href: "/dashboard/academic-terms", label: "Academic Terms", icon: CalendarRange, roles: ["head_of_institution", "group_principal", "secretary"] },
+      { href: "/dashboard/teacher-assignments", label: "Teaching Assignments", icon: ClipboardList, roles: ["head_of_institution", "group_principal", "secretary"] },
+      { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, roles: ["head_of_institution", "group_principal", "secretary"] },
     ],
   },
   {
     label: "Recognition",
     items: [
-      { href: "/dashboard/awards", label: "Awards", icon: Award, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
-      { href: "/dashboard/activities", label: "Activities", icon: Trophy, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
+      { href: "/dashboard/awards", label: "Awards", icon: Award, roles: ["head_of_institution", "teacher", "staff", "group_principal", "secretary"] },
+      { href: "/dashboard/activities", label: "Activities", icon: Trophy, roles: ["head_of_institution", "teacher", "staff", "group_principal", "secretary"] },
     ],
   },
   {
     label: "Operations",
     items: [
-      { href: "/dashboard/calendar", label: "Calendar", icon: CalendarDays, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "group_principal"] },
-      { href: "/dashboard/staff-attendance", label: "Staff Attendance", icon: UserCheck, roles: ["head_of_institution", "teacher", "staff", "security", "boarding_staff", "transport_staff", "bursar", "group_principal"] },
+      { href: "/dashboard/calendar", label: "Calendar", icon: CalendarDays, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "group_principal", "secretary"] },
+      { href: "/dashboard/staff-attendance", label: "Staff Attendance", icon: UserCheck, roles: ["head_of_institution", "teacher", "staff", "security", "boarding_staff", "transport_staff", "bursar", "group_principal", "secretary"] },
       { href: "/dashboard/boarding", label: "Boarding", icon: BedDouble, roles: ["head_of_institution", "staff", "boarding_staff", "group_principal"] },
       { href: "/dashboard/security", label: "Security", icon: ShieldCheck, roles: ["head_of_institution", "staff", "security", "group_principal"] },
       { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["head_of_institution", "staff", "transport_staff", "group_principal"] },
-      { href: "/dashboard/trips", label: "Trips", icon: Map, roles: ["head_of_institution", "teacher", "staff", "transport_staff", "group_principal"] },
-      { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["head_of_institution", "staff", "group_principal"] },
+      { href: "/dashboard/trips", label: "Trips", icon: Map, roles: ["head_of_institution", "teacher", "staff", "transport_staff", "group_principal", "secretary"] },
+      { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["head_of_institution", "staff", "group_principal", "secretary"] },
       { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["head_of_institution", "staff", "security", "group_principal"] },
-      { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
+      { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["head_of_institution", "teacher", "staff", "group_principal", "secretary"] },
     ],
   },
   {
@@ -141,7 +145,7 @@ const NAV_SECTIONS = [
   {
     label: "Communication",
     items: [
-      { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "group_principal"] },
+      { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "bursar", "group_principal", "secretary"] },
       { href: "/dashboard/complaints", label: "Complaints", icon: MessageSquareWarning, roles: ["head_of_institution", "teacher", "student", "parent", "super_admin", "group_principal"] },
       { href: "/dashboard/communication-settings", label: "Communication Settings", icon: MessageSquare, roles: ["head_of_institution", "group_principal"] },
     ],
@@ -149,7 +153,7 @@ const NAV_SECTIONS = [
   {
     label: "Engagement",
     items: [
-      { href: "/dashboard/crm", label: "Admissions CRM", icon: Users2, roles: ["head_of_institution", "group_principal"] },
+      { href: "/dashboard/crm", label: "Admissions CRM", icon: Users2, roles: ["head_of_institution", "group_principal", "secretary"] },
     ],
   },
   {
