@@ -70,7 +70,7 @@ export default function FinancePage() {
   const [form, setForm] = useState({ category: "", description: "", amount: "", date: "" });
 
   useEffect(() => {
-    if (!loading && user && !["head_of_institution", "super_admin", "bursar", "group_principal"].includes(user.role)) router.replace("/dashboard");
+    if (!loading && user && !["head_of_institution", "super_admin", "bursar", "accountant", "group_principal"].includes(user.role)) router.replace("/dashboard");
   }, [loading, user, router]);
 
   function refresh() {

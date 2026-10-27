@@ -192,7 +192,7 @@ function RequisitionsTab({ suppliers, onPoIssued }: { suppliers: Supplier[]; onP
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={REQ_BADGE[r.status]} className="capitalize">{r.status}</Badge>
-                {r.status === "submitted" && (
+                {r.status === "submitted" && ["head_of_institution", "group_principal", "super_admin"].includes(user?.role ?? "") && (
                   <>
                     <Button size="sm" variant="outline" onClick={() => act(api.approveRequisition, r.id, "Approved")}><Check />Approve</Button>
                     <Button size="sm" variant="ghost" onClick={() => act(api.declineRequisition, r.id, "Declined")}><X />Decline</Button>

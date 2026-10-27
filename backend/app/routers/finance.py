@@ -14,7 +14,7 @@ from app.schemas.finance import CategoryTotal, ExpenseCreate, ExpenseOut, Expens
 
 router = APIRouter(prefix="/schools/{school_id}/finance", tags=["finance"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.BURSAR)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.BURSAR, UserRole.ACCOUNTANT)
 # Only a full admin signs off on a pending expense — the bursar who raised
 # it is the "maker" and can't also be its "checker".
 APPROVE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)

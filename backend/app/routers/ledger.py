@@ -17,7 +17,7 @@ from app.schemas.ledger import (
 
 router = APIRouter(prefix="/schools/{school_id}/ledger", tags=["ledger"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.BURSAR)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.BURSAR, UserRole.ACCOUNTANT)
 
 DEBIT_NORMAL = {AccountType.ASSET, AccountType.EXPENSE}
 

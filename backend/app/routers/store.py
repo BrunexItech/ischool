@@ -12,7 +12,10 @@ from app.schemas.store import StockIssueCreate, StockItemCreate, StockItemOut, S
 
 router = APIRouter(prefix="/schools/{school_id}/stores", tags=["stores"])
 
-STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF)
+KEEPER_ROLES = (UserRole.SUPER_ADMIN, UserRole.STORE_KEEPER, UserRole.STAFF)
+# The head can see and, when needed, record stock movements too.
+STAFF_ROLES = KEEPER_ROLES + (UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+VIEW_ROLES = STAFF_ROLES + (UserRole.PROCUREMENT_OFFICER, UserRole.BURSAR, UserRole.ACCOUNTANT)
 INVENTORY_CODE = "1200"
 ACCOUNTS_PAYABLE_CODE = "2010"
 
@@ -27,7 +30,7 @@ def _item_or_404(db: Session, school_id: int, item_id: int) -> StockItem:
 @router.get(
     "/items",
     response_model=list[StockItemOut],
-    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("erp_finance"))],
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("erp_finance"))],
 )
 def list_items(school_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)
@@ -64,7 +67,7 @@ def create_item(
 @router.get(
     "/movements",
     response_model=list[StockMovementOut],
-    dependencies=[Depends(require_roles(*STAFF_ROLES)), Depends(require_feature("erp_finance"))],
+    dependencies=[Depends(require_roles(*VIEW_ROLES)), Depends(require_feature("erp_finance"))],
 )
 def list_movements(school_id: int, item_id: int | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)
@@ -122,6 +125,31 @@ def receive_stock(
     return movement
 
 
+def issue_item(db: Session, school_id: int, item: StockItem, quantity: int, department: str, note: str | None, user: User) -> StockMovement:
+    """Move stock out of the store and book the cost to the item's expense
+    account. Shared by direct issues and by filling a request. The caller commits."""
+    if item.quantity < quantity:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Only {item.quantity} {item.unit} of {item.name} in stock")
+    total = item.unit_cost * quantity
+    inventory_account = db.query(Account).filter_by(school_id=school_id, code=INVENTORY_CODE).first()
+    entry = JournalEntry(
+        school_id=school_id,
+        entry_date=date.today(),
+        reference=f"ISS-{item.code}",
+        memo=f"Stock issued: {quantity} {item.unit} of {item.name} to {department}",
+        source="stores",
+        posted_by=user.id,
+    )
+    db.add(entry)
+    db.flush()
+    db.add(JournalLine(entry_id=entry.id, account_id=item.account_id, debit=total, credit=0))
+    db.add(JournalLine(entry_id=entry.id, account_id=inventory_account.id, debit=0, credit=total))
+    item.quantity -= quantity
+    movement = StockMovement(school_id=school_id, item_id=item.id, type=StockMovementType.ISSUE, quantity=quantity, department=department, note=note, recorded_by=user.id, journal_entry_id=entry.id)
+    db.add(movement)
+    return movement
+
+
 @router.post(
     "/issues",
     response_model=StockMovementOut,
@@ -133,38 +161,7 @@ def issue_stock(
 ):
     ensure_school_access(db, current_user, school_id)
     item = _item_or_404(db, school_id, payload.item_id)
-    if item.quantity < payload.quantity:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Only {item.quantity} {item.unit} of {item.name} in stock")
-
-    total = item.unit_cost * payload.quantity
-    inventory_account = db.query(Account).filter_by(school_id=school_id, code=INVENTORY_CODE).first()
-
-    entry = JournalEntry(
-        school_id=school_id,
-        entry_date=date.today(),
-        reference=f"ISS-{item.code}",
-        memo=f"Stock issued: {payload.quantity} {item.unit} of {item.name} to {payload.department}",
-        source="stores",
-        posted_by=current_user.id,
-    )
-    db.add(entry)
-    db.flush()
-    db.add(JournalLine(entry_id=entry.id, account_id=item.account_id, debit=total, credit=0))
-    db.add(JournalLine(entry_id=entry.id, account_id=inventory_account.id, debit=0, credit=total))
-
-    item.quantity -= payload.quantity
-
-    movement = StockMovement(
-        school_id=school_id,
-        item_id=item.id,
-        type=StockMovementType.ISSUE,
-        quantity=payload.quantity,
-        department=payload.department,
-        note=payload.note,
-        recorded_by=current_user.id,
-        journal_entry_id=entry.id,
-    )
-    db.add(movement)
+    movement = issue_item(db, school_id, item, payload.quantity, payload.department, payload.note, current_user)
     db.commit()
     db.refresh(movement)
     return movement

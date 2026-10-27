@@ -3,16 +3,17 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
-from datetime import date
+from datetime import date, timedelta
 
 from app.core.activity_feed import KINDS, activity_counts, build_activity
 from app.core.dates import school_today
 from app.core.module_pulse import PULSES, module_pulse, weekly_report
+from app.core.finance_activity import finance_activity
 from app.core.transport_oversight import transport_overview
 from app.core.oversight import performance_overview, attendance_oversight, class_cards, class_detail, head_overview, homework_grid, teacher_cards
 from app.models.school import School
 from app.models.user import User, UserRole
-from app.schemas.oversight import TransportOverview, PerformanceOverview, ActivityFeed, MarkOverride, PulseSection, WeeklyReport, AttendanceOversight, ClassCard, ClassDetail, HeadOverview, HomeworkGrid, TeacherCard
+from app.schemas.oversight import FinanceActivity, TransportOverview, PerformanceOverview, ActivityFeed, MarkOverride, PulseSection, WeeklyReport, AttendanceOversight, ClassCard, ClassDetail, HeadOverview, HomeworkGrid, TeacherCard
 
 router = APIRouter(prefix="/schools/{school_id}/oversight", tags=["oversight"])
 
@@ -214,3 +215,18 @@ def transport_oversight(school_id: int, on: date | None = None, class_id: int | 
     day's bus runs and vehicle papers. Pick any date to look back."""
     ensure_school_access(db, current_user, school_id)
     return transport_overview(db, school_id, on or school_today(db, school_id), class_id)
+
+
+@router.get("/finance-activity", response_model=FinanceActivity, dependencies=[Depends(require_roles(*LEADERSHIP))])
+def finance_desk_activity(school_id: int, start: date | None = None, end: date | None = None, actor_id: int | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """What the bursar, accountant, procurement officer and store keeper did,
+    person by person, for a span of days (default: the last 7 days)."""
+    ensure_school_access(db, current_user, school_id)
+    today = school_today(db, school_id)
+    last = end or today
+    first = start or (last - timedelta(days=6))
+    if last < first:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "End date is before the start date")
+    if (last - first).days > 92:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Pick a span of three months or less")
+    return finance_activity(db, school_id, first, last, actor_id)

@@ -62,7 +62,7 @@ from app.models.ledger import Account, AccountType, JournalEntry, JournalLine
 from app.models.supplier import Supplier
 from app.models.procurement import PurchaseRequisition, RequisitionStatus, PurchaseOrder, PurchaseOrderStatus
 from app.models.budget import Budget
-from app.models.store import StockItem, StockMovement, StockMovementType
+from app.models.store import StockItem, StockMovement, StockMovementType, StoreRequest, StoreRequestLine
 from app.models.payroll import PayrollProfile, PayRun, PayRunStatus, PayslipLine, EmploymentType
 from app.models.asset import FixedAsset, AssetStatus, DepreciationRun
 from app.models.report_card_remark import ReportCardRemark
@@ -178,6 +178,8 @@ __all__ = [
     "StockItem",
     "StockMovement",
     "StockMovementType",
+    "StoreRequest",
+    "StoreRequestLine",
     "PayrollProfile",
     "PayRun",
     "PayRunStatus",

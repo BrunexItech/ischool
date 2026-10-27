@@ -1585,7 +1585,39 @@ export interface StockItem {
   account_id: number;
 }
 
-export type StockMovementType = "receipt" | "issue";
+export type StockMovementType = "receipt" | "issue" | "adjustment";
+
+export interface StoreRequestLine {
+  id: number;
+  item_id: number;
+  item_name: string;
+  unit: string;
+  in_stock: number;
+  quantity_requested: number;
+  quantity_issued: number;
+}
+
+export interface StoreRequest {
+  id: number;
+  reference: string;
+  department: string;
+  note: string | null;
+  status: "requested" | "issued" | "declined";
+  requested_by_name: string | null;
+  requested_at: string;
+  decided_by_name: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  lines: StoreRequestLine[];
+}
+
+export interface FinanceActivity {
+  start: string;
+  end: string;
+  people: { user_id: number; name: string; role: string; actions: number; amount: number; by_kind: Record<string, number> }[];
+  events: { at: string; actor: string | null; role: string | null; kind: string; title: string; detail: string; amount: number | null; href: string }[];
+  totals: Record<string, number>;
+}
 
 export interface StockMovement {
   id: number;
@@ -2718,6 +2750,22 @@ export const api = {
   getMenuTemplate: (token: string, schoolId: number) => request<MenuSlot[]>(`/schools/${schoolId}/meals/template`, {}, token),
   saveWeeklyMenu: (token: string, schoolId: number, slots: MenuSlot[]) =>
     request<{ applied: boolean; request_id: number | null; message: string }>(`/schools/${schoolId}/meals/weekly`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slots }) }, token),
+  listStoreRequests: (token: string, schoolId: number, state?: string) => request<StoreRequest[]>(`/schools/${schoolId}/stores/requests${state ? `?state=${state}` : ""}`, {}, token),
+  createStoreRequest: (token: string, schoolId: number, body: { department: string; note?: string; lines: { item_id: number; quantity: number }[] }) =>
+    request<StoreRequest>(`/schools/${schoolId}/stores/requests`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  issueStoreRequest: (token: string, schoolId: number, id: number, quantities: Record<number, number> = {}) =>
+    request<StoreRequest>(`/schools/${schoolId}/stores/requests/${id}/issue`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantities }) }, token),
+  declineStoreRequest: (token: string, schoolId: number, id: number, note: string) =>
+    request<StoreRequest>(`/schools/${schoolId}/stores/requests/${id}/decline`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) }, token),
+  recordStockCount: (token: string, schoolId: number, body: { item_id: number; counted_quantity: number; reason: string }) =>
+    request<StockMovement>(`/schools/${schoolId}/stores/counts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  getFinanceActivity: (token: string, schoolId: number, q: { start?: string; end?: string; actor_id?: number } = {}) => {
+    const p = new URLSearchParams();
+    if (q.start) p.set("start", q.start);
+    if (q.end) p.set("end", q.end);
+    if (q.actor_id) p.set("actor_id", String(q.actor_id));
+    return request<FinanceActivity>(`/schools/${schoolId}/oversight/finance-activity?${p}`, {}, token);
+  },
   libBooks: (token: string, schoolId: number, q: { q?: string; category?: string; available_only?: boolean } = {}) => {
     const p = new URLSearchParams();
     if (q.q) p.set("q", q.q);

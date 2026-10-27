@@ -11,8 +11,12 @@ from app.schemas.procurement import PurchaseOrderCreate, PurchaseOrderOut, Requi
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["procurement"])
 
-STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF)
+# Raising and following up orders is the procurement officer's work; the bursar
+# and accountant can see them. Approving stays with the head (ADMIN_ROLES).
+STAFF_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF, UserRole.PROCUREMENT_OFFICER, UserRole.BURSAR, UserRole.ACCOUNTANT)
 ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+# Turning an approved request into an order, and booking the delivery in, is the procurement officer's job.
+ORDER_ROLES = ADMIN_ROLES + (UserRole.PROCUREMENT_OFFICER,)
 
 ACCOUNTS_PAYABLE_CODE = "2010"
 
@@ -120,7 +124,7 @@ def list_purchase_orders(school_id: int, db: Session = Depends(get_db), current_
     "/purchase-orders",
     response_model=PurchaseOrderOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("erp_finance"))],
+    dependencies=[Depends(require_roles(*ORDER_ROLES)), Depends(require_feature("erp_finance"))],
 )
 def issue_purchase_order(
     school_id: int, payload: PurchaseOrderCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -155,7 +159,7 @@ def issue_purchase_order(
 @router.post(
     "/purchase-orders/{po_id}/receive",
     response_model=PurchaseOrderOut,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("erp_finance"))],
+    dependencies=[Depends(require_roles(*ORDER_ROLES)), Depends(require_feature("erp_finance"))],
 )
 def receive_purchase_order(
     school_id: int, po_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -191,7 +195,7 @@ def receive_purchase_order(
 @router.post(
     "/purchase-orders/{po_id}/cancel",
     response_model=PurchaseOrderOut,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("erp_finance"))],
+    dependencies=[Depends(require_roles(*ORDER_ROLES)), Depends(require_feature("erp_finance"))],
 )
 def cancel_purchase_order(school_id: int, po_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_school_access(db, current_user, school_id)

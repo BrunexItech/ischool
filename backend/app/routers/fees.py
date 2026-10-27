@@ -22,8 +22,8 @@ from app.schemas.fees import (
 
 router = APIRouter(prefix="/schools/{school_id}/fees", tags=["fees"])
 
-VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF, UserRole.TEACHER, UserRole.BURSAR)
-MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF, UserRole.BURSAR)
+VIEW_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF, UserRole.TEACHER, UserRole.BURSAR, UserRole.ACCOUNTANT)
+MANAGE_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.STAFF, UserRole.BURSAR, UserRole.ACCOUNTANT)
 
 
 def _status_for(amount_due: float, amount_paid: float) -> str:

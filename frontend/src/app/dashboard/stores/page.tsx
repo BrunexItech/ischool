@@ -6,6 +6,7 @@ import { ArrowDownToLine, ArrowUpFromLine, Plus } from "lucide-react";
 import { api, ApiError, LedgerAccount, StockItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
+import { CountPanel, MovementsPanel, RequestsPanel } from "@/components/StoreViews";
 import { PageLoader, Spinner } from "@/components/Spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -155,13 +156,16 @@ export default function StoresPage() {
   const [items, setItems] = useState<StockItem[]>([]);
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [tab, setTab] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!token || !user?.school_id) return;
-    Promise.all([api.listStockItems(token, user.school_id), api.listLedgerAccounts(token, user.school_id)])
+    const canSeeStock = !["teacher", "security", "boarding_staff", "transport_staff", "secretary", "librarian"].includes(user.role);
+    Promise.all([canSeeStock ? api.listStockItems(token, user.school_id).catch(() => [] as StockItem[]) : Promise.resolve([] as StockItem[]), api.listLedgerAccounts(token, user.school_id).catch(() => [] as LedgerAccount[])])
       .then(([i, a]) => { setItems(i); setAccounts(a); })
       .finally(() => setDataLoading(false));
-  }, [token, user?.school_id]);
+  }, [token, user?.school_id, user?.role, version]);
 
   if (loading || dataLoading) return <PageLoader />;
   if (!user) return null;
@@ -170,12 +174,26 @@ export default function StoresPage() {
     setItems((its) => (its.some((i) => i.id === item.id) ? its.map((i) => (i.id === item.id ? item : i)) : [item, ...its]));
   }
 
+  const isKeeper = ["store_keeper", "staff", "super_admin"].includes(user.role);
+  const isHead = ["head_of_institution", "group_principal"].includes(user.role);
+  const canSeeStock = isKeeper || isHead || ["procurement_officer", "bursar", "accountant"].includes(user.role);
+  const tabs: [string, string][] = [...(canSeeStock ? ([["stock", "Stock"]] as [string, string][]) : []), ["requests", isKeeper || isHead ? "Requests" : "My requests"], ...(isKeeper ? ([["count", "Stocktake"]] as [string, string][]) : []), ...(canSeeStock ? ([["history", "Movements"]] as [string, string][]) : [])];
+  const view = tab ?? tabs[0][0];
   const inventoryValue = items.reduce((a, i) => a + i.quantity * i.unit_cost, 0);
   const lowStock = items.filter((i) => i.quantity <= i.reorder_level);
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Stores" description="Inventory items, receipts and issues." action={<NewItemDialog accounts={accounts} onCreated={(i) => setItems((is) => [i, ...is])} />} />
+      <PageHeader title="Stores" description={canSeeStock ? "Stock on hand, requests from classes and departments, issues and stocktakes." : "Ask the store for what you need, and follow your requests."} action={isKeeper || isHead ? <NewItemDialog accounts={accounts} onCreated={(i) => setItems((is) => [i, ...is])} /> : undefined} />
+      {tabs.length > 1 && (
+        <div role="tablist" className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1">
+          {tabs.map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setTab(k)} className={`h-9 shrink-0 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>)}
+        </div>
+      )}
+      {view === "requests" && user.school_id && <RequestsPanel schoolId={user.school_id} items={items} isKeeper={isKeeper} canAsk={true} onStockChanged={() => setVersion((v) => v + 1)} />}
+      {view === "count" && user.school_id && <CountPanel schoolId={user.school_id} items={items} onCounted={() => setVersion((v) => v + 1)} />}
+      {view === "history" && user.school_id && <MovementsPanel schoolId={user.school_id} items={items} />}
+      {view === "stock" && (<>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Inventory value</p><p className="font-heading text-xl font-semibold tabular-nums">{kes(inventoryValue)}</p></CardContent></Card>
@@ -197,10 +215,12 @@ export default function StoresPage() {
                   <TableCell className="text-right tabular-nums">{kes(i.unit_cost)}</TableCell>
                   <TableCell>{i.quantity <= i.reorder_level ? <Badge variant="destructive">Reorder</Badge> : <Badge variant="secondary">OK</Badge>}</TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <MovementDialog item={i} mode="receive" onDone={upsert} />
-                      <MovementDialog item={i} mode="issue" onDone={upsert} />
-                    </div>
+                    {(isKeeper || isHead) && (
+                      <div className="flex gap-2">
+                        <MovementDialog item={i} mode="receive" onDone={upsert} />
+                        <MovementDialog item={i} mode="issue" onDone={upsert} />
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -209,6 +229,7 @@ export default function StoresPage() {
           {items.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No stock items yet.</p>}
         </CardContent>
       </Card>
+      </>)}
     </div>
   );
 }

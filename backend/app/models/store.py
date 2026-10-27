@@ -10,6 +10,7 @@ from app.core.database import Base
 class StockMovementType(str, enum.Enum):
     RECEIPT = "receipt"
     ISSUE = "issue"
+    ADJUSTMENT = "adjustment"  # a stocktake correction, with the reason in the note
 
 
 class StockItem(Base):
@@ -49,4 +50,40 @@ class StockMovement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     school: Mapped["School"] = relationship("School")
+    item: Mapped["StockItem"] = relationship("StockItem")
+
+
+class StoreRequest(Base):
+    """A teacher or department asking the store for items. The store keeper
+    issues what is available (which moves stock and posts to the ledger) or
+    declines with a reason."""
+
+    __tablename__ = "store_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    school_id: Mapped[int] = mapped_column(ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
+    reference: Mapped[str] = mapped_column(String(30), nullable=False)
+    department: Mapped[str] = mapped_column(String(100), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(15), nullable=False, default="requested")  # requested | issued | declined
+    requested_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    lines: Mapped[list["StoreRequestLine"]] = relationship("StoreRequestLine", cascade="all, delete-orphan", back_populates="request")
+    requester: Mapped["User | None"] = relationship("User", foreign_keys=[requested_by])
+
+
+class StoreRequestLine(Base):
+    __tablename__ = "store_request_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("store_requests.id", ondelete="CASCADE"), nullable=False)
+    item_id: Mapped[int] = mapped_column(ForeignKey("stock_items.id", ondelete="CASCADE"), nullable=False)
+    quantity_requested: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantity_issued: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    request: Mapped["StoreRequest"] = relationship("StoreRequest", back_populates="lines")
     item: Mapped["StockItem"] = relationship("StockItem")

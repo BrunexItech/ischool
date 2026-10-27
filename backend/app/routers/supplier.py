@@ -9,7 +9,7 @@ from app.schemas.supplier import SupplierCreate, SupplierOut, SupplierUpdate
 
 router = APIRouter(prefix="/schools/{school_id}/suppliers", tags=["suppliers"])
 
-ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL)
+ADMIN_ROLES = (UserRole.SUPER_ADMIN, UserRole.HEAD_OF_INSTITUTION, UserRole.GROUP_PRINCIPAL, UserRole.PROCUREMENT_OFFICER)
 
 
 @router.get(

@@ -370,3 +370,31 @@ class TransportOverview(BaseModel):
     runs: list[RunSummary]
     fleet_alerts: list[FleetAlert]
     classes: list[TransportClass]
+
+
+class FinanceEvent(BaseModel):
+    at: datetime
+    actor: str | None
+    role: str | None
+    kind: str
+    title: str
+    detail: str
+    amount: float | None
+    href: str
+
+
+class FinancePerson(BaseModel):
+    user_id: int
+    name: str
+    role: str
+    actions: int
+    amount: float
+    by_kind: dict[str, int]
+
+
+class FinanceActivity(BaseModel):
+    start: date
+    end: date
+    people: list[FinancePerson]
+    events: list[FinanceEvent]
+    totals: dict[str, float]

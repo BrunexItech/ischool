@@ -177,7 +177,10 @@ export default function TeacherAssignmentsPage() {
               <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={ANY_SUBJECT}>Attendance only (no subject)</SelectItem>
-                {subjects.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                {subjects.filter((s) => {
+                  const grade = classes.find((c) => String(c.id) === classId)?.grade_level_id;
+                  return !s.grade_level_ids?.length || !classId || (grade != null && s.grade_level_ids.includes(grade));
+                }).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Button type="submit" disabled={submitting}>

@@ -30,7 +30,7 @@ function Stat({ label, value, sub, warn }: { label: string; value: string | numb
 function LoanTable({ loans, onReturn, empty }: { loans: LibLoan[]; onReturn?: (l: LibLoan) => void; empty: string }) {
   if (loans.length === 0) return <p className="rounded-xl border border-dashed bg-card px-4 py-10 text-center text-sm text-muted-foreground">{empty}</p>;
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card">
+    <div className="relative w-full max-w-full min-w-0 overflow-x-auto rounded-xl border bg-card">
       <table className="w-full min-w-[44rem] text-sm">
         <thead><tr className="border-b bg-muted/50 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase"><th scope="col" className="px-4 py-2.5">Book</th><th scope="col" className="px-3 py-2.5">No.</th><th scope="col" className="px-3 py-2.5">Borrower</th><th scope="col" className="px-3 py-2.5">Due</th><th scope="col" className="px-3 py-2.5">Status</th>{onReturn && <th scope="col" className="px-4 py-2.5 text-right"><span className="sr-only">Action</span></th>}</tr></thead>
         <tbody className="divide-y">
@@ -344,7 +344,7 @@ function TeacherShelf({ schoolId }: { schoolId: number }) {
 
   if (!data) return <PageLoader />;
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex min-w-0 flex-col gap-5">
       <ClassSets sets={data.sets} />
       {data.sets.length > 0 && (
         <form onSubmit={give} className="flex flex-col gap-3 rounded-xl border bg-card p-4">
@@ -357,7 +357,7 @@ function TeacherShelf({ schoolId }: { schoolId: number }) {
           {held.length === 0 && <p className="text-xs text-muted-foreground">Every book you hold is already with a learner.</p>}
         </form>
       )}
-      <section aria-label="Books with learners" className="flex flex-col gap-2">
+      <section aria-label="Books with learners" className="flex min-w-0 flex-col gap-2">
         <h3 className="font-heading text-base font-semibold">With learners now</h3>
         <LoanTable loans={data.learner_loans} onReturn={back} empty="No learner has one of your books." />
       </section>
@@ -442,7 +442,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5 sm:gap-6">
+    <div className="flex min-w-0 flex-col gap-5 sm:gap-6">
       <PageHead title="Library" subtitle={keeper ? "Lend books, take them back, and keep the catalogue." : overseer ? "The state of the library, and who holds which books." : teacher ? "The books you hold for your class, and who has each one." : "Find a book, and see the ones you have borrowed."}>
         <LibraryIcon className="hidden size-5 text-muted-foreground sm:block" aria-hidden />
       </PageHead>
@@ -457,7 +457,7 @@ export default function LibraryPage() {
       {view === "shelf" && <TeacherShelf schoolId={schoolId} />}
       {view === "overview" && (ov ? <Overview ov={ov} /> : <PageLoader />)}
       {view === "loans" && (
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-1.5" role="group" aria-label="Which loans">
               {[["active", "Out now"], ["overdue", "Overdue"], ["returned", "Returned"], ["all", "All"]].map(([k, label]) => <button key={k} type="button" aria-pressed={state === k} onClick={() => setState(k)} className={`h-9 rounded-full border px-3.5 text-sm font-medium ${state === k ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}>{label}</button>)}

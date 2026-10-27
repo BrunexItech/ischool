@@ -69,6 +69,7 @@ from app.routers import (
     security,
     staff_attendance,
     store,
+    store_requests,
     supplier,
     supervisors,
     teaching,
@@ -136,6 +137,7 @@ app.include_router(payroll.router)
 app.include_router(asset.router)
 app.include_router(timetable.router)
 app.include_router(approvals.router)
+app.include_router(store_requests.router)
 app.include_router(meals_weekly.router)
 app.include_router(library.router)
 app.include_router(transport_runs.router)

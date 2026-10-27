@@ -468,6 +468,98 @@ def boarding_security_transport(w: _Window) -> list[PulseSection]:
     return out
 
 
+
+# --- Newer departments: library, stores, transport, and decisions waiting ---
+
+
+def library(w: _Window) -> PulseSection:
+    from app.models.library import Book, BookCopy, Loan
+
+    db, sid = w.db, w.school_id
+    copies = db.query(BookCopy).filter_by(school_id=sid).all()
+    active = db.query(Loan).filter(Loan.school_id == sid, Loan.returned_at.is_(None)).all()
+    leaf = [l for l in active if l.student_id or not any(c.parent_loan_id == l.id for c in active)]
+    overdue = [l for l in leaf if l.due_date < w.today]
+    sets = [l for l in active if l.teacher_user_id and not l.parent_loan_id]
+    lost = sum(1 for c in copies if c.status == "lost")
+    att = [Attention(text=f"{(l.student.first_name + ' ' + l.student.last_name) if l.student else l.teacher.full_name} has “{l.copy.book.title}” ({l.copy.copy_number}), {(w.today - l.due_date).days} days overdue", tone=BAD if (w.today - l.due_date).days > 14 else WARN, href="/dashboard/library") for l in sorted(overdue, key=lambda l: l.due_date)[:5]]
+    tiles = [
+        Tile(label="Titles", value=str(db.query(Book).filter_by(school_id=sid).count()), hint=f"{len(copies)} copies"),
+        Tile(label="Out on loan", value=str(sum(1 for c in copies if c.status == "on_loan"))),
+        Tile(label="Overdue", value=str(len(overdue)), tone=WARN if overdue else GOOD),
+        Tile(label="Class sets with teachers", value=str(len(sets)), hint="books borrowed for a class"),
+    ]
+    summary = f"{_plural(len(overdue), 'book')} overdue" if overdue else "Nothing overdue"
+    if lost:
+        summary += f", {lost} lost"
+    return _section("library", "Library", "/dashboard/library", summary, tiles, att)
+
+
+def stores(w: _Window) -> PulseSection:
+    from app.models.store import StockItem, StoreRequest
+
+    db, sid = w.db, w.school_id
+    items = db.query(StockItem).filter_by(school_id=sid).all()
+    low = [i for i in items if i.quantity <= i.reorder_level]
+    waiting = db.query(StoreRequest).filter_by(school_id=sid, status="requested").all()
+    stale = [r for r in waiting if (w.today - r.requested_at.date()).days >= 2]
+    att = [Attention(text=f"{i.name}: {i.quantity} {i.unit} left (reorder at {i.reorder_level})", tone=BAD if i.quantity == 0 else WARN, href="/dashboard/stores") for i in low[:5]]
+    att += [Attention(text=f"Store request {r.reference} from {r.department} has waited {(w.today - r.requested_at.date()).days} days", href="/dashboard/stores") for r in stale[:3]]
+    tiles = [
+        Tile(label="Stock value", value=_kes(sum(i.quantity * float(i.unit_cost) for i in items))),
+        Tile(label="At or below reorder level", value=str(len(low)), tone=WARN if low else GOOD),
+        Tile(label="Requests waiting", value=str(len(waiting)), tone=WARN if stale else NEUTRAL),
+    ]
+    return _section("stores", "Stores", "/dashboard/stores", f"{_plural(len(low), 'item')} to reorder" if low else "Stock levels are fine", tiles, att)
+
+
+def transport(w: _Window) -> PulseSection:
+    from app.core.transport_oversight import fleet_alerts
+    from app.models.pickup_dropoff import PickupDropoffLog
+    from app.models.transport import TransportRun, Vehicle
+
+    db, sid = w.db, w.school_id
+    runs = db.query(TransportRun).filter(TransportRun.school_id == sid, TransportRun.run_date >= w.start, TransportRun.run_date <= w.today).all()
+    open_old = [r for r in runs if r.status != "completed" and r.run_date < w.today]
+    alerts = fleet_alerts(db, sid, w.today)
+    att = [Attention(text=f"{r.route.name} {r.direction} run on {r.run_date:%a %d %b} was never completed", tone=BAD, href="/dashboard/transport") for r in open_old[:4]]
+    att += [Attention(text=f"{a.vehicle}: {a.text}", tone=BAD if a.urgent else WARN, href="/dashboard/transport") for a in alerts if a.urgent or "due in" in a.text][:5]
+    tiles = [
+        Tile(label="Vehicles", value=str(db.query(Vehicle).filter_by(school_id=sid, is_active=True).count())),
+        Tile(label="Runs this week", value=str(len(runs)), hint=f"{sum(1 for r in runs if r.status == 'completed')} completed"),
+        Tile(label="Gate and bus records", value=str(db.query(PickupDropoffLog).filter(PickupDropoffLog.school_id == sid, PickupDropoffLog.created_at >= datetime.combine(w.start, datetime.min.time()).astimezone()).count())),
+        Tile(label="Papers needing attention", value=str(len([a for a in alerts if a.urgent or 'due in' in a.text])), tone=WARN if alerts else GOOD),
+    ]
+    return _section("transport", "Transport", "/dashboard/transport", f"{len(runs)} bus runs this week", tiles, att)
+
+
+def approvals(w: _Window) -> PulseSection:
+    from app.models.change_request import ChangeRequest, ChangeStatus
+
+    waiting = w.db.query(ChangeRequest).filter_by(school_id=w.school_id, status=ChangeStatus.PENDING).all()
+    att = [Attention(text=f"{r.title} (prepared by {r.requester.full_name if r.requester else 'the office'}) is waiting for you", tone=WARN, href="/dashboard") for r in waiting[:5]]
+    return _section("approvals", "Waiting for your approval", "/dashboard", f"{_plural(len(waiting), 'change')} to approve" if waiting else "Nothing waiting", [Tile(label="Changes to approve", value=str(len(waiting)), tone=WARN if waiting else GOOD)], att)
+
+
+def extra_sections(w: _Window) -> list[PulseSection]:
+    """Included in the weekly report only when the school actually uses them."""
+    from app.models.library import Book
+    from app.models.store import StockItem
+    from app.models.transport import Vehicle
+
+    out: list[PulseSection] = []
+    if w.db.query(Book.id).filter_by(school_id=w.school_id).first():
+        out.append(library(w))
+    if w.db.query(StockItem.id).filter_by(school_id=w.school_id).first():
+        out.append(stores(w))
+    if w.db.query(Vehicle.id).filter_by(school_id=w.school_id).first():
+        out.append(transport(w))
+    pending = approvals(w)
+    if pending.attention:
+        out.insert(0, pending)
+    return out
+
+
 # --- Registry ---
 
 PULSES = {
@@ -488,6 +580,9 @@ PULSES = {
     "admissions": admissions,
     "staff": staff,
     "finance": finance,
+    "library": library,
+    "stores": stores,
+    "transport": transport,
 }
 
 # The order a head reads the report in: teaching and learning first, then people, then money.
@@ -502,7 +597,11 @@ def module_pulse(db: Session, school_id: int, key: str) -> PulseSection | None:
 def weekly_report(db: Session, school) -> WeeklyReport:
     w = _Window(db, school.id)
     sections = [PULSES[k](w) for k in REPORT_ORDER]
-    sections += boarding_security_transport(w)
+    pending = approvals(w)
+    if pending.attention:
+        sections.insert(0, pending)
+    sections += [x for x in extra_sections(w) if x.key != 'approvals']
+    sections += [x for x in boarding_security_transport(w) if x.key != 'transport']
     count = sum(len(s.attention) for s in sections)
     urgent = sum(1 for s in sections for a in s.attention if a.tone == BAD)
     headline = (
