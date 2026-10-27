@@ -394,7 +394,8 @@ export interface GroupComparison { key: string; title: string; blurb: string; hr
 export interface GroupSchoolCard { school_id: number; name: string; learners: number; teachers: number; attendance_today: number | null; registers_taken: number | null; registers_total: number | null; fee_rate: number | null; outstanding: number; attention: number; urgent: number }
 export interface GroupAttention { school_id: number; school_name: string; text: string; tone: string; href: string | null }
 export interface GroupDecision { school_id: number; school_name: string; kind: string; title: string; detail: string; age_days: number }
-export interface GroupOverview { principal: string; schools: GroupSchoolCard[]; learners: number; teachers: number; attendance_today: number | null; fee_rate: number | null; outstanding: number; attention_total: number; attention: GroupAttention[]; decisions: GroupDecision[]; spotlight: string[] }
+export interface GroupAttentionSummary { per_school: Record<string, { attention: number; urgent: number }>; total: number; urgent: number; items: GroupAttention[]; spotlight: string[] }
+export interface GroupOverview { week_start: string | null; week_end: string | null; principal: string; schools: GroupSchoolCard[]; learners: number; teachers: number; attendance_today: number | null; fee_rate: number | null; outstanding: number; attention_total: number; attention: GroupAttention[]; decisions: GroupDecision[]; spotlight: string[] }
 export interface GroupActivityEvent extends ActivityEvent { school_id: number; school_name: string }
 export interface GroupActivity { start: string; end: string; total: number; counts: Record<string, number>; by_school: Record<string, number>; events: GroupActivityEvent[] }
 export interface GroupReportSection { key: string; title: string; href: string; columns: GroupColumn[]; rows: GroupRow[]; group: Record<string, number | null> }
@@ -2889,6 +2890,7 @@ export const api = {
     request<{ outgoing: LeadershipAccount; incoming: LeadershipAccount; message: string }>(`/schools/${schoolId}/leadership/handover`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
   getGroupSchools: (token: string) => request<GroupSchoolInfo[]>(`/group/schools`, {}, token),
   getGroupOverview: (token: string) => request<GroupOverview>(`/group/overview`, {}, token),
+  getGroupAttention: (token: string) => request<GroupAttentionSummary>(`/group/attention`, {}, token),
   listGroupModules: (token: string) => request<GroupModuleInfo[]>(`/group/modules`, {}, token),
   getGroupComparison: (token: string, key: string) => request<GroupComparison>(`/group/modules/${key}`, {}, token),
   getGroupActivity: (token: string, q: { start?: string; end?: string; kinds?: string[] } = {}) => {

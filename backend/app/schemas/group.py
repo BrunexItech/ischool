@@ -73,7 +73,19 @@ class GroupDecision(BaseModel):
     age_days: int
 
 
+class GroupAttentionSummary(BaseModel):
+    """The slow half of the overview: what needs attention in each school. Loaded separately so the page can open at once."""
+
+    per_school: dict[str, dict[str, int]]     # school id -> {"attention": n, "urgent": n}
+    total: int
+    urgent: int
+    items: list[GroupAttention]
+    spotlight: list[str]
+
+
 class GroupOverview(BaseModel):
+    week_start: date | None = None
+    week_end: date | None = None
     principal: str
     schools: list[GroupSchoolCard]
     learners: int

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight, CalendarCheck2, FileBarChart, GraduationCap, Landmark, Layers, Lightbulb, ShieldAlert, Users, Wallet } from "lucide-react";
-import { api, GroupModuleInfo, GroupOverview } from "@/lib/api";
+import { AlertTriangle, ArrowUpRight, CalendarCheck2, Crown, FileBarChart, GraduationCap, Lightbulb, ShieldAlert, Users } from "lucide-react";
+import { api, GroupAttentionSummary, GroupOverview } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Bar, GroupSkeleton, healthTone, kes, useGroupMode, useOpenSchool } from "@/components/group/GroupUi";
+import { compactKes, GroupLoader, healthTone, InlineWorking, Ring, schoolColor, useGroupMode, useOpenSchool } from "@/components/group/GroupUi";
 import { ErrorBox } from "@/components/oversight";
 import { Button } from "@/components/ui/button";
 
@@ -14,62 +14,79 @@ function greet() {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
-function Stat({ icon: Icon, label, value, sub, warn }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; sub: string; warn?: boolean }) {
+function HeroRing({ value, label, caption }: { value: number | null; label: string; caption: string }) {
   return (
-    <div className={`relative flex flex-col gap-2 overflow-hidden rounded-xl border bg-card p-4 shadow-xs ${warn ? "border-amber-300/70 dark:border-amber-700/50" : ""}`}>
-      <span className={`absolute inset-x-0 top-0 h-1 ${warn ? "bg-amber-500" : "bg-primary/70"}`} aria-hidden />
-      <span className={`flex size-9 items-center justify-center rounded-lg ${warn ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" : "bg-primary/10 text-primary"}`}><Icon className="size-4.5" aria-hidden /></span>
-      <div>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className={`font-heading text-3xl leading-none font-semibold tabular-nums ${warn ? "text-amber-700 dark:text-amber-400" : ""}`}>{value}</p>
-      </div>
-      <p className="text-xs text-muted-foreground">{sub}</p>
+    <div className="flex flex-col items-center gap-2 text-center">
+      <Ring value={value} size={108} stroke={10} color="#FFC857" track="#ffffff" trackOpacity={0.18} label={label}>
+        <span className="font-heading text-2xl font-semibold tabular-nums">{value != null ? `${value}%` : "—"}</span>
+      </Ring>
+      <div><p className="text-sm font-semibold">{label}</p><p className="text-xs text-white/70">{caption}</p></div>
     </div>
   );
 }
 
-/** "All Schools": the principal's home. Every school at a glance, what needs attention anywhere, and the few decisions that are theirs. */
+/** "All Schools": the principal's home. A banner that says how the group is doing, then each school as its own card, then what needs the principal. */
 export function GroupHome() {
   const { token, user } = useAuth();
   const { ready } = useGroupMode();
   const openSchool = useOpenSchool();
   const [data, setData] = useState<GroupOverview | null>(null);
-  const [modules, setModules] = useState<GroupModuleInfo[]>([]);
+  const [attention, setAttention] = useState<GroupAttentionSummary | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!token || !ready) return;
     let cancelled = false;
-    Promise.all([api.getGroupOverview(token), api.listGroupModules(token)])
-      .then(([o, m]) => {
-        if (cancelled) return;
-        setData(o);
-        setModules(m);
-        setFailed(false);
-      })
-      .catch(() => !cancelled && setFailed(true));
+    // The cards come first and fast; what needs attention takes longer and fills in when it is ready.
+    api.getGroupOverview(token).then((o) => { if (!cancelled) { setData(o); setFailed(false); } }).catch(() => !cancelled && setFailed(true));
+    api.getGroupAttention(token).then((a) => !cancelled && setAttention(a)).catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, [token, ready, version]);
 
-  if (failed) return <ErrorBox message="We couldn't load your schools just now." onRetry={() => setVersion((v) => v + 1)} />;
-  if (!data) return <GroupSkeleton />;
+  const standings = useMemo(() => {
+    const withAtt = (data?.schools ?? []).filter((c) => c.attendance_today != null).sort((a, b) => (b.attendance_today ?? 0) - (a.attendance_today ?? 0));
+    return new Map(withAtt.map((c, i) => [c.school_id, i + 1]));
+  }, [data]);
+
+  if (failed) return <ErrorBox message="We couldn't load your schools just now." onRetry={() => { setData(null); setFailed(false); setVersion((v) => v + 1); }} />;
+  if (!data) return <GroupLoader label="Gathering your schools..." />;
 
   const first = user?.full_name.split(" ")[0];
+  const taken = data.schools.reduce((n, c) => n + (c.registers_taken ?? 0), 0);
+  const expected = data.schools.reduce((n, c) => n + (c.registers_total ?? 0), 0);
+  const registersPct = expected ? Math.round((100 * taken) / expected) : null;
+  const total = attention?.total ?? null;
+  const urgent = attention?.urgent ?? 0;
 
   return (
-    <div className="flex flex-col gap-5 sm:gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-primary uppercase"><Layers className="size-3.5" aria-hidden /> All Schools</p>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{greet()}, {first}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{data.schools.length} school{data.schools.length === 1 ? "" : "s"} · {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/group/report"><FileBarChart /> Weekly report</Link>} />
-          <Button className="h-10 sm:h-9" nativeButton={false} render={<Link href="/dashboard/meetings"><CalendarCheck2 /> Call a staff meeting</Link>} />
+    <div className="flex flex-col gap-6 sm:gap-8">
+      <header className="relative overflow-hidden rounded-3xl p-5 text-white shadow-md sm:p-8" style={{ background: "linear-gradient(125deg, #4a0d10 0%, #8B1A1D 52%, #c0452f 100%)" }}>
+        <span className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-white/[0.06]" aria-hidden />
+        <span className="pointer-events-none absolute -bottom-28 left-10 size-64 rounded-full bg-[#FFA819]/10" aria-hidden />
+        <div className="relative flex flex-col gap-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold tracking-[0.16em] text-white/70 uppercase">All Schools</p>
+              <h1 className="font-heading text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">{greet()}, {first}</h1>
+              <p className="mt-1.5 max-w-xl text-sm text-white/80">{data.schools.length} school{data.schools.length === 1 ? "" : "s"} under your care · {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button className="h-10 bg-white text-[#8B1A1D] hover:bg-white/90" nativeButton={false} render={<Link href="/dashboard/group/report"><FileBarChart /> Weekly report</Link>} />
+              <Button className="h-10 border border-white/30 bg-white/10 text-white hover:bg-white/20" nativeButton={false} render={<Link href="/dashboard/meetings"><CalendarCheck2 /> Call a staff meeting</Link>} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 sm:gap-6 lg:max-w-2xl"><HeroRing value={data.attendance_today} label="In school" caption="today" /><HeroRing value={data.fee_rate} label="Fees collected" caption="of what was billed" /><HeroRing value={registersPct} label="Registers" caption="taken today" /></div>
+
+          <dl className="grid grid-cols-2 gap-3 border-t border-white/15 pt-5 sm:grid-cols-4">
+            <div><dt className="flex items-center gap-1.5 text-xs text-white/70"><Users className="size-3.5" aria-hidden />Learners</dt><dd className="font-heading text-2xl font-semibold tabular-nums">{data.learners.toLocaleString()}</dd></div>
+            <div><dt className="flex items-center gap-1.5 text-xs text-white/70"><GraduationCap className="size-3.5" aria-hidden />Teachers</dt><dd className="font-heading text-2xl font-semibold tabular-nums">{data.teachers.toLocaleString()}</dd></div>
+            <div><dt className="text-xs text-white/70">Still owed in fees</dt><dd className="font-heading text-2xl font-semibold tabular-nums">{compactKes(data.outstanding)}</dd></div>
+            <div><dt className="flex items-center gap-1.5 text-xs text-white/70"><ShieldAlert className="size-3.5" aria-hidden />Needs attention</dt><dd className="font-heading text-2xl font-semibold tabular-nums">{total === null ? <span className="inline-block size-5 animate-spin rounded-full border-2 border-white/30 border-t-white align-middle" role="status" aria-label="Working it out" /> : total}{urgent > 0 && <span className="ml-2 rounded-full bg-white/20 px-2 py-0.5 align-middle text-xs font-semibold">{urgent} urgent</span>}</dd></div>
+          </dl>
         </div>
       </header>
 
@@ -77,53 +94,43 @@ export function GroupHome() {
         <p className="rounded-xl border border-dashed bg-card px-4 py-14 text-center text-sm text-muted-foreground">No schools have been attached to your account yet. The platform administrator attaches the schools you oversee.</p>
       ) : (
         <>
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="The group at a glance">
-            <Stat icon={Users} label="Learners" value={data.learners.toLocaleString()} sub={`across ${data.schools.length} schools`} />
-            <Stat icon={GraduationCap} label="Teachers" value={data.teachers.toLocaleString()} sub="active teaching staff" />
-            <Stat icon={Landmark} label="In school today" value={data.attendance_today != null ? `${data.attendance_today}%` : "—"} sub="learners marked present or late" warn={data.attendance_today != null && data.attendance_today < 65} />
-            <Stat icon={Wallet} label="Fees collected" value={data.fee_rate != null ? `${data.fee_rate}%` : "—"} sub={`${kes(data.outstanding)} still owed`} warn={data.fee_rate != null && data.fee_rate < 65} />
-            <Stat icon={ShieldAlert} label="Needs attention" value={String(data.attention_total)} sub={data.attention_total ? "things to look at in the schools" : "nothing outstanding"} warn={data.attention_total > 0} />
+          <section aria-label="What stands out" className="flex flex-col gap-3">
+            <div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-heading text-lg font-semibold"><Lightbulb className="size-4.5 text-amber-500" aria-hidden /> What stands out</h2>{!attention && <InlineWorking label="Reading each school's week..." />}</div>
+            {attention && attention.spotlight.length === 0 ? <p className="rounded-xl border border-dashed bg-card px-4 py-6 text-center text-sm text-muted-foreground">Nothing stands out. Your schools are moving together.</p> : (
+              <ul className="grid gap-3 md:grid-cols-3">
+                {(attention?.spotlight ?? []).map((t, i) => (
+                  <li key={t} className="relative overflow-hidden rounded-2xl border bg-card p-4 pl-5 shadow-xs"><span className="absolute inset-y-0 left-0 w-1.5" style={{ background: ["#0E7490", "#B45309", "#8B1A1D"][i % 3] }} aria-hidden /><p className="text-sm leading-relaxed">{t}</p></li>
+                ))}
+              </ul>
+            )}
           </section>
-
-          {data.spotlight.length > 0 && (
-            <section className="rounded-xl border bg-card p-4 sm:p-5" aria-label="What stands out">
-              <h2 className="mb-2 flex items-center gap-2 font-heading text-base font-semibold"><Lightbulb className="size-4 text-amber-500" aria-hidden /> What stands out</h2>
-              <ul className="flex flex-col gap-1.5 text-sm">{data.spotlight.map((t) => <li key={t} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden /><span>{t}</span></li>)}</ul>
-            </section>
-          )}
 
           <section aria-label="Your schools" className="flex flex-col gap-3">
             <h2 className="font-heading text-lg font-semibold">Your schools</h2>
-            <ul className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-              {data.schools.map((c) => {
-                const fee = healthTone(c.fee_rate);
+            <ul className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              {data.schools.map((c, idx) => {
+                const att = attention?.per_school[String(c.school_id)];
+                const rank = standings.get(c.school_id);
                 const a = healthTone(c.attendance_today);
+                const f = healthTone(c.fee_rate);
                 return (
-                  <li key={c.school_id} className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-xs sm:p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="font-heading text-lg leading-tight font-semibold break-words">{c.name}</h3>
-                        <p className="text-sm text-muted-foreground">{c.learners.toLocaleString()} learners · {c.teachers} teachers</p>
-                      </div>
-                      {c.attention > 0 ? (
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${c.urgent ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"}`}>{c.attention} to look at{c.urgent ? `, ${c.urgent} urgent` : ""}</span>
-                      ) : (
-                        <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">All clear</span>
-                      )}
+                  <li key={c.school_id} className="relative flex flex-col gap-4 overflow-hidden rounded-2xl border bg-card p-5 shadow-xs transition-shadow hover:shadow-md">
+                    <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: schoolColor(idx) }} aria-hidden />
+                    <div className="flex items-start justify-between gap-3 pl-1.5">
+                      <div className="min-w-0"><h3 className="font-heading text-lg leading-tight font-semibold break-words">{c.name}</h3><p className="text-sm text-muted-foreground">{c.learners.toLocaleString()} learners · {c.teachers} teachers</p></div>
+                      {att ? (att.attention > 0 ? <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${att.urgent ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"}`}>{att.attention} to look at</span> : <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">All clear</span>) : <span className="shrink-0"><InlineWorking label="Checking" /></span>}
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-baseline justify-between"><span className="text-xs text-muted-foreground">In school today</span><span className={`text-sm font-semibold tabular-nums ${a.text}`}>{c.attendance_today != null ? `${c.attendance_today}%` : "No school"}</span></div>
-                        <Bar value={c.attendance_today} label="Attendance today" />
-                        {c.registers_total ? <span className="text-[11px] text-muted-foreground">{c.registers_taken} of {c.registers_total} registers taken</span> : null}
+                    <div className="grid grid-cols-2 gap-4 pl-1.5">
+                      <div className="flex items-center gap-3">
+                        <Ring value={c.attendance_today} size={72} stroke={8} label="In school today"><span className={`text-base font-semibold tabular-nums ${a.text}`}>{c.attendance_today != null ? `${c.attendance_today}%` : "—"}</span></Ring>
+                        <div className="min-w-0"><p className="text-xs font-medium">In school</p><p className="text-[11px] text-muted-foreground">{c.registers_total ? `${c.registers_taken}/${c.registers_total} registers` : "no school today"}</p>{rank === 1 && data.schools.length > 1 && <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600"><Crown className="size-3" aria-hidden />Highest today</p>}</div>
                       </div>
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-baseline justify-between"><span className="text-xs text-muted-foreground">Fees collected</span><span className={`text-sm font-semibold tabular-nums ${fee.text}`}>{c.fee_rate != null ? `${c.fee_rate}%` : "—"}</span></div>
-                        <Bar value={c.fee_rate} label="Fees collected" />
-                        <span className="text-[11px] text-muted-foreground">{kes(c.outstanding)} still owed</span>
+                      <div className="flex items-center gap-3">
+                        <Ring value={c.fee_rate} size={72} stroke={8} label="Fees collected"><span className={`text-base font-semibold tabular-nums ${f.text}`}>{c.fee_rate != null ? `${c.fee_rate}%` : "—"}</span></Ring>
+                        <div className="min-w-0"><p className="text-xs font-medium">Fees collected</p><p className="text-[11px] text-muted-foreground">{compactKes(c.outstanding)} owed</p></div>
                       </div>
                     </div>
-                    <Button variant="outline" className="h-10 w-full justify-between sm:h-9" onClick={() => openSchool(c.school_id)}>Open {c.name} <ArrowUpRight /></Button>
+                    <Button variant="outline" className="ml-1.5 h-10 justify-between" onClick={() => openSchool(c.school_id)}>Open {c.name}<ArrowUpRight /></Button>
                   </li>
                 );
               })}
@@ -131,13 +138,13 @@ export function GroupHome() {
           </section>
 
           <div className="grid items-start gap-5 xl:grid-cols-2">
-            <section className="overflow-hidden rounded-xl border bg-card" aria-label="Decisions waiting for you">
-              <header className="border-b px-4 py-3 sm:px-5"><h2 className="font-heading text-lg font-semibold">Decisions waiting for you</h2><p className="text-sm text-muted-foreground">Only the critical ones reach you. Everything else the heads handle.</p></header>
-              {data.decisions.length === 0 ? <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nothing is waiting on you.</p> : (
+            <section className="overflow-hidden rounded-2xl border bg-card" aria-label="Decisions waiting for you">
+              <header className="border-b px-5 py-4"><h2 className="font-heading text-lg font-semibold">Decisions waiting for you</h2><p className="text-sm text-muted-foreground">Only the critical ones reach you. The heads handle the rest.</p></header>
+              {data.decisions.length === 0 ? <p className="px-5 py-10 text-center text-sm text-muted-foreground">Nothing is waiting on you.</p> : (
                 <ul className="divide-y">
                   {data.decisions.map((d, i) => (
                     <li key={i}>
-                      <button type="button" onClick={() => openSchool(d.school_id, "/dashboard/finance")} className="flex w-full items-start gap-3 px-4 py-3 text-left outline-none transition-colors hover:bg-accent/40 focus-visible:bg-accent/40 sm:px-5">
+                      <button type="button" onClick={() => openSchool(d.school_id, "/dashboard/finance")} className="flex w-full items-start gap-3 px-5 py-3.5 text-left outline-none transition-colors hover:bg-accent/40 focus-visible:bg-accent/40">
                         <span className="min-w-0 flex-1"><span className="block text-xs font-semibold tracking-wide text-muted-foreground uppercase">{d.school_name}</span><span className="block text-sm font-medium break-words">{d.title}</span><span className="block text-xs text-muted-foreground">{d.detail}</span></span>
                         <span className={`shrink-0 text-xs tabular-nums ${d.age_days >= 3 ? "font-semibold text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>{d.age_days === 0 ? "today" : `${d.age_days} d`}</span>
                       </button>
@@ -147,12 +154,12 @@ export function GroupHome() {
               )}
             </section>
 
-            <section className="overflow-hidden rounded-xl border bg-card" aria-label="Needs attention">
-              <header className="border-b px-4 py-3 sm:px-5"><h2 className="flex items-center gap-2 font-heading text-lg font-semibold"><AlertTriangle className="size-4 text-amber-500" aria-hidden /> Needs attention</h2><p className="text-sm text-muted-foreground">The most pressing items across the schools, urgent first.</p></header>
-              {data.attention.length === 0 ? <p className="px-4 py-10 text-center text-sm text-muted-foreground">All schools are in good order.</p> : (
+            <section className="overflow-hidden rounded-2xl border bg-card" aria-label="Needs attention">
+              <header className="flex items-start justify-between gap-3 border-b px-5 py-4"><div><h2 className="flex items-center gap-2 font-heading text-lg font-semibold"><AlertTriangle className="size-4 text-amber-500" aria-hidden /> Needs attention</h2><p className="text-sm text-muted-foreground">The most pressing items across the schools, urgent first.</p></div></header>
+              {!attention ? <div className="flex items-center justify-center px-5 py-10"><InlineWorking label="Reading each school's week..." /></div> : attention.items.length === 0 ? <p className="px-5 py-10 text-center text-sm text-muted-foreground">All schools are in good order.</p> : (
                 <ul className="divide-y">
-                  {data.attention.map((a, i) => (
-                    <li key={i} className="flex items-start gap-3 px-4 py-3 sm:px-5">
+                  {attention.items.map((a, i) => (
+                    <li key={i} className="flex items-start gap-3 px-5 py-3.5">
                       <span className={`mt-1.5 size-2 shrink-0 rounded-full ${a.tone === "bad" ? "bg-red-500" : "bg-amber-500"}`} aria-hidden />
                       <span className="min-w-0 flex-1"><span className="block text-xs font-semibold tracking-wide text-muted-foreground uppercase">{a.school_name}</span><span className="block text-sm break-words">{a.text}</span></span>
                       <button type="button" onClick={() => openSchool(a.school_id, a.href ?? "/dashboard")} className="shrink-0 text-xs font-medium text-primary hover:underline">Open</button>
@@ -162,22 +169,9 @@ export function GroupHome() {
               )}
             </section>
           </div>
-
-          <section aria-label="Compare the schools" className="flex flex-col gap-3">
-            <div><h2 className="font-heading text-lg font-semibold">Compare the schools</h2><p className="text-sm text-muted-foreground">Open any area to see every school side by side.</p></div>
-            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {modules.map((m) => (
-                <li key={m.key}>
-                  <Link href={`/dashboard/group/${m.key}`} className="flex h-full flex-col gap-1 rounded-xl border bg-card p-3.5 outline-none transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring">
-                    <span className="flex items-center justify-between font-medium">{m.title}<ArrowUpRight className="size-4 text-muted-foreground" aria-hidden /></span>
-                    <span className="text-xs leading-snug text-muted-foreground">{m.blurb}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
         </>
       )}
     </div>
   );
 }
+

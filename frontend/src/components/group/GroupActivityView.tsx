@@ -5,7 +5,7 @@ import { CalendarSearch } from "lucide-react";
 import { api, GroupActivity } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { addDaysStr, localDateStr } from "@/lib/dates";
-import { GroupSkeleton, useGroupMode, useOpenSchool } from "@/components/group/GroupUi";
+import { GroupLoader, useGroupMode, useOpenSchool } from "@/components/group/GroupUi";
 import { ErrorBox, Pill } from "@/components/oversight";
 import { Input } from "@/components/ui/input";
 
@@ -84,7 +84,7 @@ export function GroupActivityView() {
       </section>
 
       {data === undefined ? (
-        <GroupSkeleton rows={1} />
+        <GroupLoader label="Reading the activity..." />
       ) : data === null ? (
         <ErrorBox message="We couldn't load the activity just now." onRetry={() => setState(null)} />
       ) : events.length === 0 ? (

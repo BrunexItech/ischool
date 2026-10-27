@@ -15,7 +15,7 @@ from app.core.oversight import attendance_oversight
 from app.models.expense import Expense, ExpenseStatus
 from app.models.school import School
 from app.models.user import User, UserRole
-from app.schemas.group import GroupActivity, GroupActivityEvent, GroupAttention, GroupDecision, GroupOverview, GroupReportSection, GroupSchoolCard, GroupWeeklyReport
+from app.schemas.group import GroupAttentionSummary, GroupActivity, GroupActivityEvent, GroupAttention, GroupDecision, GroupOverview, GroupReportSection, GroupSchoolCard, GroupWeeklyReport
 
 REPORT_MODULES = ["attendance", "staff", "lessons", "homework", "results", "conduct", "fees", "finance"]
 
@@ -136,3 +136,51 @@ def group_report(db: Session, user: User) -> GroupWeeklyReport:
         else f"{total} thing{'s' if total != 1 else ''} need{'s' if total == 1 else ''} attention across your {len(schools)} school{'s' if len(schools) != 1 else ''}" + (f", {urgent} of them urgent." if urgent else ".")
     )
     return GroupWeeklyReport(principal=user.full_name, week_start=today - timedelta(days=today.weekday()), week_end=today, headline=headline, schools=cards, attention=attention, decisions=_decisions(db, schools), spotlight=_spotlight(cards), sections=sections)
+
+
+
+# --- The same overview in two halves, so the page can open at once ---
+
+
+def cards_fast(db: Session, schools: list[School]) -> list[GroupSchoolCard]:
+    """Learners, teachers, attendance and fees for each school: quick to work out.
+    What needs attention (which means building each school's weekly report) comes separately."""
+    cards = []
+    for s in schools:
+        today = school_today(db, s.id)
+        att = attendance_oversight(db, s.id, today)
+        fees = m_fees(db, s.id, today)
+        teachers = db.query(User).filter(User.school_id == s.id, User.role == UserRole.TEACHER, User.is_active.is_(True)).count()
+        cards.append(GroupSchoolCard(
+            school_id=s.id, name=s.name, learners=sum(r.learners for r in att.rows), teachers=teachers,
+            attendance_today=att.school_rate if att.school_day else None,
+            registers_taken=att.classes_taken if att.school_day else None, registers_total=att.classes_total if att.school_day else None,
+            fee_rate=fees["rate"], outstanding=fees["outstanding"], attention=0, urgent=0,
+        ))
+    return cards
+
+
+def overview_fast(db: Session, user: User) -> GroupOverview:
+    schools = schools_of(db, user)
+    cards = cards_fast(db, schools)
+    fees = [m_fees(db, s.id, school_today(db, s.id)) for s in schools]
+    billed = sum(f["billed"] for f in fees)
+    paid = sum(f["collected"] for f in fees)
+    marked = sum((c.attendance_today or 0) * c.learners for c in cards if c.attendance_today is not None)
+    base = sum(c.learners for c in cards if c.attendance_today is not None)
+    today = max((school_today(db, s.id) for s in schools), default=date.today())
+    return GroupOverview(
+        week_start=today - timedelta(days=today.weekday()), week_end=today, principal=user.full_name, schools=cards,
+        learners=sum(c.learners for c in cards), teachers=sum(c.teachers for c in cards),
+        attendance_today=round(marked / base, 1) if base else None, fee_rate=round(100 * paid / billed, 1) if billed else None,
+        outstanding=round(max(0.0, billed - paid), 2), attention_total=0, attention=[], decisions=_decisions(db, schools), spotlight=[],
+    )
+
+
+def attention_summary(db: Session, user: User) -> GroupAttentionSummary:
+    schools = schools_of(db, user)
+    cards, items = _cards_and_attention(db, schools)
+    return GroupAttentionSummary(
+        per_school={str(c.school_id): {"attention": c.attention, "urgent": c.urgent} for c in cards},
+        total=sum(c.attention for c in cards), urgent=sum(c.urgent for c in cards), items=items[:14], spotlight=_spotlight(cards),
+    )

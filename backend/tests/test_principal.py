@@ -218,3 +218,17 @@ def test_a_meeting_can_be_for_chosen_teachers_only_and_stays_inside_the_hosts_sc
     assert client.post("/meetings", json={"title": "Nobody picked", "scheduled_start": when, "school_ids": [school.id], "audience": "selected", "teacher_ids": []}, headers=head).status_code == 422
     # teachers cannot host
     assert client.post("/meetings", json={"title": "Sneaky", "scheduled_start": when, "school_ids": [school.id], "audience": "all"}, headers=auth_headers(_login(client, t1.email, p1))).status_code == 403
+
+
+def test_the_overview_opens_fast_and_the_attention_comes_separately(client, db_session, school, other_school):
+    _setup(db_session, school)
+    _enable_all(db_session, school)
+    _enable_all(db_session, other_school)
+    h = _principal(db_session, client, [school, other_school])
+    quick = client.get("/group/overview", headers=h).json()
+    assert {c["school_id"] for c in quick["schools"]} == {school.id, other_school.id}
+    assert quick["attention_total"] == 0 and quick["attention"] == [] and quick["week_start"] and quick["week_end"]
+    slow = client.get("/group/attention", headers=h).json()
+    assert set(slow["per_school"]) == {str(school.id), str(other_school.id)}
+    assert slow["total"] == sum(v["attention"] for v in slow["per_school"].values())
+    assert isinstance(slow["items"], list) and isinstance(slow["spotlight"], list)

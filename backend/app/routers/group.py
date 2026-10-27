@@ -10,9 +10,9 @@ from app.core.activity_feed import KINDS
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_roles
 from app.core.group_metrics import MODULES, ORDER, compare_module
-from app.core.group_overview import group_activity, group_overview, group_report, schools_of
+from app.core.group_overview import attention_summary, group_activity, group_overview, group_report, overview_fast, schools_of
 from app.models.user import User, UserRole
-from app.schemas.group import GroupActivity, GroupComparison, GroupModuleInfo, GroupOverview, GroupSchool, GroupWeeklyReport
+from app.schemas.group import GroupActivity, GroupAttentionSummary, GroupComparison, GroupModuleInfo, GroupOverview, GroupSchool, GroupWeeklyReport
 
 router = APIRouter(prefix="/group", tags=["group"], dependencies=[Depends(require_roles(UserRole.GROUP_PRINCIPAL))])
 
@@ -25,6 +25,18 @@ def my_schools(db: Session = Depends(get_db), user: User = Depends(get_current_u
 
 @router.get("/overview", response_model=GroupOverview)
 def overview(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """The quick half: a card per school and the decisions waiting. Opens at once."""
+    return overview_fast(db, user)
+
+
+@router.get("/attention", response_model=GroupAttentionSummary)
+def attention(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """The slower half: what needs attention in each school, and what stands out."""
+    return attention_summary(db, user)
+
+
+@router.get("/overview/full", response_model=GroupOverview)
+def overview_full(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return group_overview(db, user)
 
 
