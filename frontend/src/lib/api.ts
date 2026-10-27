@@ -126,6 +126,17 @@ export interface ObservationNote {
   created_at: string;
 }
 
+export interface FamilyChildCard {
+  student: Student;
+  today: string;
+  attendance: { present: number; absent: number; late: number; excused: number; marked: number; rate: number | null; today: string | null } | null;
+  fees: { balance: number; billed: number; paid: number; unpaid_invoices: number } | null;
+  homework: { open: number; overdue: number; next: { id: number; title: string; subject: string; due_date: string; overdue: boolean }[] } | null;
+  lessons: { subject: string; teacher: string | null; room: string | null; start: string; end: string }[] | null;
+  latest_award: { title: string; date: string } | null;
+}
+export interface FamilyOverview { children: FamilyChildCard[] }
+
 export interface Student {
   id: number;
   school_id: number;
@@ -149,6 +160,7 @@ export interface Student {
   user_id: number | null;
   guardian_user_id: number | null;
   transport_route_id: number | null;
+  class_name?: string | null;
 }
 
 export interface ExamReadiness {
@@ -242,6 +254,7 @@ export interface Result {
   grade: string | null;
   remarks: string | null;
   recorded_by: number | null;
+  subject_name?: string | null;
 }
 
 export interface BoardSubject {
@@ -389,7 +402,7 @@ export interface MenuSlot {
 export interface GroupSchoolInfo { id: number; name: string }
 export interface GroupModuleInfo { key: string; title: string; blurb: string }
 export interface GroupColumn { key: string; label: string; kind: "count" | "percent" | "money" | "score" | "decimal"; better: "high" | "low" | null; hint: string | null }
-export interface GroupRow { school_id: number; school_name: string; enabled: boolean; values: Record<string, number | null> }
+export interface GroupRow { school_id: number; school_name: string; enabled: boolean; unavailable?: boolean; values: Record<string, number | null> }
 export interface GroupComparison { key: string; title: string; blurb: string; href: string; columns: GroupColumn[]; rows: GroupRow[]; group: Record<string, number | null>; marks: Record<string, { best: string; weakest: string }>; date?: string | null }
 export interface GroupSchoolCard { school_id: number; name: string; learners: number; teachers: number; attendance_today: number | null; registers_taken: number | null; registers_total: number | null; fee_rate: number | null; outstanding: number; attention: number; urgent: number }
 export interface GroupAttention { school_id: number; school_name: string; text: string; tone: string; href: string | null }
@@ -2780,6 +2793,8 @@ export const api = {
     request<{ name: string; kind: string; joined_at: string }[]>(`/schools/${schoolId}/live-classes/${liveClassId}/joins`, {}, token),
 
   // --- Portal (parent/student self-service) ---
+
+  getFamilyOverview: (token: string) => request<FamilyOverview>("/portal/overview", {}, token),
 
   listMyChildren: (token: string) => request<Student[]>("/portal/children", {}, token),
 

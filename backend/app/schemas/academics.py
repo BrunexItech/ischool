@@ -98,6 +98,7 @@ class StudentOut(BaseModel):
     user_id: int | None
     guardian_user_id: int | None
     transport_route_id: int | None = None
+    class_name: str | None = None
 
 
 class StudentAccountCreate(BaseModel):

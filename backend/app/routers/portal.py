@@ -1,5 +1,5 @@
 import secrets
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -77,13 +77,19 @@ def _owned_student(db: Session, current_user: User, student_id: int) -> Student:
     return student
 
 
+def _with_class(student: Student) -> StudentOut:
+    out = StudentOut.model_validate(student)
+    out.class_name = student.school_class.name if getattr(student, "school_class", None) else None
+    return out
+
+
 @router.get(
     "/children",
     response_model=list[StudentOut],
     dependencies=[Depends(require_roles(UserRole.PARENT))],
 )
 def list_my_children(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return db.query(Student).filter_by(guardian_user_id=current_user.id).all()
+    return [_with_class(s) for s in db.query(Student).filter_by(guardian_user_id=current_user.id).order_by(Student.first_name).all()]
 
 
 @router.get(
@@ -95,7 +101,7 @@ def get_my_student_record(db: Session = Depends(get_db), current_user: User = De
     student = db.query(Student).filter_by(user_id=current_user.id).first()
     if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No student record linked to this account")
-    return student
+    return _with_class(student)
 
 
 @router.get(
@@ -134,7 +140,12 @@ def get_child_results(
     query = db.query(Result).filter_by(student_id=student.id)
     if term is not None:
         query = query.filter_by(term=term)
-    return query.all()
+    out = []
+    for r in query.all():
+        row = ResultOut.model_validate(r)
+        row.subject_name = r.subject.name if getattr(r, "subject", None) else None
+        out.append(row)
+    return out
 
 
 @router.get(
@@ -870,3 +881,69 @@ def get_child_trips(student_id: int, db: Session = Depends(get_db), current_user
         t for t in trips
         if (student.class_id is not None and student.class_id in t.class_ids) or student.id in t.student_ids
     ]
+
+
+@router.get("/overview", dependencies=[Depends(require_roles(UserRole.PARENT, UserRole.STUDENT))])
+def family_overview(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """One call that powers the family home page: for each learner, today's
+    lessons, attendance, fees, homework and the latest recognition."""
+    from app.core.dates import school_today
+    from app.core.group_metrics import _enabled
+    from app.models.award import Award
+    from app.models.fees import FeeInvoice
+
+    if current_user.role == UserRole.PARENT:
+        kids = db.query(Student).filter_by(guardian_user_id=current_user.id).order_by(Student.first_name).all()
+    else:
+        kids = db.query(Student).filter_by(user_id=current_user.id).all()
+    out = []
+    for kid in kids:
+        today = school_today(db, kid.school_id)
+        def on(flag: str) -> bool:
+            return _enabled(db, kid.school_id, flag)
+
+        card: dict = {
+            "student": _with_class(kid).model_dump(mode="json"),
+            "today": today.isoformat(),
+            "attendance": None, "fees": None, "homework": None, "lessons": None, "latest_award": None,
+        }
+        if on("attendance"):
+            since = today - timedelta(days=30)
+            recs = db.query(AttendanceRecord).filter(AttendanceRecord.student_id == kid.id, AttendanceRecord.date >= since).all()
+            counts = {"present": 0, "absent": 0, "late": 0, "excused": 0}
+            for r in recs:
+                counts[r.status.value] += 1
+            marked = len(recs)
+            today_rec = next((r for r in recs if r.date == today), None)
+            card["attendance"] = {
+                **counts, "marked": marked,
+                "rate": round(100 * (counts["present"] + counts["late"]) / marked) if marked else None,
+                "today": today_rec.status.value if today_rec else None,
+            }
+        if on("fees"):
+            invs = db.query(FeeInvoice).filter_by(student_id=kid.id).all()
+            owed = [i for i in invs if float(i.amount_due) - float(i.amount_paid) > 0]
+            card["fees"] = {
+                "balance": float(sum(float(i.amount_due) - float(i.amount_paid) for i in owed)),
+                "billed": float(sum(float(i.amount_due) for i in invs)),
+                "paid": float(sum(float(i.amount_paid) for i in invs)),
+                "unpaid_invoices": len(owed),
+            }
+        if on("homework") and kid.class_id:
+            hws = db.query(Homework).filter(Homework.school_id == kid.school_id, Homework.class_id == kid.class_id, Homework.due_date >= today - timedelta(days=7)).order_by(Homework.due_date).all()
+            open_ = []
+            for hw in hws:
+                sub = db.query(HomeworkSubmission).filter_by(homework_id=hw.id, student_id=kid.id).first()
+                st = sub.status if sub else HomeworkSubmissionStatus.NOT_SUBMITTED
+                if st == HomeworkSubmissionStatus.NOT_SUBMITTED and not hw.given_on_board:
+                    open_.append({"id": hw.id, "title": hw.title, "subject": hw.subject.name, "due_date": hw.due_date.isoformat(), "overdue": hw.due_date < today})
+            card["homework"] = {"open": len(open_), "overdue": sum(1 for h in open_ if h["overdue"]), "next": open_[:3]}
+        if on("timetable") and kid.class_id:
+            slots = db.query(TimetableSlot).filter_by(school_id=kid.school_id, class_id=kid.class_id, day_of_week=today.weekday()).order_by(TimetableSlot.start_time).all()
+            card["lessons"] = [{"subject": s.subject.name, "teacher": s.teacher.full_name if s.teacher else None, "room": s.room, "start": s.start_time.strftime("%H:%M"), "end": s.end_time.strftime("%H:%M")} for s in slots]
+        if on("awards"):
+            a = db.query(Award).filter_by(student_id=kid.id).order_by(Award.created_at.desc()).first()
+            if a:
+                card["latest_award"] = {"title": a.title, "date": a.created_at.date().isoformat()}
+        out.append(card)
+    return {"children": out}

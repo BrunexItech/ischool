@@ -45,6 +45,7 @@ class ResultOut(BaseModel):
     grade: str | None
     remarks: str | None
     recorded_by: int | None = None
+    subject_name: str | None = None
 
 
 class ReportCardRow(BaseModel):

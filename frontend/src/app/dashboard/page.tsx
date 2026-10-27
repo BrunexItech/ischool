@@ -1,5 +1,6 @@
 "use client";
 
+import { FamilyHome } from "@/components/family/FamilyHome";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -763,28 +764,31 @@ function TeacherDashboard() {
 
 function SimpleDashboard() {
   const { user } = useAuth();
+  const [now] = useState(() => new Date());
   if (!user) return null;
   const links = QUICK_LINKS.filter((l) => l.roles.includes(user.role));
+  const hour = now.getHours();
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={`Welcome, ${user.full_name.split(" ")[0]}`} description="Here's what's happening at your school today." />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#5e1012] via-[#A71C20] to-[#D9531E] p-5 text-white shadow-md sm:p-8">
+        <div className="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-white/10 blur-2xl" aria-hidden />
+        <p className="relative text-xs font-medium tracking-[0.14em] text-white/75 uppercase">{now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
+        <h1 className="relative mt-1 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"}, {user.full_name.split(" ")[0]}</h1>
+        <p className="relative mt-1 text-sm text-white/85"><span className="capitalize">{user.role.replace(/_/g, " ")}</span> · Here is where you can get started.</p>
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {links.map((link) => (
-          <Link key={link.href} href={link.href}>
-            <Card className="h-full transition-colors hover:border-primary/40 hover:bg-accent/40">
-              <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <link.icon className="size-4.5" />
-                </div>
-                <ArrowRight className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <CardTitle className="text-base">{link.label}</CardTitle>
-                <CardDescription className="mt-1">{link.description}</CardDescription>
-              </CardContent>
-            </Card>
+          <Link key={link.href} href={link.href} className="group flex min-w-0 items-center gap-4 rounded-2xl border bg-card p-4 shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+              <link.icon className="size-5.5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-heading text-base font-semibold">{link.label}</span>
+              <span className="line-clamp-2 text-sm text-muted-foreground">{link.description}</span>
+            </span>
+            <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           </Link>
         ))}
       </div>
@@ -884,5 +888,6 @@ export default function DashboardPage() {
   }
   if (user.role === "secretary") return <OfficeDesk />;
   if (user.role === "teacher") return <TeacherDashboard />;
+  if (user.role === "parent" || user.role === "student") return <FamilyHome />;
   return <SimpleDashboard />;
 }

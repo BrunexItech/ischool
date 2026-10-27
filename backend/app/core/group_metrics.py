@@ -5,6 +5,7 @@ figure for each. The group row is added up here, properly weighted (a
 percentage across schools is built from the totals, never an average of
 averages). Nothing here changes a record."""
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
@@ -693,8 +694,16 @@ def compare_module(db: Session, schools: list[School], key: str, on: date | None
         real_today = school_today(db, school.id)
         today = min(on, real_today) if on else real_today   # a past day can be looked at, never a future one
         enabled = _enabled(db, school.id, mod.flag)
-        values = mod.fn(db, school.id, today) if enabled else {}
-        rows.append({"school_id": school.id, "school_name": school.name, "enabled": enabled, "values": values})
+        values: dict = {}
+        unavailable = False
+        if enabled:
+            try:
+                with db.begin_nested():   # one school's bad data must not break the whole comparison
+                    values = mod.fn(db, school.id, today)
+            except Exception:
+                logging.getLogger(__name__).exception("Group comparison %s failed for school %s", key, school.id)
+                values, enabled, unavailable = {}, False, True
+        rows.append({"school_id": school.id, "school_name": school.name, "enabled": enabled, "unavailable": unavailable, "values": values})
     # Highlight the best and the weakest school for each column that has a direction.
     marks: dict[str, dict[str, str]] = {}
     for c in mod.columns:

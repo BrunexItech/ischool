@@ -1,50 +1,45 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { Suspense, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { api, Student } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { PageHeader } from "@/components/PageHeader";
-import { BackButton } from "@/components/BackButton";
+import { setActiveChildId, useFamily } from "@/lib/family";
 import { PageLoader } from "@/components/Spinner";
+import { BackButton } from "@/components/BackButton";
 import { StudentRecordView } from "@/components/StudentRecordView";
+import { ChildSwitcher } from "@/components/family/ChildSwitcher";
+import { Empty } from "@/components/family/FamilyUi";
+import { GraduationCap } from "lucide-react";
+
+function ChildRecord({ id }: { id: number }) {
+  const { cards, list } = useFamily();
+  const index = list.findIndex((c) => c.student.id === id);
+  const card = index >= 0 ? list[index] : null;
+
+  useEffect(() => {
+    if (card) setActiveChildId(card.student.id);
+  }, [card]);
+
+  if (cards === undefined) return <PageLoader label="Opening the record..." />;
+  if (!card) return <Empty icon={<GraduationCap />} title="We could not find that learner">They may not be linked to your account.</Empty>;
+  return <StudentRecordView key={id} studentId={id} student={card.student} index={index} switcher={<ChildSwitcher cards={list} currentId={id} />} />;
+}
 
 export default function ChildDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user, token, loading } = useAuth();
-  const [child, setChild] = useState<Student | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     if (!loading && user && user.role !== "parent") router.replace("/dashboard");
   }, [loading, user, router]);
 
-  useEffect(() => {
-    if (!token) return;
-    api.listMyChildren(token).then((children) => {
-      setChild(children.find((c) => c.id === Number(id)) ?? null);
-    }).finally(() => setDataLoading(false));
-  }, [token, id]);
-
-  if (dataLoading) {
-    return (
-      <div className="flex flex-col gap-6">
-        <BackButton fallback="/dashboard/children" label="My children" />
-        <PageHeader title="My Children" />
-        <PageLoader />
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <BackButton fallback="/dashboard/children" label="My children" />
-      <PageHeader
-        title={child ? `${child.first_name} ${child.last_name}` : "Student not found"}
-        description={child ? `Admission #${child.admission_number}` : undefined}
-      />
-      {child && <StudentRecordView studentId={Number(id)} />}
+      <Suspense fallback={<PageLoader />}>
+        <ChildRecord id={Number(id)} />
+      </Suspense>
     </div>
   );
 }

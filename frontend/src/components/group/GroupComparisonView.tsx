@@ -130,7 +130,7 @@ export function GroupComparisonView({ moduleKey }: { moduleKey: string }) {
                 <div className="flex items-start justify-between gap-3 pl-1.5">
                   <div className="min-w-0">
                     <h2 className="font-heading text-lg leading-tight font-semibold break-words">{row.school_name}</h2>
-                    {!row.enabled && <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Not in use</span>}
+                    {!row.enabled && <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{row.unavailable ? "Could not be read" : "Not in use"}</span>}
                   </div>
                   {rank && ranked.rank.size > 1 && (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-white" style={{ background: rank <= 3 ? MEDAL[rank - 1] : "#64748B" }} title={`Number ${rank} of ${ranked.rank.size} on ${primary.label}`}>
@@ -166,7 +166,7 @@ export function GroupComparisonView({ moduleKey }: { moduleKey: string }) {
               <tbody className="divide-y">
                 {tableRows.map((r) => (
                   <tr key={r.school_id} className={r.enabled ? "" : "bg-muted/30 text-muted-foreground"}>
-                    <th scope="row" className="px-5 py-3.5 text-left font-medium break-words"><span className="mr-2 inline-block size-2.5 rounded-full align-middle" style={{ background: colorOf(r.school_id) }} aria-hidden />{r.school_name}{!r.enabled && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">Not in use</span>}</th>
+                    <th scope="row" className="px-5 py-3.5 text-left font-medium break-words"><span className="mr-2 inline-block size-2.5 rounded-full align-middle" style={{ background: colorOf(r.school_id) }} aria-hidden />{r.school_name}{!r.enabled && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">{r.unavailable ? "Could not be read" : "Not in use"}</span>}</th>
                     {data.columns.map((c) => {
                       const m = r.enabled ? mark(c, r.school_id) : null;
                       return (

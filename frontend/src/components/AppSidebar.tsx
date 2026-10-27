@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -79,6 +79,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { FamilyNav } from "@/components/family/FamilyNav";
 
 const NAV_SECTIONS = [
   {
@@ -169,13 +170,6 @@ const NAV_SECTIONS = [
     items: [
       { href: "/dashboard/staff", label: "Staff", icon: UserSquare2, roles: ["head_of_institution", "group_principal"] },
       { href: "/dashboard/activity-log", label: "Activity Log", icon: History, roles: ["head_of_institution", "group_principal"] },
-    ],
-  },
-  {
-    label: "My Family",
-    items: [
-      { href: "/dashboard/children", label: "My Children", icon: HeartHandshake, roles: ["parent"] },
-      { href: "/dashboard/my-records", label: "My Records", icon: Award, roles: ["student"] },
     ],
   },
 ];
@@ -322,7 +316,8 @@ export function AppSidebar() {
         {sections.map((section, i) => {
           const SectionIcon = section.label ? SECTION_ICONS[section.label] : null;
           return (
-            <SidebarGroup key={section.label ?? `section-${i}`}>
+            <Fragment key={section.label ?? `section-${i}`}>
+            <SidebarGroup>
               {section.label && (
                 <SidebarGroupLabel className="gap-1.5 text-sidebar-primary/90">
                   {SectionIcon && <SectionIcon className="size-3.5" />}
@@ -357,6 +352,8 @@ export function AppSidebar() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            {i === 0 && (user.role === "parent" || user.role === "student") && <FamilyNav query={q} onNavigate={closeOnMobile} />}
+            </Fragment>
           );
         })}
       </SidebarContent>

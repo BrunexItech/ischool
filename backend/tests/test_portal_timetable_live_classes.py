@@ -97,3 +97,30 @@ def test_parent_cannot_get_a_join_token(client, db_session, school):
 
     response = client.post(f"/portal/students/{student.id}/live-classes/{live_a.id}/join-token", headers=headers)
     assert response.status_code == 403
+
+
+def test_family_overview_and_class_name_and_result_subjects(client, db_session, school):
+    from app.models.results import Result
+    from app.models.fees import FeeInvoice
+
+    student, _, _ = _setup(db_session, school)
+    math = db_session.query(Subject).filter_by(school_id=school.id, name="Math").first()
+    db_session.add(Result(school_id=school.id, student_id=student.id, subject_id=math.id, term="Term 1", exam_type="CAT", score=70, grade="B"))
+    db_session.add(FeeInvoice(school_id=school.id, student_id=student.id, term="Term 1", category="tuition", amount_due=1000, amount_paid=400))
+    db_session.commit()
+    guardian = db_session.query(User).filter_by(id=student.guardian_user_id).first()
+    headers = _login(client, guardian)
+
+    kids = client.get("/portal/children", headers=headers).json()
+    assert kids[0]["class_name"] == "Grade 5A"
+    results = client.get(f"/portal/students/{student.id}/results", headers=headers).json()
+    assert results[0]["subject_name"] == "Math"
+    body = client.get("/portal/overview", headers=headers)
+    assert body.status_code == 200, body.text
+    card = body.json()["children"][0]
+    assert card["student"]["class_name"] == "Grade 5A"
+    assert card["student"]["id"] == student.id
+
+    # a student gets their own card
+    mine = client.get("/portal/overview", headers=_login(client, db_session.query(User).filter_by(id=student.user_id).first()))
+    assert mine.status_code == 200 and len(mine.json()["children"]) == 1

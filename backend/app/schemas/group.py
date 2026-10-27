@@ -29,6 +29,7 @@ class GroupRow(BaseModel):
     school_id: int
     school_name: str
     enabled: bool
+    unavailable: bool = False
     values: dict[str, float | int | None]
 
 
