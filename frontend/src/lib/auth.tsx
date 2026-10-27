@@ -21,12 +21,10 @@ interface AuthState {
    * a super-admin linked them to for a supervisor. Empty otherwise. */
   schoolOptions: SchoolOption[];
   viewingSchoolId: number | null;
-  switchSchool: (schoolId: number) => void;
-  /** A supervisor's pages are read-only until they deliberately turn this
-   * on for the school they're currently viewing. Meaningless for anyone
-   * else. */
-  editingEnabled: boolean;
-  toggleEditing: () => void;
+  /** Pass null to go back to "All Schools" (a group principal only). */
+  switchSchool: (schoolId: number | null) => void;
+  /** True for a group principal looking at all their schools together, not at one school. */
+  isGroupView: boolean;
   loading: boolean;
   login: (email: string, password: string, persist?: boolean) => Promise<User>;
   logout: (announce?: boolean) => void;
@@ -43,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [realUser, setRealUser] = useState<User | null>(null);
   const [viewingSchoolId, setViewingSchoolId] = useState<number | null>(null);
   const [schoolOptions, setSchoolOptions] = useState<SchoolOption[]>([]);
-  const [editingEnabled, setEditingEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,10 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const parsed = JSON.parse(raw);
         const storedViewing = sessionStorage.getItem(VIEWING_SCHOOL_KEY);
+        const principal = parsed.user?.role === "group_principal";
         // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing initial auth from storage, unavailable during SSR
         setToken(parsed.token);
         setRealUser(parsed.user);
-        setViewingSchoolId(storedViewing ? Number(storedViewing) : parsed.user?.school_id ?? null);
+        // A principal starts on "All Schools" unless they were last looking at one school.
+        setViewingSchoolId(principal ? (storedViewing && storedViewing !== "all" ? Number(storedViewing) : null) : storedViewing && storedViewing !== "all" ? Number(storedViewing) : parsed.user?.school_id ?? null);
       }
     } catch {
       // ignore corrupted storage
@@ -85,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (realUser.role === "group_principal") {
       let cancelled = false;
       api
-        .listMyLinkedSchools(token)
+        .getGroupSchools(token)
         .then((schools) => {
           if (cancelled) return;
           setSchoolOptions(schools.map((s) => ({ id: s.id, name: s.name, isHome: false })));
@@ -100,9 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function setSession(newToken: string, newUser: User, persist = true) {
     setToken(newToken);
     setRealUser(newUser);
-    setViewingSchoolId(newUser.school_id);
+    setViewingSchoolId(newUser.role === "group_principal" ? null : newUser.school_id);
     setSchoolOptions([]);
-    setEditingEnabled(false);
     sessionStorage.removeItem(VIEWING_SCHOOL_KEY);
     const store = persist ? localStorage : sessionStorage;
     store.setItem(STORAGE_KEY, JSON.stringify({ token: newToken, user: newUser }));
@@ -122,32 +120,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRealUser(null);
     setViewingSchoolId(null);
     setSchoolOptions([]);
-    setEditingEnabled(false);
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(VIEWING_SCHOOL_KEY);
     if (announce) toast.success("Signed out");
   }
 
-  function switchSchool(schoolId: number) {
+  function switchSchool(schoolId: number | null) {
     setViewingSchoolId(schoolId);
-    setEditingEnabled(false); // always land read-only on a newly viewed school — a deliberate click turns editing on
     try {
-      sessionStorage.setItem(VIEWING_SCHOOL_KEY, String(schoolId));
+      sessionStorage.setItem(VIEWING_SCHOOL_KEY, schoolId === null ? "all" : String(schoolId));
     } catch {
       // ignore storage failures (private browsing etc.)
     }
   }
 
-  function toggleEditing() {
-    setEditingEnabled((v) => !v);
-  }
-
-  const user: User | null = realUser && viewingSchoolId !== null ? { ...realUser, school_id: viewingSchoolId } : realUser;
+  const isGroupView = realUser?.role === "group_principal" && viewingSchoolId === null;
+  // In the group view a principal is not "in" any one school, so school_id is empty there.
+  const user: User | null = realUser ? (realUser.role === "group_principal" ? { ...realUser, school_id: viewingSchoolId } : viewingSchoolId !== null ? { ...realUser, school_id: viewingSchoolId } : realUser) : realUser;
 
   return (
     <AuthContext.Provider
-      value={{ token, user, schoolOptions, viewingSchoolId, switchSchool, editingEnabled, toggleEditing, loading, login, logout, setSession }}
+      value={{ token, user, schoolOptions, viewingSchoolId, switchSchool, isGroupView, loading, login, logout, setSession }}
     >
       {children}
     </AuthContext.Provider>

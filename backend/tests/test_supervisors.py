@@ -62,7 +62,7 @@ def test_supervisor_can_view_students_and_staff_in_a_linked_school(client, db_se
     assert staff.status_code == 200
 
 
-def test_supervisor_can_register_staff_in_a_linked_school(client, db_session, super_admin_token, school):
+def test_principal_cannot_register_staff_in_a_linked_school(client, db_session, super_admin_token, school):
     headers = auth_headers(super_admin_token)
     created = client.post(
         "/supervisors", headers=headers,
@@ -75,7 +75,8 @@ def test_supervisor_can_register_staff_in_a_linked_school(client, db_session, su
         f"/schools/{school.id}/staff", headers=auth_headers(token),
         json={"email": "new.teacher@test-academy.test", "full_name": "New Teacher", "password": "TeacherPass123!", "role": "teacher", "staff_number": "T-900"},
     )
-    assert response.status_code == 201, response.text
+    # A principal oversees a school; changing its records is the head's work.
+    assert response.status_code == 403 and "view a school but not change" in response.json()["detail"]
 
 
 def test_supervisor_cannot_touch_an_unlinked_school(client, db_session, super_admin_token, school, other_school):

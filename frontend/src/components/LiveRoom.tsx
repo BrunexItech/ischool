@@ -232,12 +232,15 @@ export function LiveRoom({
   schoolId,
   liveClassId,
   leaveHref,
+  kind = "class",
 }: {
   join: JoinToken;
   mode: "host" | "learner";
   schoolId?: number;
   liveClassId?: number;
   leaveHref: string;
+  /** What this room is called on screen: a class, or a staff meeting. */
+  kind?: "class" | "meeting";
 }) {
   const [left, setLeft] = useState(false);
   const [panel, setPanel] = useState(true);
@@ -249,7 +252,7 @@ export function LiveRoom({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/Milai-School-Logo.svg" alt="Milai School" className="h-14 w-auto" />
         </div>
-        <h1 className="font-heading text-2xl font-semibold">{mode === "host" ? "Class ended" : "You have left the class"}</h1>
+        <h1 className="font-heading text-2xl font-semibold">{kind === "meeting" ? "You have left the meeting" : mode === "host" ? "Class ended" : "You have left the class"}</h1>
         <p className="max-w-sm text-sm text-white/70">{join.class_title}</p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button className="h-11 text-white" style={{ background: MAROON }} onClick={() => setLeft(false)}>Rejoin</Button>
@@ -269,9 +272,9 @@ export function LiveRoom({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold sm:text-base">{join.class_title}</p>
-          <p className="text-xs text-white/75">Live class · <Elapsed /></p>
+          <p className="text-xs text-white/75">{kind === "meeting" ? "Staff meeting" : "Live class"} · <Elapsed /></p>
         </div>
-        {mode === "host" && (
+        {mode === "host" && kind === "class" && (
           <Button size="sm" className="h-9 bg-white/15 text-white hover:bg-white/25" onClick={() => setPanel((p) => !p)} aria-expanded={panel}>
             <Users /> <span className="hidden sm:inline">Controls</span>
           </Button>

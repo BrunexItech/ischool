@@ -1,4 +1,6 @@
-from fastapi import Depends, HTTPException, status
+import re
+
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -12,7 +14,27 @@ from app.models.user import User, UserRole
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+# The group principal oversees: they look at every school but never change a
+# school's records. These are the only writes they may make, none of which edit a
+# school's own data: signing in, reading notifications, feedback to heads, their
+# own meetings and report, the critical expense decisions, and which grades a
+# school offers.
+PRINCIPAL_MAY_WRITE = [
+    re.compile(p)
+    for p in (
+        r"^/auth/",
+        r"^/notifications",
+        r"^/group/",
+        r"^/meetings",
+        r"^/schools/\d+/feedback",
+        r"^/schools/\d+/enabled-grades$",  # which grades a school offers is the principal's call, not the head's
+        r"^/schools/\d+/finance/expenses/\d+/(approve|reject)$",
+    )
+]
+READ_ONLY_MESSAGE = "The group principal can view a school but not change its records. Ask the head of institution to make this change."
+
+
+def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     payload = decode_access_token(token)
     if payload is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Could not validate credentials")
@@ -20,7 +42,22 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     user = db.get(User, int(payload["sub"]))
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Could not validate credentials")
+    if user.role == UserRole.GROUP_PRINCIPAL and request.method not in ("GET", "HEAD", "OPTIONS") and not any(p.match(request.url.path) for p in PRINCIPAL_MAY_WRITE):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, READ_ONLY_MESSAGE)
     return user
+
+
+def principal_school_ids(db: Session, user: User) -> list[int]:
+    """The real schools a group principal is attached to: those the platform
+    administrator linked them to, plus any operating school under their
+    umbrella. They never see anything outside this list."""
+    from app.models.school import SchoolType
+
+    ids = {l.school_id for l in db.query(SupervisorSchoolLink).filter_by(supervisor_user_id=user.id)}
+    if user.school_id is not None:
+        for (sid,) in db.query(School.id).filter(School.parent_school_id == user.school_id, School.school_type == SchoolType.SCHOOL):
+            ids.add(sid)
+    return sorted(ids)
 
 
 def require_roles(*roles: UserRole):

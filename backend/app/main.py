@@ -48,6 +48,7 @@ from app.routers import (
     fee_structure,
     finance,
     grade_levels,
+    group,
     grading_bands,
     homework,
     leads,
@@ -58,6 +59,7 @@ from app.routers import (
     lesson_plans,
     live_classes,
     meals,
+    meetings,
     meals_weekly,
     oversight,
     notifications,
@@ -140,6 +142,8 @@ app.include_router(payroll.router)
 app.include_router(asset.router)
 app.include_router(timetable.router)
 app.include_router(approvals.router)
+app.include_router(meetings.router)
+app.include_router(group.router)
 app.include_router(leadership.router)
 app.include_router(fee_structure.router)
 app.include_router(store_requests.router)

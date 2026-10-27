@@ -31,6 +31,7 @@ def _due(now: datetime, last_run_iso_week: tuple[int, int] | None) -> bool:
 
 
 def _run_loop() -> None:
+    from app.services.principal_report import send_all_principal_reports
     from app.services.weekly_reports import send_all_weekly_reports  # avoid import cycle at module load
 
     last_run_iso_week: tuple[int, int] | None = None
@@ -42,6 +43,8 @@ def _run_loop() -> None:
                 try:
                     result = send_all_weekly_reports(db, once_per_week=True)
                     logger.info("Weekly reports sent: %s", result)
+                    # The principal's report follows the heads', so the group picture is complete.
+                    logger.info("Principal reports sent: %s", send_all_principal_reports(db, once_per_week=True))
                 finally:
                     db.close()
                 last_run_iso_week = now.isocalendar()[:2]

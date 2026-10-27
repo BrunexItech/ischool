@@ -23,7 +23,6 @@ import {
   BedDouble,
   BookOpenCheck,
   Map,
-  Eye,
   GraduationCap,
   UserCheck,
   MessageSquareWarning,
@@ -45,7 +44,6 @@ import {
   HomeworkListItem,
   MyClass,
   MyTimetableSlot,
-  SupervisorOverview as SupervisorOverviewData,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { localDateStr } from "@/lib/dates";
@@ -57,6 +55,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TodayLessons } from "@/components/TodayLessons";
 import { HeadOverviewView } from "@/components/HeadOverview";
+import { GroupHome } from "@/components/group/GroupHome";
 import { OfficeDesk } from "@/components/OfficeDesk";
 
 function todayLabel(d: Date = new Date()) {
@@ -868,91 +867,6 @@ function GroupOverview() {
   );
 }
 
-function SupervisorOverview() {
-  const { token, user, switchSchool } = useAuth();
-  const [overview, setOverview] = useState<SupervisorOverviewData | null>(null);
-
-  useEffect(() => {
-    if (!token) return;
-    api.getSupervisorOverview(token).then(setOverview).catch(() => setOverview(null));
-  }, [token]);
-
-  if (!overview) return <PageLoader />;
-
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title={`Welcome, ${user?.full_name.split(" ")[0] ?? "Supervisor"}`}
-        description={`Overseeing ${overview.schools.length} school${overview.schools.length === 1 ? "" : "s"} — pick one below to look inside.`}
-      />
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-center gap-3 pt-6">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><GraduationCap className="size-4.5" /></div>
-            <div>
-              <p className="font-heading text-2xl font-semibold tabular-nums">{overview.schools.length}</p>
-              <p className="text-xs text-muted-foreground">Schools supervised</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 pt-6">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Users className="size-4.5" /></div>
-            <div>
-              <p className="font-heading text-2xl font-semibold tabular-nums">{overview.total_students.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Total students</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 pt-6">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><UserCheck className="size-4.5" /></div>
-            <div>
-              <p className="font-heading text-2xl font-semibold tabular-nums">{overview.total_active_staff.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Active staff</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Your schools</CardTitle>
-          <CardDescription>Open any school to see everything happening inside it — read-only until you choose to edit.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>School</TableHead><TableHead className="text-right">Students</TableHead><TableHead className="text-right">Staff</TableHead>
-                <TableHead className="text-right">Fee collection</TableHead><TableHead className="text-right">Attendance today</TableHead><TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {overview.schools.map((row) => (
-                <TableRow key={row.school_id}>
-                  <TableCell className="font-medium">{row.name}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.total_students.toLocaleString()}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.active_staff.toLocaleString()}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.fee_collection_rate.toFixed(1)}%</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.today_attendance_rate == null ? "—" : `${row.today_attendance_rate.toFixed(1)}%`}</TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="outline" onClick={() => switchSchool(row.school_id)}><Eye className="size-3.5" /> View</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {overview.schools.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground">No schools linked to your account yet — ask your super-admin.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 export default function DashboardPage() {
   const { user, schoolOptions, viewingSchoolId } = useAuth();
   if (!user) return null;
@@ -965,7 +879,7 @@ export default function DashboardPage() {
     return <HeadOverviewView schoolId={user.school_id} />;
   }
   if (user.role === "group_principal") {
-    if (viewingSchoolId === null) return <SupervisorOverview />;
+    if (viewingSchoolId === null) return <GroupHome />;
     return <HeadOverviewView schoolId={viewingSchoolId} />;
   }
   if (user.role === "secretary") return <OfficeDesk />;

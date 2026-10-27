@@ -55,6 +55,8 @@ import {
   Heart,
   FileBarChart,
   MessageSquareText,
+  Layers,
+  Presentation,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -150,6 +152,7 @@ const NAV_SECTIONS = [
   {
     label: "Communication",
     items: [
+      { href: "/dashboard/meetings", label: "Staff Meetings", icon: Presentation, roles: ["head_of_institution", "group_principal", "teacher"] },
       { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar", "group_principal", "secretary"] },
       { href: "/dashboard/complaints", label: "Complaints", icon: MessageSquareWarning, roles: ["head_of_institution", "teacher", "student", "parent", "super_admin", "group_principal"] },
       { href: "/dashboard/communication-settings", label: "Communication Settings", icon: MessageSquare, roles: ["head_of_institution", "group_principal"] },
@@ -177,12 +180,47 @@ const NAV_SECTIONS = [
   },
 ];
 
+const G = ["group_principal"];
+// What a group principal sees on "All Schools": the group first, then every module compared across the schools.
+const GROUP_SECTIONS: typeof NAV_SECTIONS = [
+  {
+    label: null,
+    items: [
+      { href: "/dashboard", label: "All Schools", icon: Layers, roles: G },
+      { href: "/dashboard/group/report", label: "Weekly Report", icon: FileBarChart, roles: G },
+      { href: "/dashboard/group/activity", label: "Activity", icon: History, roles: G },
+      { href: "/dashboard/meetings", label: "Staff Meetings", icon: Presentation, roles: G },
+    ],
+  },
+  {
+    label: "Compare schools",
+    items: [
+      { href: "/dashboard/group/classes", label: "Classes", icon: BookOpen, roles: G },
+      { href: "/dashboard/group/teachers", label: "Teachers", icon: GraduationCap, roles: G },
+      { href: "/dashboard/group/students", label: "Students", icon: Users, roles: G },
+      { href: "/dashboard/group/attendance", label: "Attendance", icon: ClipboardCheck, roles: G },
+      { href: "/dashboard/group/staff", label: "Staff attendance", icon: UserCheck, roles: G },
+      { href: "/dashboard/group/lessons", label: "Lesson plans", icon: NotebookPen, roles: G },
+      { href: "/dashboard/group/homework", label: "Homework", icon: ClipboardList, roles: G },
+      { href: "/dashboard/group/results", label: "Grading", icon: Award, roles: G },
+      { href: "/dashboard/group/conduct", label: "Conduct", icon: AlertTriangle, roles: G },
+      { href: "/dashboard/group/fees", label: "Fees", icon: Wallet, roles: G },
+      { href: "/dashboard/group/finance", label: "Finance", icon: Wallet2, roles: G },
+      { href: "/dashboard/group/transport", label: "Transport", icon: Bus, roles: G },
+      { href: "/dashboard/group/library", label: "Library", icon: BookMarked, roles: G },
+      { href: "/dashboard/group/stores", label: "Stores", icon: Boxes, roles: G },
+      { href: "/dashboard/group/admissions", label: "Admissions", icon: Users2, roles: G },
+    ],
+  },
+];
+
 const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Academics: GraduationCap,
   Recognition: Trophy,
   Operations: Building2,
   Finance: Wallet2,
   Communication: Megaphone,
+  "Compare schools": Layers,
   Engagement: Users2,
   Administration: ShieldCheck,
   "My Family": Heart,
@@ -198,7 +236,7 @@ function initials(name: string) {
 }
 
 export function AppSidebar() {
-  const { user, logout, schoolOptions, viewingSchoolId, switchSchool } = useAuth();
+  const { user, logout, schoolOptions, viewingSchoolId, switchSchool, isGroupView } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -211,12 +249,13 @@ export function AppSidebar() {
   if (!user) return null;
 
   const q = query.trim().toLowerCase();
-  const sections = NAV_SECTIONS.map((section) => ({
+  const sections = (isGroupView ? GROUP_SECTIONS : NAV_SECTIONS).map((section) => ({
     ...section,
     items: section.items.filter((item) => item.roles.includes(user.role) && (!q || item.label.toLowerCase().includes(q))),
   })).filter((section) => section.items.length > 0);
 
-  const currentSchool = schoolOptions.find((o) => o.id === viewingSchoolId) ?? schoolOptions[0];
+  const isPrincipal = user.role === "group_principal";
+  const currentSchool = schoolOptions.find((o) => o.id === viewingSchoolId) ?? (isPrincipal ? undefined : schoolOptions[0]);
 
   return (
     <Sidebar collapsible="icon">
@@ -291,7 +330,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="relative gap-2 overflow-hidden pb-3">
         <div className="pointer-events-none absolute -bottom-10 -left-10 size-28 rounded-full bg-sidebar-primary/20 blur-xl group-data-[collapsible=icon]:hidden" />
-        {schoolOptions.length > 0 && currentSchool && (
+        {(isPrincipal ? true : schoolOptions.length > 0 && currentSchool) && (
           <div className="relative">
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -300,11 +339,11 @@ export function AppSidebar() {
                     type="button"
                     className="flex w-full items-center gap-2.5 rounded-lg bg-black/15 px-2.5 py-2 text-left transition-colors hover:bg-black/25 group-data-[collapsible=icon]:justify-center"
                   >
-                    <Landmark className="size-4 shrink-0 text-sidebar-foreground/70" />
+                    {isGroupView ? <Layers className="size-4 shrink-0 text-sidebar-foreground/70" /> : <Landmark className="size-4 shrink-0 text-sidebar-foreground/70" />}
                     <div className="grid min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                      <span className="truncate text-sm font-medium">{currentSchool.name}</span>
+                      <span className="truncate text-sm font-medium">{isGroupView ? "All Schools" : currentSchool?.name}</span>
                       <span className="truncate text-[0.68rem] text-sidebar-foreground/50">
-                        {currentSchool.isHome ? "Group" : "Campus"}
+                        {isGroupView ? `${schoolOptions.length} school${schoolOptions.length === 1 ? "" : "s"} compared` : currentSchool?.isHome ? "Group" : "Campus"}
                       </span>
                     </div>
                     <ChevronsUpDown className="ml-auto size-4 shrink-0 text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden" />
@@ -312,6 +351,13 @@ export function AppSidebar() {
                 }
               />
               <DropdownMenuContent side="top" align="start" className="w-64">
+                {isPrincipal && (
+                  <DropdownMenuItem onClick={() => { switchSchool(null); router.push("/dashboard"); }}>
+                    <Layers className="text-muted-foreground" />
+                    <span className="flex-1 truncate font-medium">All Schools</span>
+                    {isGroupView && <Check className="size-4" />}
+                  </DropdownMenuItem>
+                )}
                 {schoolOptions.map((option) => (
                   <DropdownMenuItem key={option.id} onClick={() => { switchSchool(option.id); router.push("/dashboard"); }}>
                     <Building2 className="text-muted-foreground" />

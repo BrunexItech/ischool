@@ -386,6 +386,24 @@ export interface MenuSlot {
   items: Record<string, string>;
 }
 
+export interface GroupSchoolInfo { id: number; name: string }
+export interface GroupModuleInfo { key: string; title: string; blurb: string }
+export interface GroupColumn { key: string; label: string; kind: "count" | "percent" | "money" | "score" | "decimal"; better: "high" | "low" | null; hint: string | null }
+export interface GroupRow { school_id: number; school_name: string; enabled: boolean; values: Record<string, number | null> }
+export interface GroupComparison { key: string; title: string; blurb: string; href: string; columns: GroupColumn[]; rows: GroupRow[]; group: Record<string, number | null>; marks: Record<string, { best: string; weakest: string }> }
+export interface GroupSchoolCard { school_id: number; name: string; learners: number; teachers: number; attendance_today: number | null; registers_taken: number | null; registers_total: number | null; fee_rate: number | null; outstanding: number; attention: number; urgent: number }
+export interface GroupAttention { school_id: number; school_name: string; text: string; tone: string; href: string | null }
+export interface GroupDecision { school_id: number; school_name: string; kind: string; title: string; detail: string; age_days: number }
+export interface GroupOverview { principal: string; schools: GroupSchoolCard[]; learners: number; teachers: number; attendance_today: number | null; fee_rate: number | null; outstanding: number; attention_total: number; attention: GroupAttention[]; decisions: GroupDecision[]; spotlight: string[] }
+export interface GroupActivityEvent extends ActivityEvent { school_id: number; school_name: string }
+export interface GroupActivity { start: string; end: string; total: number; counts: Record<string, number>; by_school: Record<string, number>; events: GroupActivityEvent[] }
+export interface GroupReportSection { key: string; title: string; href: string; columns: GroupColumn[]; rows: GroupRow[]; group: Record<string, number | null> }
+export interface GroupWeeklyReport { principal: string; week_start: string; week_end: string; headline: string; schools: GroupSchoolCard[]; attention: GroupAttention[]; decisions: GroupDecision[]; spotlight: string[]; sections: GroupReportSection[] }
+
+export interface StaffMeeting { id: number; title: string; agenda: string | null; scheduled_start: string; status: "scheduled" | "live" | "ended" | "cancelled"; host_name: string; is_host: boolean; school_names: string[]; audience: "all" | "selected"; invited: number; joined: number }
+export interface MeetingCandidateSchool { school_id: number; school_name: string; teachers: { user_id: number; full_name: string }[] }
+export interface MeetingAttendance { meeting: StaffMeeting; attendees: { user_id: number; name: string; school_name: string | null; joined_at: string | null }[] }
+
 export interface LibBook {
   id: number;
   title: string;
@@ -2869,6 +2887,26 @@ export const api = {
     request<LeadershipAccount>(`/schools/${schoolId}/leadership/accounts/${userId}/active`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active, reason: reason || null }) }, token),
   handOverSchool: (token: string, schoolId: number, body: { outgoing_user_id: number; existing_user_id?: number; new_head?: { full_name: string; email: string; password: string }; reason: string }) =>
     request<{ outgoing: LeadershipAccount; incoming: LeadershipAccount; message: string }>(`/schools/${schoolId}/leadership/handover`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  getGroupSchools: (token: string) => request<GroupSchoolInfo[]>(`/group/schools`, {}, token),
+  getGroupOverview: (token: string) => request<GroupOverview>(`/group/overview`, {}, token),
+  listGroupModules: (token: string) => request<GroupModuleInfo[]>(`/group/modules`, {}, token),
+  getGroupComparison: (token: string, key: string) => request<GroupComparison>(`/group/modules/${key}`, {}, token),
+  getGroupActivity: (token: string, q: { start?: string; end?: string; kinds?: string[] } = {}) => {
+    const p = new URLSearchParams();
+    if (q.start) p.set("start", q.start);
+    if (q.end) p.set("end", q.end);
+    if (q.kinds?.length) p.set("kinds", q.kinds.join(","));
+    return request<GroupActivity>(`/group/activity?${p}`, {}, token);
+  },
+  getGroupReport: (token: string) => request<GroupWeeklyReport>(`/group/weekly-report`, {}, token),
+  emailGroupReport: (token: string) => request<{ sent: boolean }>(`/group/weekly-report/email-me`, { method: "POST" }, token),
+  listMeetings: (token: string) => request<StaffMeeting[]>(`/meetings`, {}, token),
+  meetingCandidates: (token: string) => request<MeetingCandidateSchool[]>(`/meetings/candidates`, {}, token),
+  scheduleMeeting: (token: string, body: { title: string; agenda?: string; scheduled_start: string; school_ids: number[]; audience: "all" | "selected"; teacher_ids: number[] }) =>
+    request<StaffMeeting>(`/meetings`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  meetingToken: (token: string, id: number) => request<JoinToken>(`/meetings/${id}/token`, { method: "POST" }, token),
+  endMeeting: (token: string, id: number) => request<StaffMeeting>(`/meetings/${id}/end`, { method: "POST" }, token),
+  meetingAttendance: (token: string, id: number) => request<MeetingAttendance>(`/meetings/${id}/attendance`, {}, token),
   listSchoolPeriods: (token: string, schoolId: number) => request<SchoolPeriod[]>(`/schools/${schoolId}/timetable/periods`, {}, token),
   getPeriodTemplate: (token: string, schoolId: number, levelGroup: string, withPrep: boolean) =>
     request<PeriodDraft[]>(`/schools/${schoolId}/timetable/periods/template?level_group=${levelGroup}&with_prep=${withPrep}`, {}, token),

@@ -10,6 +10,7 @@ from app.models.user import User, UserRole
 from app.models.academics import SchoolClass, Student, StaffProfile
 from app.models.attendance import AttendanceRecord, AttendanceStatus
 from app.models.library import Book, BookCopy, Loan
+from app.models.meeting import StaffMeeting, MeetingJoin, PrincipalReportRun
 from app.models.school_period import SchoolPeriod
 from app.models.change_request import ChangeRequest, ChangeStatus
 from app.models.results import Subject, SubjectLevel, Result
@@ -90,6 +91,9 @@ __all__ = [
     "AttendanceStatus",
     "Subject",
     "SubjectLevel",
+    "StaffMeeting",
+    "MeetingJoin",
+    "PrincipalReportRun",
     "Book",
     "BookCopy",
     "Loan",

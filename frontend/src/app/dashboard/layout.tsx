@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, Lock, Unlock } from "lucide-react";
+import { Eye } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { AppSidebar } from "@/components/AppSidebar";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, loading, schoolOptions, viewingSchoolId, editingEnabled, toggleEditing } = useAuth();
+  const { user, loading, schoolOptions, viewingSchoolId, switchSchool } = useAuth();
   const isSupervisorViewing = user?.role === "group_principal" && viewingSchoolId !== null;
   const viewingSchoolName = schoolOptions.find((s) => s.id === viewingSchoolId)?.name;
 
@@ -44,34 +44,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="text-sm font-medium text-muted-foreground">
             {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </span>
-          {isSupervisorViewing && (
-            <div className="ml-4 flex items-center gap-2 rounded-full border border-border bg-muted/60 py-1 pr-1 pl-3 text-xs">
-              <Eye className="size-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">
-                Viewing <span className="font-medium text-foreground">{viewingSchoolName}</span>
-              </span>
-              <Button
-                size="sm"
-                variant={editingEnabled ? "default" : "outline"}
-                className="h-6 gap-1 rounded-full px-2.5 text-xs"
-                onClick={toggleEditing}
-              >
-                {editingEnabled ? <Unlock className="size-3" /> : <Lock className="size-3" />}
-                {editingEnabled ? "Editing on" : "Enable editing"}
-              </Button>
-            </div>
-          )}
           <div className="ml-auto">
             <NotificationBell />
           </div>
         </header>
-        <div
-          className={`flex flex-1 flex-col gap-4 p-4 transition-opacity md:p-6 ${
-            isSupervisorViewing && !editingEnabled ? "pointer-events-none opacity-[0.97] grayscale-[0.15] select-none" : ""
-          }`}
-        >
-          {children}
-        </div>
+        {isSupervisorViewing && (
+          <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b bg-sky-50 px-4 py-2.5 text-sm text-sky-950 md:px-6 dark:bg-sky-950/40 dark:text-sky-100">
+            <Eye className="size-4 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1">
+              You are looking at <strong className="font-semibold">{viewingSchoolName}</strong> the way its head of institution sees it. You can look at everything here, but changes are made by the head.
+            </span>
+            <Button size="sm" variant="outline" className="h-8 shrink-0 bg-background" onClick={() => { switchSchool(null); router.push("/dashboard"); }}>Back to All Schools</Button>
+          </div>
+        )}
+        <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );
