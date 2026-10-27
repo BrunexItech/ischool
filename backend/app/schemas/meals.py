@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,3 +21,30 @@ class MealMenuOut(BaseModel):
     date: date
     meal_type: str
     description: str
+
+
+class MenuSlotIn(BaseModel):
+    name: str
+    start_time: time
+    end_time: time
+    audience: str = "all"
+    items: dict[str, str] = {}      # weekday ("0" = Monday) -> what is served
+
+
+class MenuSlotOut(MenuSlotIn):
+    id: int
+    position: int
+
+
+class WeeklyMenuIn(BaseModel):
+    slots: list[MenuSlotIn]
+
+
+class WeeklyMenuOut(BaseModel):
+    slots: list[MenuSlotOut]
+
+
+class MenuSaveResult(BaseModel):
+    applied: bool
+    request_id: int | None = None
+    message: str

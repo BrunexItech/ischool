@@ -126,7 +126,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/security", label: "Security", icon: ShieldCheck, roles: ["head_of_institution", "staff", "security", "group_principal"] },
       { href: "/dashboard/transport", label: "Transport", icon: Bus, roles: ["head_of_institution", "staff", "transport_staff", "transport_attendant", "group_principal"] },
       { href: "/dashboard/trips", label: "Trips", icon: Map, roles: ["head_of_institution", "teacher", "staff", "transport_staff", "group_principal", "secretary"] },
-      { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["head_of_institution", "staff", "group_principal", "secretary"] },
+      { href: "/dashboard/meals", label: "Meals", icon: UtensilsCrossed, roles: ["head_of_institution", "staff", "group_principal", "secretary", "teacher", "student", "parent", "boarding_staff"] },
       { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", icon: UserCheck, roles: ["staff", "security"] },
       { href: "/dashboard/live-classes", label: "Live Classes", icon: Video, roles: ["head_of_institution", "teacher", "staff", "group_principal", "secretary"] },
     ],

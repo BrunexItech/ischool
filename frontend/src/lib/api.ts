@@ -366,6 +366,16 @@ export interface MyClass {
   attendance_marked_today: boolean;
 }
 
+export interface MenuSlot {
+  id?: number;
+  position?: number;
+  name: string;
+  start_time: string;
+  end_time: string;
+  audience: "all" | "boarders";
+  items: Record<string, string>;
+}
+
 export interface LibBook {
   id: number;
   title: string;
@@ -2704,6 +2714,10 @@ export const api = {
   listMyTimetable: (token: string, schoolId: number) =>
     request<MyTimetableSlot[]>(`/schools/${schoolId}/timetable/mine`, {}, token),
 
+  getWeeklyMenu: (token: string, schoolId: number) => request<{ slots: MenuSlot[] }>(`/schools/${schoolId}/meals/weekly`, {}, token),
+  getMenuTemplate: (token: string, schoolId: number) => request<MenuSlot[]>(`/schools/${schoolId}/meals/template`, {}, token),
+  saveWeeklyMenu: (token: string, schoolId: number, slots: MenuSlot[]) =>
+    request<{ applied: boolean; request_id: number | null; message: string }>(`/schools/${schoolId}/meals/weekly`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slots }) }, token),
   libBooks: (token: string, schoolId: number, q: { q?: string; category?: string; available_only?: boolean } = {}) => {
     const p = new URLSearchParams();
     if (q.q) p.set("q", q.q);

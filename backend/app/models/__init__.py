@@ -24,7 +24,7 @@ from app.models.academic_term import AcademicTerm
 from app.models.transport import Vehicle, TransportRoute, RouteStop, TransportRun, TransportBoarding
 from app.models.payment_transaction import PaymentTransaction, PaymentTransactionStatus
 from app.models.payment_config import SchoolPaymentConfig
-from app.models.meals import MealMenu
+from app.models.meals import MealMenu, MealTime, WeeklyMenuItem
 from app.models.award import Award
 from app.models.activity import Activity, ActivityParticipant
 from app.models.expense import Expense
@@ -117,6 +117,8 @@ __all__ = [
     "PaymentTransactionStatus",
     "SchoolPaymentConfig",
     "MealMenu",
+    "MealTime",
+    "WeeklyMenuItem",
     "Award",
     "Activity",
     "ActivityParticipant",
