@@ -6,9 +6,10 @@ from app.core.database import get_db
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.security import ensure_password_strength, hash_password
 from app.models.academics import SchoolClass, StaffProfile, Student
-from app.models.grade_level import SchoolEnabledGrade
+from app.models.grade_level import GradeLevel, SchoolEnabledGrade
 from app.models.teacher_assignment import TeacherAssignment
 from app.models.user import User, UserRole
+from app.schemas.oversight import StreamsCreate, StreamsResult
 from app.schemas.academics import (
     GuardianAccountCreate,
     PromoteClassRequest,
@@ -138,6 +139,41 @@ def update_class(
     db.commit()
     db.refresh(school_class)
     return school_class
+
+
+@router.post(
+    "/classes/streams",
+    response_model=StreamsResult,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES)), Depends(require_feature("students_staff"))],
+)
+def add_streams(
+    school_id: int,
+    payload: StreamsCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Adds classes to a grade by stream name: "Chui" and "Simba" under Grade 3
+    become "Grade 3 Chui" and "Grade 3 Simba". An empty name gives the grade
+    itself ("Grade 3") for a single-stream school. Existing classes are skipped."""
+    ensure_school_access(db, current_user, school_id)
+    _ensure_grade_enabled(db, school_id, payload.grade_level_id)
+    grade = db.get(GradeLevel, payload.grade_level_id)
+    created: list[str] = []
+    skipped: list[str] = []
+    seen: set[str] = set()
+    for raw in payload.streams or [""]:
+        name = f"{grade.display_name} {raw.strip()}".strip()
+        if name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        if db.query(SchoolClass).filter(SchoolClass.school_id == school_id, SchoolClass.name.ilike(name)).first():
+            skipped.append(name)
+            continue
+        db.add(SchoolClass(school_id=school_id, name=name, grade_level_id=grade.id))
+        created.append(name)
+    db.commit()
+    return StreamsResult(created=created, skipped=skipped)
 
 
 @router.post(

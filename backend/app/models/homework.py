@@ -32,6 +32,8 @@ class Homework(Base):
     attachment_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     due_date: Mapped[date_] = mapped_column(Date, nullable=False)
     allow_digital_submission: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Given in class (written on the board or said aloud) but not typed in as a full assignment.
+    given_on_board: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -69,3 +71,18 @@ class HomeworkSubmission(Base):
 
     homework: Mapped["Homework"] = relationship("Homework", back_populates="submissions")
     student: Mapped["Student"] = relationship("Student")
+
+
+class HomeworkDeclaration(Base):
+    """A teacher saying "no homework for this class and subject today", so a
+    day without homework is a recorded fact rather than a gap."""
+
+    __tablename__ = "homework_declarations"
+    __table_args__ = (UniqueConstraint("class_id", "subject_id", "date", name="uq_homework_declaration"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    school_id: Mapped[int] = mapped_column(ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
+    class_id: Mapped[int] = mapped_column(ForeignKey("school_classes.id", ondelete="CASCADE"), nullable=False)
+    subject_id: Mapped[int] = mapped_column(ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    date: Mapped[date_] = mapped_column(Date, nullable=False)
+    declared_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

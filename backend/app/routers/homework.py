@@ -1,21 +1,23 @@
-from datetime import datetime, timezone
+from datetime import date as date_, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.dates import school_today
 from app.core.deps import ensure_school_access, get_current_user, require_feature, require_roles
 from app.core.notify import notify
 from app.core.teaching import ensure_can_grade
 from app.core.uploads import save_document_or_image
 from app.models.academics import SchoolClass, Student
-from app.models.homework import Homework, HomeworkSubmission, HomeworkSubmissionStatus
+from app.models.homework import Homework, HomeworkDeclaration, HomeworkSubmission, HomeworkSubmissionStatus
 from app.models.user import User, UserRole
 from app.schemas.homework import (
     HomeworkCreate,
     HomeworkDetailOut,
     HomeworkListItemOut,
+    HomeworkNoneIn,
     HomeworkOut,
     HomeworkReviewUpdate,
     HomeworkSubmissionOut,
@@ -101,6 +103,49 @@ def create_homework(
     db.commit()
     db.refresh(hw)
     return _list_item_out(db, hw)
+
+
+@router.post(
+    "/none",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("homework"))],
+)
+def declare_no_homework(
+    school_id: int, payload: HomeworkNoneIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    """"No homework today" for a class and subject: a recorded fact, so a day
+    without homework is not mistaken for a day nobody recorded it."""
+    ensure_school_access(db, current_user, school_id)
+    ensure_can_grade(db, current_user, payload.class_id, payload.subject_id)
+    day = payload.on or school_today(db, school_id)
+    if day > school_today(db, school_id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can only say this for today or an earlier day")
+    existing = db.query(HomeworkDeclaration).filter_by(class_id=payload.class_id, subject_id=payload.subject_id, date=day).first()
+    if existing is None:
+        db.add(HomeworkDeclaration(school_id=school_id, class_id=payload.class_id, subject_id=payload.subject_id, date=day, declared_by=current_user.id))
+        db.commit()
+
+
+@router.delete(
+    "/none",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_roles(*RECORD_ROLES)), Depends(require_feature("homework"))],
+)
+def undo_no_homework(
+    school_id: int,
+    class_id: int,
+    subject_id: int,
+    date: date_ | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ensure_school_access(db, current_user, school_id)
+    ensure_can_grade(db, current_user, class_id, subject_id)
+    day = date or school_today(db, school_id)
+    row = db.query(HomeworkDeclaration).filter_by(school_id=school_id, class_id=class_id, subject_id=subject_id, date=day).first()
+    if row is not None:
+        db.delete(row)
+        db.commit()
 
 
 @router.post(

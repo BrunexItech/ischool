@@ -39,6 +39,7 @@ from app.routers import (
     conduct,
     dashboard,
     exams,
+    feedback,
     fees,
     finance,
     grade_levels,
@@ -50,6 +51,7 @@ from app.routers import (
     lesson_plans,
     live_classes,
     meals,
+    oversight,
     notifications,
     payments,
     payroll,
@@ -111,6 +113,8 @@ app.include_router(exams.router)
 app.include_router(plans.router)
 app.include_router(lesson_plans.router)
 app.include_router(lesson_deliveries.router)
+app.include_router(oversight.router)
+app.include_router(feedback.router)
 app.include_router(leads.router)
 app.include_router(calendar_events.router)
 app.include_router(dashboard.router)

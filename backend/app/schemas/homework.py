@@ -13,6 +13,7 @@ class HomeworkCreate(BaseModel):
     instructions: str | None = None
     due_date: date
     allow_digital_submission: bool = True
+    given_on_board: bool = False
 
 
 class HomeworkOut(BaseModel):
@@ -28,6 +29,7 @@ class HomeworkOut(BaseModel):
     attachment_url: str | None
     due_date: date
     allow_digital_submission: bool
+    given_on_board: bool = False
     created_by: int | None
     created_at: datetime
 
@@ -75,3 +77,9 @@ class HomeworkForStudentOut(BaseModel):
     file_url: str | None
     score: float | None
     teacher_comment: str | None
+
+
+class HomeworkNoneIn(BaseModel):
+    class_id: int
+    subject_id: int
+    on: date | None = None
