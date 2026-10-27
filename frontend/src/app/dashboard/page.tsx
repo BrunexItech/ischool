@@ -73,6 +73,8 @@ const QUICK_LINKS = [
   { href: "/dashboard/attendance", label: "Attendance", description: "Mark today's attendance by class", icon: ClipboardCheck, roles: ["teacher", "staff"] },
   { href: "/dashboard/results", label: "Results", description: "Record scores and view grades", icon: Award, roles: ["teacher", "staff"] },
   { href: "/dashboard/fees", label: "Fees", description: "Invoices, payments, and balances", icon: Wallet, roles: ["staff", "bursar"] },
+  { href: "/dashboard/library", label: "Library", description: "Lend and take back books, and manage the catalogue", icon: BookOpenCheck, roles: ["librarian"] },
+  { href: "/dashboard/library", label: "Library", description: "Books you hold for your class, and find a book", icon: BookOpenCheck, roles: ["teacher", "student", "parent"] },
   { href: "/dashboard/transport", label: "Transport", description: "Vehicles, routes, and student assignments", icon: Bus, roles: ["staff", "transport_staff"] },
   { href: "/dashboard/transport", label: "My runs", description: "Check children on and off your vehicle", icon: Bus, roles: ["transport_attendant"] },
   { href: "/dashboard/calendar", label: "Calendar", description: "Meetings, exams, and school events", icon: CalendarDays, roles: ["teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar"] },

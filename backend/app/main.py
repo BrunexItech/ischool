@@ -48,6 +48,7 @@ from app.routers import (
     grading_bands,
     homework,
     leads,
+    library,
     ledger,
     lesson_deliveries,
     lesson_plans,
@@ -133,6 +134,7 @@ app.include_router(payroll.router)
 app.include_router(asset.router)
 app.include_router(timetable.router)
 app.include_router(approvals.router)
+app.include_router(library.router)
 app.include_router(transport_runs.router)
 app.include_router(staff_attendance.router)
 app.include_router(supervisors.router)

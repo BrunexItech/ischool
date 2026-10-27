@@ -160,7 +160,7 @@ export default function PickupDropoffPage() {
                   <TableCell>{l.person_name}</TableCell>
                   <TableCell>{l.notes ?? "—"}</TableCell>
                   <TableCell className="text-right">
-                    {(user?.role === "head_of_institution" || user?.role === "super_admin" || user?.role === "group_principal") && (
+                    {user?.role === "super_admin" && (
                       <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(l.id)}><Trash2 /></Button>
                     )}
                   </TableCell>

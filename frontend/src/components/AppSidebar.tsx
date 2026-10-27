@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   GraduationCap,
   Library,
+  BookMarked,
   LayoutDashboard,
   Users,
   Users2,
@@ -100,6 +101,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/students", label: "Students", icon: Users, roles: ["head_of_institution", "teacher", "staff", "group_principal", "secretary"] },
       { href: "/dashboard/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["head_of_institution", "teacher", "staff", "group_principal", "secretary"] },
       { href: "/dashboard/results", label: "Grading", icon: Award, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
+      { href: "/dashboard/library", label: "Library", icon: BookMarked, roles: ["head_of_institution", "group_principal", "librarian", "teacher", "staff", "student", "parent"] },
       { href: "/dashboard/exams", label: "Exams", icon: FileText, roles: ["head_of_institution", "teacher", "staff", "group_principal"] },
       { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["head_of_institution", "teacher", "staff", "bursar", "group_principal"] },
       { href: "/dashboard/academic-terms", label: "Academic Terms", icon: CalendarRange, roles: ["head_of_institution", "group_principal", "secretary"] },

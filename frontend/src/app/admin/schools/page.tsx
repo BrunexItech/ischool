@@ -44,6 +44,7 @@ const MODULE_LABELS: Record<string, string> = {
   activities: "Activities & Competitions",
   finance: "Finance",
   pickup_dropoff: "Pickup / Drop-off Log",
+  library: "Library",
   exams: "Online Exams",
   sms: "Bulk SMS",
   lesson_plans: "Lesson Plans",

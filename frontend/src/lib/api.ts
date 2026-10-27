@@ -366,6 +366,89 @@ export interface MyClass {
   attendance_marked_today: boolean;
 }
 
+export interface LibBook {
+  id: number;
+  title: string;
+  author: string | null;
+  isbn: string | null;
+  category: string | null;
+  shelf: string | null;
+  subject_name: string | null;
+  total_copies: number;
+  available: number;
+  on_loan: number;
+  lost: number;
+}
+
+export interface LibHolder {
+  loan_id: number;
+  kind: "student" | "teacher";
+  name: string;
+  class_name: string | null;
+  via_teacher: string | null;
+  due_date: string;
+  overdue: boolean;
+}
+
+export interface LibCopy {
+  id: number;
+  copy_number: string;
+  condition: string;
+  status: "available" | "on_loan" | "lost" | "withdrawn";
+  holder: LibHolder | null;
+}
+
+export interface LibBookDetail {
+  book: LibBook;
+  copies: LibCopy[];
+}
+
+export interface LibLoan {
+  id: number;
+  copy_number: string;
+  title: string;
+  author: string | null;
+  borrower_kind: "student" | "teacher";
+  borrower_name: string;
+  class_name: string | null;
+  via_teacher: string | null;
+  issued_by_name: string | null;
+  issued_at: string;
+  due_date: string;
+  returned_at: string | null;
+  overdue: boolean;
+  days_overdue: number;
+  parent_loan_id: number | null;
+  active: boolean;
+}
+
+export interface LibClassSet {
+  loan_id: number;
+  teacher_id: number;
+  teacher_name: string;
+  class_name: string | null;
+  titles: string[];
+  copies: number;
+  with_learners: number;
+  due_date: string;
+  overdue: boolean;
+  copy_numbers: string[];
+}
+
+export interface LibOverview {
+  titles: number;
+  copies: number;
+  available: number;
+  on_loan: number;
+  lost: number;
+  overdue: number;
+  borrowers_now: number;
+  class_sets: LibClassSet[];
+  overdue_loans: LibLoan[];
+  recent: LibLoan[];
+  popular: { title: string; loans: number }[];
+}
+
 export interface PeriodDraft {
   name: string;
   kind: string;
@@ -2621,6 +2704,33 @@ export const api = {
   listMyTimetable: (token: string, schoolId: number) =>
     request<MyTimetableSlot[]>(`/schools/${schoolId}/timetable/mine`, {}, token),
 
+  libBooks: (token: string, schoolId: number, q: { q?: string; category?: string; available_only?: boolean } = {}) => {
+    const p = new URLSearchParams();
+    if (q.q) p.set("q", q.q);
+    if (q.category) p.set("category", q.category);
+    if (q.available_only) p.set("available_only", "true");
+    return request<LibBook[]>(`/schools/${schoolId}/library/books?${p}`, {}, token);
+  },
+  libBook: (token: string, schoolId: number, id: number) => request<LibBookDetail>(`/schools/${schoolId}/library/books/${id}`, {}, token),
+  libAddBook: (token: string, schoolId: number, body: { title: string; author?: string; isbn?: string; category?: string; shelf?: string; copies: number; condition?: string }) =>
+    request<LibBookDetail>(`/schools/${schoolId}/library/books`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  libAddCopies: (token: string, schoolId: number, id: number, count: number) =>
+    request<LibBookDetail>(`/schools/${schoolId}/library/books/${id}/copies`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ count }) }, token),
+  libCopy: (token: string, schoolId: number, number: string) => request<LibCopy>(`/schools/${schoolId}/library/copies/${encodeURIComponent(number)}`, {}, token),
+  libIssue: (token: string, schoolId: number, body: { copy_number: string; student_id?: number; teacher_user_id?: number; for_class_id?: number; due_date?: string }) =>
+    request<LibLoan>(`/schools/${schoolId}/library/loans`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, token),
+  libReturn: (token: string, schoolId: number, loanId: number, condition = "good") =>
+    request<LibLoan>(`/schools/${schoolId}/library/loans/${loanId}/return`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ condition }) }, token),
+  libLoans: (token: string, schoolId: number, q: { state?: string; q?: string } = {}) => {
+    const p = new URLSearchParams();
+    if (q.state) p.set("state", q.state);
+    if (q.q) p.set("q", q.q);
+    return request<LibLoan[]>(`/schools/${schoolId}/library/loans?${p}`, {}, token);
+  },
+  libTeachers: (token: string, schoolId: number) => request<{ user_id: number; full_name: string }[]>(`/schools/${schoolId}/library/teachers`, {}, token),
+  libMine: (token: string, schoolId: number) => request<{ sets: LibClassSet[]; learner_loans: LibLoan[] }>(`/schools/${schoolId}/library/mine`, {}, token),
+  libMyBooks: (token: string, schoolId: number) => request<LibLoan[]>(`/schools/${schoolId}/library/my-books`, {}, token),
+  libOverview: (token: string, schoolId: number) => request<LibOverview>(`/schools/${schoolId}/library/overview`, {}, token),
   listSchoolPeriods: (token: string, schoolId: number) => request<SchoolPeriod[]>(`/schools/${schoolId}/timetable/periods`, {}, token),
   getPeriodTemplate: (token: string, schoolId: number, levelGroup: string, withPrep: boolean) =>
     request<PeriodDraft[]>(`/schools/${schoolId}/timetable/periods/template?level_group=${levelGroup}&with_prep=${withPrep}`, {}, token),

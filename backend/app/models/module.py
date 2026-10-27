@@ -36,6 +36,7 @@ MODULE_KEYS = [
     "staff_attendance",
     "homework",
     "conduct",
+    "library",
 ]
 
 
