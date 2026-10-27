@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BookMarked, BookOpen, Boxes, Bus, ClipboardCheck, ClipboardList, GraduationCap, NotebookPen, Users, Users2, UserCheck, Wallet, Wallet2, Award } from "lucide-react";
+import { AlertTriangle, BedDouble, Banknote, BookMarked, Building2, CalendarDays, MessageSquareWarning, Map as MapIcon, Megaphone, PiggyBank, ShieldCheck, Trophy, Video, FileText, Package, Medal, BookOpen, Boxes, Bus, ClipboardCheck, ClipboardList, GraduationCap, NotebookPen, Users, Users2, UserCheck, Wallet, Wallet2, Award } from "lucide-react";
 import { GroupColumn, GroupRow } from "@/lib/api";
 import { Bar, compactKes, healthTone, kes, Ring, StackBar } from "@/components/group/GroupUi";
 
@@ -15,6 +15,8 @@ export interface CardProps {
 export const MODULE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   classes: BookOpen, teachers: GraduationCap, students: Users, attendance: ClipboardCheck, staff: UserCheck, lessons: NotebookPen, homework: ClipboardList,
   results: Award, conduct: AlertTriangle, fees: Wallet, finance: Wallet2, transport: Bus, library: BookMarked, stores: Boxes, admissions: Users2,
+  security: ShieldCheck, boarding: BedDouble, complaints: MessageSquareWarning, exams: FileText, trips: MapIcon, live: Video, awards: Trophy,
+  activities: Medal, announcements: Megaphone, calendar: CalendarDays, procurement: Package, budgets: PiggyBank, payroll: Banknote, assets: Building2,
 };
 
 /** Which figure ranks the schools on each page, and which way is better. Modules with no single fair measure are not ranked. */
@@ -28,6 +30,8 @@ export const PRIMARY: Record<string, { key: string; better: "high" | "low"; labe
   finance: { key: "net_month", better: "high", label: "left over this month" },
   library: { key: "overdue", better: "low", label: "overdue books" },
   conduct: { key: "open_reports", better: "low", label: "open reports" },
+  security: { key: "open_incidents", better: "low", label: "open incidents" },
+  complaints: { key: "open", better: "low", label: "open complaints" },
 };
 
 const n = (x: number | null | undefined) => (x == null ? "—" : Math.round(x).toLocaleString());
@@ -146,7 +150,7 @@ export const CARDS: Record<string, (p: CardProps) => React.ReactNode> = {
       <div className="flex items-center gap-5">
         <Ring value={v.rate_today} size={116} stroke={11} label="In school today">
           <span className={`font-heading text-2xl font-semibold tabular-nums ${t.text}`}>{v.rate_today != null ? `${v.rate_today}%` : "—"}</span>
-          <span className="mt-1 text-[10px] text-muted-foreground">in school today</span>
+          <span className="mt-1 text-[10px] text-muted-foreground">in school</span>
         </Ring>
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div><div className="flex justify-between text-xs"><span className="text-muted-foreground">This week</span><span className={`font-semibold tabular-nums ${w.text}`}>{v.rate_week != null ? `${v.rate_week}%` : "—"}</span></div><Bar value={v.rate_week} label="This week" /></div>
@@ -322,6 +326,155 @@ export const CARDS: Record<string, (p: CardProps) => React.ReactNode> = {
     );
   },
 };
+
+
+const tone = (n: number, warnAt = 1, badAt = 5) => (n >= badAt ? "text-red-700 dark:text-red-400" : n >= warnAt ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400");
+
+Object.assign(CARDS, {
+  security: ({ row }: CardProps) => {
+    const v = row.values as V;
+    const open = v.open_incidents ?? 0;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-end justify-between gap-3"><Big value={n(open)} label="incidents still open" tone={tone(open, 1, 3)} /><Big value={n(v.visitors_today)} label="visitors today" /></div>
+        <div className="flex flex-wrap gap-1.5">{(v.serious_open ?? 0) > 0 ? <Chip tone="bad">{v.serious_open} serious and open</Chip> : <Chip tone="good">Nothing serious open</Chip>}<Chip tone="info">{n(v.on_site)} still on site</Chip><Chip>{n(v.incidents_week)} this week</Chip></div>
+      </div>
+    );
+  },
+  boarding: ({ row, color }: CardProps) => {
+    const v = row.values as V;
+    const outPct = v.boarders ? Math.round(((v.out_now ?? 0) / v.boarders) * 100) : null;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-5">
+          <Ring value={outPct} size={92} stroke={9} color={color} label="Boarders out on exeat"><span className="text-xl font-semibold tabular-nums">{n(v.out_now)}</span><span className="mt-0.5 text-[10px] text-muted-foreground">out on exeat</span></Ring>
+          <Big value={n(v.boarders)} label="boarders" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">{(v.exeats_waiting ?? 0) > 0 ? <Chip tone="warn">{v.exeats_waiting} exeat{v.exeats_waiting === 1 ? "" : "s"} waiting</Chip> : <Chip tone="good">No exeats waiting</Chip>}<Chip tone="info">{n(v.sick_bay_week)} sick bay this week</Chip>{(v.open_incidents ?? 0) > 0 && <Chip tone="bad">{v.open_incidents} open incident{v.open_incidents === 1 ? "" : "s"}</Chip>}</div>
+      </div>
+    );
+  },
+  complaints: ({ row }: CardProps) => {
+    const v = row.values as V;
+    const open = v.open ?? 0;
+    const age = v.oldest_days;
+    return (
+      <div className="flex flex-col gap-4">
+        <Big value={n(open)} label="complaints waiting" tone={tone(open, 1, 6)} />
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Oldest has waited</span><span className={`font-semibold tabular-nums ${age != null ? tone(age, 3, 8) : ""}`}>{age != null ? `${age} day${age === 1 ? "" : "s"}` : "none waiting"}</span></div>
+          <span className="block h-2 overflow-hidden rounded-full bg-muted"><span className={`block h-full rounded-full transition-all duration-700 ${age != null && age >= 8 ? "bg-red-500" : age != null && age >= 3 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${age == null ? 0 : Math.min(100, (age / 14) * 100)}%` }} /></span>
+        </div>
+        <div className="flex flex-wrap gap-1.5"><Chip tone="info">{n(v.raised_week)} raised this week</Chip><Chip tone="good">{n(v.answered_week)} answered</Chip></div>
+      </div>
+    );
+  },
+  exams: ({ row }: CardProps) => {
+    const v = row.values as V;
+    return (
+      <div className="flex flex-col gap-4">
+        <Big value={n(v.sat_this_week)} label="papers sat this week" />
+        <div className="flex flex-col gap-2"><StackBar label="Exams" height={12} parts={[{ value: v.published ?? 0, color: "#10B981", label: "published" }, { value: v.upcoming ?? 0, color: "#0E7490", label: "opening soon" }, { value: v.drafts ?? 0, color: "#94A3B8", label: "drafts" }]} /><Legend items={[{ color: "#10B981", label: "published", value: n(v.published) }, { color: "#0E7490", label: "opening soon", value: n(v.upcoming) }, { color: "#94A3B8", label: "drafts", value: n(v.drafts) }]} /></div>
+      </div>
+    );
+  },
+  trips: ({ row }: CardProps) => {
+    const v = row.values as V;
+    const steps = [["Awaiting", v.awaiting, "#D97706"], ["Coming", v.coming, "#0E7490"], ["On the road", v.on_road, "#059669"], ["Done", v.completed, "#64748B"]] as const;
+    return (
+      <div className="grid grid-cols-4 gap-1.5" role="img" aria-label={steps.map(([l, c]) => `${c ?? 0} ${l}`).join(", ")}>
+        {steps.map(([label, count, color]) => (
+          <div key={label} className="flex flex-col items-center gap-1 rounded-xl border px-1 py-3 text-center"><span className="font-heading text-2xl leading-none font-semibold tabular-nums" style={{ color }}>{n(count)}</span><span className="text-[10px] leading-tight text-muted-foreground">{label}</span></div>
+        ))}
+      </div>
+    );
+  },
+  live: ({ row }: CardProps) => {
+    const v = row.values as V;
+    const pct = v.scheduled ? Math.round(((v.held ?? 0) / v.scheduled) * 100) : null;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-5">
+          <Ring value={pct} size={92} stroke={9} label="Lessons held"><span className="text-xl font-semibold tabular-nums">{n(v.held)}/{n(v.scheduled)}</span><span className="mt-0.5 text-[10px] text-muted-foreground">held</span></Ring>
+          <p className="text-sm text-muted-foreground">online lessons this week</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">{(v.live_now ?? 0) > 0 && <Chip tone="good">{v.live_now} live now</Chip>}{(v.never_started ?? 0) > 0 ? <Chip tone="warn">{v.never_started} never started</Chip> : <Chip tone="good">None missed</Chip>}</div>
+      </div>
+    );
+  },
+  awards: ({ row, color }: CardProps) => {
+    const v = row.values as V;
+    const share = v.this_term ? Math.round(((v.this_week ?? 0) / v.this_term) * 100) : 0;
+    return (
+      <div className="flex flex-col gap-4">
+        <Big value={n(v.this_term)} label="awards this term" />
+        <div className="flex flex-col gap-1.5"><div className="flex justify-between text-xs"><span className="text-muted-foreground">Given this week</span><span className="font-semibold tabular-nums">{n(v.this_week)}</span></div><span className="block h-2 overflow-hidden rounded-full bg-muted"><span className="block h-full rounded-full transition-all duration-700" style={{ width: `${share}%`, background: color }} /></span></div>
+        <Chip tone="info">{n(v.learners)} learners recognised</Chip>
+      </div>
+    );
+  },
+  activities: ({ row }: CardProps) => {
+    const v = row.values as V;
+    return <div className="grid grid-cols-2 gap-3"><div className="rounded-xl border p-3"><Big value={n(v.upcoming)} label="coming up" /></div><div className="rounded-xl border p-3"><Big value={n(v.this_term)} label="held this term" /></div></div>;
+  },
+  announcements: ({ row }: CardProps) => {
+    const v = row.values as V;
+    const d = v.days_since_last;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-end justify-between gap-3"><Big value={n(v.this_week)} label="sent this week" /><Big value={n(v.total)} label="in all" /></div>
+        <div className="flex flex-col gap-1.5"><div className="flex justify-between text-xs"><span className="text-muted-foreground">Last one</span><span className={`font-semibold tabular-nums ${d != null ? tone(d, 8, 22) : ""}`}>{d == null ? "none yet" : d === 0 ? "today" : `${d} day${d === 1 ? "" : "s"} ago`}</span></div><span className="block h-2 overflow-hidden rounded-full bg-muted"><span className={`block h-full rounded-full ${d != null && d >= 22 ? "bg-red-500" : d != null && d >= 8 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${d == null ? 0 : Math.max(6, 100 - Math.min(100, (d / 30) * 100))}%` }} /></span></div>
+      </div>
+    );
+  },
+  calendar: ({ row }: CardProps) => {
+    const v = row.values as V;
+    return <div className="grid grid-cols-2 gap-3"><div className="rounded-xl border p-3"><Big value={n(v.next_7)} label="in the next 7 days" /></div><div className="rounded-xl border p-3"><Big value={n(v.next_30)} label="in the next 30 days" /></div></div>;
+  },
+  procurement: ({ row }: CardProps) => {
+    const v = row.values as V;
+    return (
+      <div className="flex flex-col gap-4">
+        <div><p className="font-heading text-4xl leading-none font-semibold tabular-nums">{compactKes(v.on_order ?? 0)}</p><p className="mt-1 text-xs text-muted-foreground">on order across {n(v.orders_open)} order{v.orders_open === 1 ? "" : "s"}</p></div>
+        <div className="flex flex-wrap gap-1.5">{(v.requests_waiting ?? 0) > 0 ? <Chip tone="warn">{v.requests_waiting} request{v.requests_waiting === 1 ? "" : "s"} awaiting approval</Chip> : <Chip tone="good">No requests waiting</Chip>}{(v.late_deliveries ?? 0) > 0 && <Chip tone="bad">{v.late_deliveries} late deliver{v.late_deliveries === 1 ? "y" : "ies"}</Chip>}</div>
+      </div>
+    );
+  },
+  budgets: ({ row }: CardProps) => {
+    const v = row.values as V;
+    const used = v.used_pct;
+    const t = used == null ? healthTone(null) : healthTone(100 - used);
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-5">
+          <Ring value={used} size={96} stroke={10} color={t.hex} label="Budget used"><span className={`font-heading text-2xl font-semibold tabular-nums ${t.text}`}>{used != null ? `${used}%` : "—"}</span><span className="mt-0.5 text-[10px] text-muted-foreground">of budget used</span></Ring>
+          <div className="min-w-0 text-sm"><p className="font-semibold tabular-nums">{compactKes(v.budget ?? 0)} <span className="font-normal text-muted-foreground">budgeted</span></p><p className="font-semibold tabular-nums">{compactKes(Math.abs(v.left ?? 0))} <span className="font-normal text-muted-foreground">{(v.left ?? 0) < 0 ? "over" : "left"}</span></p></div>
+        </div>
+        <div className="flex flex-col gap-2"><StackBar label="Budget" height={10} parts={[{ value: v.spent ?? 0, color: "#8B1A1D", label: "spent" }, { value: v.committed ?? 0, color: "#FFA819", label: "committed" }, { value: Math.max(0, v.left ?? 0), color: "#CBD5E1", label: "left" }]} /><Legend items={[{ color: "#8B1A1D", label: "spent", value: compactKes(v.spent ?? 0) }, { color: "#FFA819", label: "committed", value: compactKes(v.committed ?? 0) }]} /></div>
+      </div>
+    );
+  },
+  payroll: ({ row, color }: CardProps) => {
+    const v = row.values as V;
+    if (v.net == null) return <p className="text-sm text-muted-foreground">No pay run has been made yet.</p>;
+    const pct = v.gross ? Math.round(((v.net ?? 0) / v.gross) * 100) : 0;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-end justify-between gap-3"><div><p className="font-heading text-4xl leading-none font-semibold tabular-nums">{compactKes(v.net)}</p><p className="mt-1 text-xs text-muted-foreground">paid out, net</p></div><Big value={n(v.staff_paid)} label="staff paid" /></div>
+        <div className="flex flex-col gap-1.5"><span className="block h-2.5 overflow-hidden rounded-full bg-muted"><span className="block h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color }} /></span><div className="flex justify-between text-[11px] text-muted-foreground tabular-nums"><span>{pct}% take-home</span><span>{compactKes(v.gross ?? 0)} gross</span></div></div>
+      </div>
+    );
+  },
+  assets: ({ row }: CardProps) => {
+    const v = row.values as V;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-5"><Ring value={v.worn_pct} size={92} stroke={9} color="#B45309" label="Worn out"><span className="text-xl font-semibold tabular-nums">{v.worn_pct != null ? `${v.worn_pct}%` : "—"}</span><span className="mt-0.5 text-[10px] text-muted-foreground">worn out</span></Ring><div className="min-w-0"><p className="font-heading text-2xl leading-none font-semibold tabular-nums">{compactKes(v.book_value ?? 0)}</p><p className="mt-1 text-xs text-muted-foreground">worth now of {compactKes(v.cost ?? 0)} bought</p></div></div>
+        <Chip tone="info">{n(v.assets)} asset{v.assets === 1 ? "" : "s"} in use</Chip>
+      </div>
+    );
+  },
+} as Record<string, (p: CardProps) => React.ReactNode>);
 
 export const fallbackCard = ({ row, columns }: CardProps) => (
   <dl className="grid grid-cols-2 gap-x-4 gap-y-3">

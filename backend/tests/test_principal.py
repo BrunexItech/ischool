@@ -232,3 +232,41 @@ def test_the_overview_opens_fast_and_the_attention_comes_separately(client, db_s
     assert set(slow["per_school"]) == {str(school.id), str(other_school.id)}
     assert slow["total"] == sum(v["attention"] for v in slow["per_school"].values())
     assert isinstance(slow["items"], list) and isinstance(slow["spotlight"], list)
+
+
+def test_the_principal_can_look_at_attendance_on_a_chosen_day(client, db_session, school):
+    from datetime import timedelta
+
+    from app.core.dates import school_today
+
+    d = _setup(db_session, school)
+    _enable_all(db_session, school)
+    h = _principal(db_session, client, [school])
+    today = school_today(db_session, school.id)
+    now = client.get("/group/modules/attendance", headers=h).json()
+    assert now["rows"][0]["values"]["rate_today"] == 100.0 and now["date"] is None
+    past = client.get(f"/group/modules/attendance?on={today - timedelta(days=10)}", headers=h).json()
+    assert past["rows"][0]["values"]["rate_today"] is None and past["date"] == str(today - timedelta(days=10))
+    future = client.get(f"/group/modules/attendance?on={today + timedelta(days=5)}", headers=h).json()
+    assert future["rows"][0]["values"]["rate_today"] == 100.0       # a future day shows today instead
+
+
+def test_security_and_boarding_show_in_the_principals_activity_and_comparison(client, db_session, school):
+    from app.models.academics import Student
+    from app.models.boarding import BoardingHouse, Exeat, ExeatStatus
+    from app.models.security import IncidentSeverity, SecurityIncident, SecurityIncidentStatus
+    from datetime import date
+
+    _enable_all(db_session, school)
+    kid = Student(school_id=school.id, admission_number="B-1", first_name="Boa", last_name="Rder")
+    db_session.add_all([kid, SecurityIncident(school_id=school.id, type="Trespass", location="Main gate", severity=IncidentSeverity.HIGH, description="d", action_taken="a", status=SecurityIncidentStatus.OPEN)])
+    db_session.flush()
+    db_session.add(Exeat(school_id=school.id, student_id=kid.id, from_date=date.today(), to_date=date.today(), reason="Family event", pickup_name="Parent", status=ExeatStatus.PENDING))
+    db_session.commit()
+    h = _principal(db_session, client, [school])
+    sec = client.get("/group/modules/security", headers=h).json()["rows"][0]["values"]
+    assert sec["open_incidents"] == 1 and sec["serious_open"] == 1
+    brd = client.get("/group/modules/boarding", headers=h).json()["rows"][0]["values"]
+    assert brd["exeats_waiting"] == 1
+    kinds = {e["kind"] for e in client.get("/group/activity", headers=h).json()["events"]}
+    assert {"security", "boarding"} <= kinds

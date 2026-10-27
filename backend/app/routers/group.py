@@ -46,9 +46,9 @@ def module_list():
 
 
 @router.get("/modules/{key}", response_model=GroupComparison)
-def module_comparison(key: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """One module, every attached school side by side, with a group total."""
-    result = compare_module(db, schools_of(db, user), key)
+def module_comparison(key: str, on: date | None = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """One module, every attached school side by side, with a group total. `on` looks at a past day (attendance and staff attendance are day figures)."""
+    result = compare_module(db, schools_of(db, user), key, on)
     if result is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such module")
     return result

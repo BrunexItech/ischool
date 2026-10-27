@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from datetime import date as DateT
 
 from pydantic import BaseModel
 
@@ -40,6 +41,7 @@ class GroupComparison(BaseModel):
     rows: list[GroupRow]
     group: dict[str, float | int | None]
     marks: dict[str, dict[str, str]]
+    date: DateT | None = None
 
 
 class GroupSchoolCard(BaseModel):

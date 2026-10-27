@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, Crown, LayoutGrid, Table2, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Crown, LayoutGrid, Table2, TriangleAlert } from "lucide-react";
 import { api, GroupColumn, GroupComparison } from "@/lib/api";
+import { addDaysStr, localDateStr } from "@/lib/dates";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { CARDS, fallbackCard, MODULE_ICON, NotInUse, PRIMARY } from "@/components/group/GroupModuleCards";
 import { formatValue, GroupLoader, schoolColor, useGroupMode, useOpenSchool } from "@/components/group/GroupUi";
@@ -16,6 +18,10 @@ export function GroupComparisonView({ moduleKey }: { moduleKey: string }) {
   const { token } = useAuth();
   const { ready } = useGroupMode();
   const openSchool = useOpenSchool();
+  const today = localDateStr();
+  const [day, setDay] = useState(today);
+  const byDay = moduleKey === "attendance" || moduleKey === "staff";
+  const stateKey = `${moduleKey}|${byDay ? day : ""}`;
   const [state, setState] = useState<{ key: string; value: GroupComparison | null } | null>(null);
   const [view, setView] = useState<"cards" | "table">("cards");
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
@@ -24,13 +30,13 @@ export function GroupComparisonView({ moduleKey }: { moduleKey: string }) {
   useEffect(() => {
     if (!token || !ready) return;
     let cancelled = false;
-    api.getGroupComparison(token, moduleKey).then((value) => !cancelled && setState({ key: moduleKey, value })).catch(() => !cancelled && setState({ key: moduleKey, value: null }));
+    api.getGroupComparison(token, moduleKey, byDay && day !== today ? day : undefined).then((value) => !cancelled && setState({ key: stateKey, value })).catch(() => !cancelled && setState({ key: stateKey, value: null }));
     return () => {
       cancelled = true;
     };
-  }, [token, ready, moduleKey, version]);
+  }, [token, ready, moduleKey, version, byDay, day, today, stateKey]);
 
-  const data = state && state.key === moduleKey ? state.value : undefined;
+  const data = state && state.key === stateKey ? state.value : undefined;
   const primary = PRIMARY[moduleKey];
 
   // Rank the schools on the one figure that fairly ranks them, when this area has one.
@@ -60,7 +66,7 @@ export function GroupComparisonView({ moduleKey }: { moduleKey: string }) {
     return list;
   }, [data, sort]);
 
-  if (data === undefined) return <GroupLoader label="Comparing your schools..." />;
+  if (data === undefined) return <GroupLoader label={byDay ? "Looking at that day..." : "Comparing your schools..."} />;
   if (data === null) return <ErrorBox message="We couldn't load this comparison just now." onRetry={() => { setState(null); setVersion((v) => v + 1); }} />;
 
   const Icon = MODULE_ICON[moduleKey] ?? LayoutGrid;
@@ -81,7 +87,7 @@ export function GroupComparisonView({ moduleKey }: { moduleKey: string }) {
         <span className="pointer-events-none absolute -bottom-16 left-1/3 size-48 rounded-full bg-white/5" aria-hidden />
         <div className="relative flex flex-col gap-5">
           <div>
-            <p className="text-xs font-semibold tracking-[0.14em] text-white/70 uppercase">All Schools</p>
+            <p className="text-xs font-semibold tracking-[0.14em] text-white/70 uppercase">All Schools{byDay ? ` · ${day === today ? "today" : new Date(day + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : ""}</p>
             <h1 className="font-heading text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">{data.title}</h1>
             <p className="mt-1 max-w-xl text-sm text-white/80">{data.blurb}</p>
           </div>
@@ -97,6 +103,14 @@ export function GroupComparisonView({ moduleKey }: { moduleKey: string }) {
       </header>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {byDay && (
+          <div className="flex items-center gap-1.5" role="group" aria-label="Choose the day">
+            <Button variant="outline" size="icon" className="size-10" aria-label="Previous day" onClick={() => setDay((d) => addDaysStr(d, -1))}><ChevronLeft /></Button>
+            <Input type="date" value={day} max={today} onChange={(e) => e.target.value && setDay(e.target.value > today ? today : e.target.value)} aria-label="Date" className="h-10 w-40" />
+            <Button variant="outline" size="icon" className="size-10" aria-label="Next day" disabled={day >= today} onClick={() => setDay((d) => addDaysStr(d, 1))}><ChevronRight /></Button>
+            {day !== today && <Button variant="ghost" className="h-10" onClick={() => setDay(today)}>Today</Button>}
+          </div>
+        )}
         <p className="text-sm text-muted-foreground">{primary && ranked.rank.size > 1 ? <>Ranked by <strong className="font-semibold text-foreground">{primary.label}</strong>.</> : <>{data.rows.length} school{data.rows.length === 1 ? "" : "s"} side by side.</>}</p>
         <div role="group" aria-label="How to show the schools" className="inline-flex rounded-lg border bg-card p-0.5">
           {([["cards", "Cards", LayoutGrid], ["table", "Table", Table2]] as const).map(([k, label, I]) => (

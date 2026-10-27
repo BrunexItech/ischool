@@ -289,6 +289,191 @@ def m_staff(db, sid, today):
     }
 
 
+
+# --- The rest of the school: safety, boarding, complaints, exams, trips and the money side ---
+
+
+def _since(db, sid, d):
+    return _utc_range(db, sid, d, d)[0]
+
+
+def m_security(db, sid, today):
+    from app.models.security import IncidentSeverity, SecurityIncident, SecurityIncidentStatus, VisitorLog
+
+    lo, hi = _utc_range(db, sid, today, today)
+    week = _since(db, sid, week_start(today))
+    open_ = db.query(SecurityIncident).filter(SecurityIncident.school_id == sid, SecurityIncident.status == SecurityIncidentStatus.OPEN)
+    return {
+        "visitors_today": db.query(VisitorLog).filter(VisitorLog.school_id == sid, VisitorLog.signed_in_at >= lo, VisitorLog.signed_in_at < hi).count(),
+        "on_site": db.query(VisitorLog).filter(VisitorLog.school_id == sid, VisitorLog.signed_out_at.is_(None), VisitorLog.signed_in_at >= lo).count(),
+        "open_incidents": open_.count(),
+        "serious_open": open_.filter(SecurityIncident.severity == IncidentSeverity.HIGH).count(),
+        "incidents_week": db.query(SecurityIncident).filter(SecurityIncident.school_id == sid, SecurityIncident.created_at >= week).count(),
+    }
+
+
+def m_boarding(db, sid, today):
+    from app.models.boarding import BoardingAssignment, BoardingIncident, Exeat, ExeatStatus, IncidentStatus, SickBayVisit
+
+    week = _since(db, sid, week_start(today))
+    return {
+        "boarders": db.query(BoardingAssignment).filter_by(school_id=sid).count(),
+        "exeats_waiting": db.query(Exeat).filter_by(school_id=sid, status=ExeatStatus.PENDING).count(),
+        "out_now": db.query(Exeat).filter_by(school_id=sid, status=ExeatStatus.OUT).count(),
+        "sick_bay_week": db.query(SickBayVisit).filter(SickBayVisit.school_id == sid, SickBayVisit.created_at >= week).count(),
+        "open_incidents": db.query(BoardingIncident).filter_by(school_id=sid, status=IncidentStatus.OPEN).count(),
+    }
+
+
+def m_complaints(db, sid, today):
+    from app.models.complaint import Complaint, ComplaintStatus
+
+    week = _since(db, sid, week_start(today))
+    open_ = db.query(Complaint).filter_by(school_id=sid, status=ComplaintStatus.OPEN).all()
+    oldest = max(((today - c.created_at.date()).days for c in open_ if c.created_at), default=None)
+    return {
+        "open": len(open_),
+        "raised_week": db.query(Complaint).filter(Complaint.school_id == sid, Complaint.created_at >= week).count(),
+        "answered_week": db.query(Complaint).filter(Complaint.school_id == sid, Complaint.responded_at >= week).count(),
+        "oldest_days": oldest,
+    }
+
+
+def m_exams(db, sid, today):
+    from app.models.exam import Exam, ExamSubmission
+
+    now = datetime.now(timezone.utc)
+    week = _since(db, sid, week_start(today))
+    exams = db.query(Exam).filter_by(school_id=sid).all()
+    ids = [e.id for e in exams]
+    return {
+        "published": sum(1 for e in exams if e.is_published),
+        "upcoming": sum(1 for e in exams if e.opens_at and e.opens_at > now),
+        "drafts": sum(1 for e in exams if not e.is_published),
+        "sat_this_week": db.query(ExamSubmission).filter(ExamSubmission.exam_id.in_(ids or [-1]), ExamSubmission.submitted_at >= week).count(),
+    }
+
+
+def m_trips(db, sid, today):
+    from app.models.trip import Trip, TripStatus
+
+    ts = db.query(Trip).filter_by(school_id=sid).all()
+    return {
+        "awaiting": sum(1 for t in ts if t.status == TripStatus.REQUESTED),
+        "coming": sum(1 for t in ts if t.status == TripStatus.APPROVED and t.start_date >= today),
+        "on_road": sum(1 for t in ts if t.status == TripStatus.IN_PROGRESS),
+        "completed": sum(1 for t in ts if t.status == TripStatus.COMPLETED),
+    }
+
+
+def m_live(db, sid, today):
+    from app.models.live_classes import LiveClass, LiveClassStatus
+
+    lo = _since(db, sid, week_start(today))
+    rows = db.query(LiveClass).filter(LiveClass.school_id == sid, LiveClass.scheduled_start >= lo).all()
+    return {
+        "scheduled": len(rows),
+        "held": sum(1 for r in rows if r.status == LiveClassStatus.ENDED),
+        "live_now": sum(1 for r in rows if r.status == LiveClassStatus.LIVE),
+        "never_started": sum(1 for r in rows if r.status == LiveClassStatus.SCHEDULED and r.scheduled_start < datetime.now(timezone.utc) - timedelta(hours=3)),
+    }
+
+
+def m_awards(db, sid, today):
+    from app.models.award import Award
+
+    term = current_term(db, sid)
+    since = term.start_date if term and term.start_date else today - timedelta(days=90)
+    q = db.query(Award).filter(Award.school_id == sid)
+    return {
+        "this_week": q.filter(Award.date_awarded >= week_start(today)).count(),
+        "this_term": q.filter(Award.date_awarded >= since).count(),
+        "learners": q.filter(Award.date_awarded >= since, Award.student_id.isnot(None)).distinct(Award.student_id).count(),
+    }
+
+
+def m_activities(db, sid, today):
+    from app.models.activity import Activity
+
+    term = current_term(db, sid)
+    since = term.start_date if term and term.start_date else today - timedelta(days=90)
+    q = db.query(Activity).filter_by(school_id=sid)
+    return {
+        "upcoming": q.filter(Activity.date >= today).count(),
+        "this_term": q.filter(Activity.date >= since, Activity.date <= today).count(),
+    }
+
+
+def m_announcements(db, sid, today):
+    from app.models.communication import Announcement
+
+    week = _since(db, sid, week_start(today))
+    last = db.query(func.max(Announcement.created_at)).filter(Announcement.school_id == sid).scalar()
+    return {
+        "this_week": db.query(Announcement).filter(Announcement.school_id == sid, Announcement.created_at >= week).count(),
+        "total": db.query(Announcement).filter_by(school_id=sid).count(),
+        "days_since_last": (today - last.astimezone(school_tz(db, sid)).date()).days if last else None,
+    }
+
+
+def m_calendar(db, sid, today):
+    from app.models.calendar_event import CalendarEvent
+
+    q = db.query(CalendarEvent).filter(CalendarEvent.school_id == sid, CalendarEvent.start_date >= today)
+    return {
+        "next_7": q.filter(CalendarEvent.start_date <= today + timedelta(days=7)).count(),
+        "next_30": q.filter(CalendarEvent.start_date <= today + timedelta(days=30)).count(),
+    }
+
+
+def m_procurement(db, sid, today):
+    from app.models.procurement import PurchaseOrder, PurchaseOrderStatus, PurchaseRequisition, RequisitionStatus
+
+    issued = db.query(PurchaseOrder).filter_by(school_id=sid, status=PurchaseOrderStatus.ISSUED).all()
+    return {
+        "requests_waiting": db.query(PurchaseRequisition).filter_by(school_id=sid, status=RequisitionStatus.SUBMITTED).count(),
+        "orders_open": len(issued),
+        "on_order": round(sum(float(o.total) for o in issued), 2),
+        "late_deliveries": sum(1 for o in issued if o.delivery_date < today),
+    }
+
+
+def m_assets(db, sid, today):
+    from app.models.asset import AssetStatus, FixedAsset
+
+    rows = db.query(FixedAsset).filter_by(school_id=sid, status=AssetStatus.ACTIVE).all()
+    cost = sum(float(a.cost) for a in rows)
+    dep = sum(float(a.accumulated_depreciation) for a in rows)
+    return {"assets": len(rows), "cost": round(cost, 2), "book_value": round(cost - dep, 2), "worn_pct": _pct(dep, cost), "_dep": round(dep, 2), "_cost": round(cost, 2)}
+
+
+def m_budgets(db, sid, today):
+    from app.models.budget import Budget
+    from app.routers.budget import _actual, _committed
+
+    rows = db.query(Budget).filter_by(school_id=sid, year=today.year).all()
+    total = sum(float(b.amount) for b in rows)
+    actual = sum(_actual(db, sid, b.account_id, today.year) for b in rows)
+    committed = sum(_committed(db, sid, b.account_id) for b in rows)
+    return {
+        "budget": round(total, 2), "spent": round(actual, 2), "committed": round(committed, 2), "left": round(total - actual - committed, 2),
+        "used_pct": _pct(actual + committed, total), "_used": round(actual + committed, 2), "_budget": round(total, 2),
+    }
+
+
+def m_payroll(db, sid, today):
+    from app.models.payroll import PayRun, PayslipLine
+
+    run = db.query(PayRun).filter_by(school_id=sid).order_by(PayRun.period.desc()).first()
+    if run is None:
+        return {"staff_paid": None, "gross": None, "net": None, "draft_runs": 0}
+    lines = db.query(PayslipLine).filter_by(pay_run_id=run.id).all()
+    return {
+        "staff_paid": len(lines), "gross": round(sum(float(l.gross) for l in lines), 2), "net": round(sum(float(l.net) for l in lines), 2),
+        "draft_runs": 0,
+    }
+
+
 R = lambda n, d: ("ratio", n, d)  # noqa: E731
 
 MODULES: dict[str, Module] = {m.key: m for m in [
@@ -389,6 +574,86 @@ MODULES: dict[str, Module] = {m.key: m for m in [
         Col("enrolled", "Enrolled", "count", "high"),
         Col("lost", "Lost", "count", "low"),
     ], m_admissions),
+    Module("security", "Security", "Visitors on site and incidents at the gate.", "/dashboard/security", "security", [
+        Col("visitors_today", "Visitors today", "count"),
+        Col("on_site", "Still on site", "count"),
+        Col("open_incidents", "Open incidents", "count", "low"),
+        Col("serious_open", "Serious and open", "count", "low"),
+        Col("incidents_week", "Incidents this week", "count"),
+    ], m_security),
+    Module("boarding", "Boarding", "Boarders, exeats and sick bay.", "/dashboard/boarding", "boarding", [
+        Col("boarders", "Boarders", "count"),
+        Col("exeats_waiting", "Exeats awaiting approval", "count", "low"),
+        Col("out_now", "Out on exeat", "count"),
+        Col("sick_bay_week", "Sick bay visits this week", "count"),
+        Col("open_incidents", "Open incidents", "count", "low"),
+    ], m_boarding),
+    Module("complaints", "Complaints", "Concerns raised by parents, learners and teachers.", "/dashboard/complaints", None, [
+        Col("open", "Open", "count", "low"),
+        Col("raised_week", "Raised this week", "count"),
+        Col("answered_week", "Answered this week", "count", "high"),
+        Col("oldest_days", "Oldest waiting (days)", "count", "low"),
+    ], m_complaints),
+    Module("exams", "Online exams", "Exams published and sat on the system.", "/dashboard/exams", "exams", [
+        Col("published", "Published", "count"),
+        Col("upcoming", "Opening soon", "count"),
+        Col("drafts", "Still drafts", "count"),
+        Col("sat_this_week", "Sat this week", "count"),
+    ], m_exams),
+    Module("trips", "Trips", "School trips waiting, coming and out.", "/dashboard/trips", "trips", [
+        Col("awaiting", "Awaiting a decision", "count", "low"),
+        Col("coming", "Approved and coming", "count"),
+        Col("on_road", "On the road now", "count"),
+        Col("completed", "Completed", "count"),
+    ], m_trips),
+    Module("live", "Live classes", "Online lessons scheduled and held this week.", "/dashboard/live-classes", "live_classes", [
+        Col("scheduled", "Scheduled this week", "count"),
+        Col("held", "Held", "count", "high"),
+        Col("live_now", "Live now", "count"),
+        Col("never_started", "Never started", "count", "low"),
+    ], m_live),
+    Module("awards", "Awards", "Recognition given to learners, classes and staff.", "/dashboard/awards", "awards", [
+        Col("this_week", "This week", "count"),
+        Col("this_term", "This term", "count", "high"),
+        Col("learners", "Learners recognised", "count", "high"),
+    ], m_awards),
+    Module("activities", "Activities", "Clubs, sports and competitions.", "/dashboard/activities", "activities", [
+        Col("upcoming", "Coming up", "count"),
+        Col("this_term", "Held this term", "count", "high"),
+    ], m_activities),
+    Module("announcements", "Announcements", "How often the school speaks to its families.", "/dashboard/announcements", "communication", [
+        Col("this_week", "This week", "count"),
+        Col("total", "In all", "count"),
+        Col("days_since_last", "Days since the last", "count", "low"),
+    ], m_announcements),
+    Module("calendar", "Calendar", "What is coming up on the school calendar.", "/dashboard/calendar", "school_calendar", [
+        Col("next_7", "In the next 7 days", "count"),
+        Col("next_30", "In the next 30 days", "count"),
+    ], m_calendar),
+    Module("procurement", "Procurement", "Purchase requests and orders in progress.", "/dashboard/procurement", "erp_finance", [
+        Col("requests_waiting", "Requests awaiting approval", "count", "low"),
+        Col("orders_open", "Orders open", "count"),
+        Col("on_order", "Value on order", "money"),
+        Col("late_deliveries", "Late deliveries", "count", "low"),
+    ], m_procurement),
+    Module("budgets", "Budgets", "Spending against this year's budget.", "/dashboard/budgets", "erp_finance", [
+        Col("budget", "Budget", "money"),
+        Col("spent", "Spent", "money"),
+        Col("committed", "Committed", "money"),
+        Col("used_pct", "Used so far", "percent", None, total=R("_used", "_budget")),
+        Col("left", "Left", "money", "high"),
+    ], m_budgets),
+    Module("payroll", "Payroll", "The latest pay run at each school.", "/dashboard/payroll", "erp_finance", [
+        Col("staff_paid", "Staff paid", "count"),
+        Col("gross", "Gross pay", "money"),
+        Col("net", "Net pay", "money"),
+    ], m_payroll),
+    Module("assets", "Fixed assets", "What each school owns and what it is worth now.", "/dashboard/assets", "erp_finance", [
+        Col("assets", "Assets", "count"),
+        Col("cost", "Bought for", "money"),
+        Col("book_value", "Worth now", "money"),
+        Col("worn_pct", "Worn out", "percent", None, total=R("_dep", "_cost")),
+    ], m_assets),
 ]}
 
 ORDER = list(MODULES)
@@ -419,16 +684,17 @@ def _group_total(columns: list[Col], rows: list[dict]) -> dict:
     return out
 
 
-def compare_module(db: Session, schools: list[School], key: str) -> dict | None:
+def compare_module(db: Session, schools: list[School], key: str, on: date | None = None) -> dict | None:
     mod = MODULES.get(key)
     if mod is None:
         return None
     rows = []
     for school in schools:
-        today = school_today(db, school.id)
-        on = _enabled(db, school.id, mod.flag)
-        values = mod.fn(db, school.id, today) if on else {}
-        rows.append({"school_id": school.id, "school_name": school.name, "enabled": on, "values": values})
+        real_today = school_today(db, school.id)
+        today = min(on, real_today) if on else real_today   # a past day can be looked at, never a future one
+        enabled = _enabled(db, school.id, mod.flag)
+        values = mod.fn(db, school.id, today) if enabled else {}
+        rows.append({"school_id": school.id, "school_name": school.name, "enabled": enabled, "values": values})
     # Highlight the best and the weakest school for each column that has a direction.
     marks: dict[str, dict[str, str]] = {}
     for c in mod.columns:
@@ -449,4 +715,5 @@ def compare_module(db: Session, schools: list[School], key: str) -> dict | None:
         "rows": [{**r, "values": {c.key: r["values"].get(c.key) for c in mod.columns}} for r in rows],
         "group": _group_total(mod.columns, rows),
         "marks": marks,
+        "date": (min(on, max(school_today(db, s.id) for s in schools)) if on and schools else None),
     }

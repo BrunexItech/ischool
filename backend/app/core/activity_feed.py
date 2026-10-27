@@ -41,6 +41,8 @@ KINDS = {
     "calendar": "Calendar",
     "trips": "Trips",
     "transport": "Transport",
+    "security": "Security",
+    "boarding": "Boarding",
     "complaints": "Complaints",
     "finance": "Finance",
     "changes": "Changes",
@@ -133,6 +135,24 @@ def build_activity(db: Session, school_id: int, start: date, end: date, kinds: s
         for p in db.query(PickupDropoffLog).filter(PickupDropoffLog.school_id == school_id, PickupDropoffLog.occurred_at >= lo, PickupDropoffLog.occurred_at < hi):
             verb = "picked up" if p.event_type.value == "pickup" else "dropped off"
             add("transport", p.occurred_at, f"{students.get(p.student_id, 'Learner')} {verb}", f"By {p.person_name}", p.recorded_by, "/dashboard/pickup-dropoff")
+
+    if want("security"):
+        from app.models.security import SecurityIncident, VisitorLog
+
+        for i in db.query(SecurityIncident).filter(SecurityIncident.school_id == school_id, SecurityIncident.created_at >= lo, SecurityIncident.created_at < hi):
+            add("security", i.created_at, f"Security incident: {i.type}", f"{i.location} · {i.severity.value} · {i.status.value}", i.logged_by, "/dashboard/security")
+        for v in db.query(VisitorLog).filter(VisitorLog.school_id == school_id, VisitorLog.signed_in_at >= lo, VisitorLog.signed_in_at < hi):
+            add("security", v.signed_in_at, f"Visitor signed in: {v.name}", f"To see {v.host_name} · {v.purpose}", None, "/dashboard/security")
+
+    if want("boarding"):
+        from app.models.boarding import BoardingIncident, Exeat, SickBayVisit
+
+        for e in db.query(Exeat).filter(Exeat.school_id == school_id, Exeat.created_at >= lo, Exeat.created_at < hi):
+            add("boarding", e.created_at, f"Exeat requested: {students.get(e.student_id, 'Learner')}", f"{e.from_date:%d %b} to {e.to_date:%d %b} · {e.status.value}", None, "/dashboard/boarding")
+        for v in db.query(SickBayVisit).filter(SickBayVisit.school_id == school_id, SickBayVisit.created_at >= lo, SickBayVisit.created_at < hi):
+            add("boarding", v.created_at, f"Sick bay: {students.get(v.student_id, 'Learner')}", v.complaint, v.logged_by, "/dashboard/boarding")
+        for b in db.query(BoardingIncident).filter(BoardingIncident.school_id == school_id, BoardingIncident.created_at >= lo, BoardingIncident.created_at < hi):
+            add("boarding", b.created_at, f"Boarding incident: {b.type}", b.status.value, b.logged_by, "/dashboard/boarding")
 
     if want("complaints"):
         for c in db.query(Complaint).filter(Complaint.school_id == school_id, Complaint.created_at >= lo, Complaint.created_at < hi):

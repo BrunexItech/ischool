@@ -37,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      style={{ backgroundColor: "#ffffff" }}
       className={`${figtree.variable} ${jetbrainsMono.variable} ${bricolage.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

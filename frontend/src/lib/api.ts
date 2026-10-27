@@ -390,7 +390,7 @@ export interface GroupSchoolInfo { id: number; name: string }
 export interface GroupModuleInfo { key: string; title: string; blurb: string }
 export interface GroupColumn { key: string; label: string; kind: "count" | "percent" | "money" | "score" | "decimal"; better: "high" | "low" | null; hint: string | null }
 export interface GroupRow { school_id: number; school_name: string; enabled: boolean; values: Record<string, number | null> }
-export interface GroupComparison { key: string; title: string; blurb: string; href: string; columns: GroupColumn[]; rows: GroupRow[]; group: Record<string, number | null>; marks: Record<string, { best: string; weakest: string }> }
+export interface GroupComparison { key: string; title: string; blurb: string; href: string; columns: GroupColumn[]; rows: GroupRow[]; group: Record<string, number | null>; marks: Record<string, { best: string; weakest: string }>; date?: string | null }
 export interface GroupSchoolCard { school_id: number; name: string; learners: number; teachers: number; attendance_today: number | null; registers_taken: number | null; registers_total: number | null; fee_rate: number | null; outstanding: number; attention: number; urgent: number }
 export interface GroupAttention { school_id: number; school_name: string; text: string; tone: string; href: string | null }
 export interface GroupDecision { school_id: number; school_name: string; kind: string; title: string; detail: string; age_days: number }
@@ -2892,7 +2892,7 @@ export const api = {
   getGroupOverview: (token: string) => request<GroupOverview>(`/group/overview`, {}, token),
   getGroupAttention: (token: string) => request<GroupAttentionSummary>(`/group/attention`, {}, token),
   listGroupModules: (token: string) => request<GroupModuleInfo[]>(`/group/modules`, {}, token),
-  getGroupComparison: (token: string, key: string) => request<GroupComparison>(`/group/modules/${key}`, {}, token),
+  getGroupComparison: (token: string, key: string, on?: string) => request<GroupComparison>(`/group/modules/${key}${on ? `?on=${on}` : ""}`, {}, token),
   getGroupActivity: (token: string, q: { start?: string; end?: string; kinds?: string[] } = {}) => {
     const p = new URLSearchParams();
     if (q.start) p.set("start", q.start);
