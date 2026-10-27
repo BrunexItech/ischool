@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowRight, BookOpenCheck, CalendarDays, CheckCircle2, Clock, CreditCard, GraduationCap, Megaphone, School, UserCheck, UserX } from "lucide-react";
-import { Announcement, api, CalendarEvent, FamilyChildCard } from "@/lib/api";
+import { AlertCircle, ArrowRight, BookOpenCheck, CheckCircle2, Clock, CreditCard, GraduationCap, School, UserCheck, UserX } from "lucide-react";
+import { FamilyChildCard } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { setActiveChildId, recordPath, useFamily } from "@/lib/family";
 import { PageLoader } from "@/components/Spinner";
+import { SchoolFeed } from "@/components/family/SchoolFeed";
 import { Button } from "@/components/ui/button";
 import { Ring, healthTone } from "@/components/group/GroupUi";
-import { ChildAvatar, Empty, Panel, Pill, Section, longDay, money, shortDay } from "@/components/family/FamilyUi";
+import { ChildAvatar, Empty, Panel, Pill, Section, longDay, money } from "@/components/family/FamilyUi";
 
 function greeting(hour: number) {
   return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -23,7 +24,7 @@ function attentionFor(c: FamilyChildCard, role: string | undefined): { key: stri
   if (c.attendance?.today === "absent") out.push({ key: `abs${c.student.id}`, tone: "bad", text: role === "student" ? "You were marked absent today" : `${c.student.first_name} was marked absent today`, href: path("attendance"), cta: "See attendance" });
   if (c.homework && c.homework.overdue > 0) out.push({ key: `hwo${c.student.id}`, tone: "bad", text: `${who} ${c.homework.overdue} homework ${c.homework.overdue === 1 ? "task" : "tasks"} that ${c.homework.overdue === 1 ? "is" : "are"} late`, href: path("homework"), cta: "Open homework" });
   if (c.fees && c.fees.balance > 0) out.push({ key: `fee${c.student.id}`, tone: "warn", text: `${role === "student" ? "Your" : `${c.student.first_name}'s`} fee balance is ${money(c.fees.balance)}`, href: path("fees"), cta: "View and pay" });
-  if (c.homework && c.homework.open - c.homework.overdue > 0) out.push({ key: `hw${c.student.id}`, tone: "info", text: `${c.homework.open - c.homework.overdue} homework ${c.homework.open - c.homework.overdue === 1 ? "task" : "tasks"} coming up`, href: path("homework"), cta: "Open homework" });
+  if (c.homework && c.homework.open - c.homework.overdue > 0) out.push({ key: `hw${c.student.id}`, tone: "info", text: `${role === "student" ? "You have" : `${c.student.first_name} has`} ${c.homework.open - c.homework.overdue} homework ${c.homework.open - c.homework.overdue === 1 ? "task" : "tasks"} still to hand in`, href: path("homework"), cta: "Open homework" });
   return out;
 }
 
@@ -67,34 +68,19 @@ function ChildCard({ card, index, role, onPick }: { card: FamilyChildCard; index
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button className="h-10 min-w-32 flex-1 gap-1.5" render={<Link href={recordPath(role, s.id)} onClick={onPick}>Open {role === "student" ? "my record" : "record"} <ArrowRight /></Link>} nativeButton={false} />
-        <Button variant="outline" className="h-10 flex-1 sm:flex-none" render={<Link href={recordPath(role, s.id, "timetable")} onClick={onPick}>Timetable</Link>} nativeButton={false} />
-        <Button variant="outline" className="h-10 flex-1 sm:flex-none" render={<Link href={recordPath(role, s.id, "fees")} onClick={onPick}>Fees</Link>} nativeButton={false} />
+        <Button className="h-11 w-full basis-full gap-1.5" render={<Link href={recordPath(role, s.id)} onClick={onPick}>See {s.first_name}&apos;s page <ArrowRight /></Link>} nativeButton={false} />
+        <Button variant="outline" className="h-10 flex-1" render={<Link href={recordPath(role, s.id, "timetable")} onClick={onPick}>Timetable</Link>} nativeButton={false} />
+        <Button variant="outline" className="h-10 flex-1" render={<Link href={recordPath(role, s.id, "fees")} onClick={onPick}>Fees</Link>} nativeButton={false} />
       </div>
     </div>
   );
 }
 
 export function FamilyHome() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { cards, list, active } = useFamily();
   const [now] = useState(() => new Date());
-  const [notices, setNotices] = useState<Announcement[] | null | undefined>(undefined);
-  const [events, setEvents] = useState<CalendarEvent[] | null | undefined>(undefined);
   const schoolId = active?.student.school_id ?? user?.school_id ?? null;
-  const today = active?.today;
-
-  useEffect(() => {
-    if (!token || !schoolId) return;
-    api.listAnnouncements(token, schoolId).then((r) => setNotices(r.slice(0, 4))).catch(() => setNotices(null));
-  }, [token, schoolId]);
-
-  useEffect(() => {
-    if (!token || !schoolId || !today) return;
-    const end = new Date(today + "T12:00:00");
-    end.setDate(end.getDate() + 30);
-    api.listCalendarEvents(token, schoolId, today, end.toISOString().slice(0, 10)).then((r) => setEvents(r.slice(0, 5))).catch(() => setEvents(null));
-  }, [token, schoolId, today]);
 
   const role = user?.role;
   const attention = useMemo(() => list.flatMap((c) => attentionFor(c, role)), [list, role]);
@@ -114,8 +100,6 @@ export function FamilyHome() {
   }
 
   const first = user.full_name.split(" ")[0];
-  const owed = list.reduce((n, c) => n + (c.fees?.balance ?? 0), 0);
-  const open = list.reduce((n, c) => n + (c.homework?.open ?? 0), 0);
   const lessons = active?.lessons ?? [];
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const mins = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
@@ -133,16 +117,6 @@ export function FamilyHome() {
             <p className="mt-1 text-sm text-white/85">
               {role === "student" ? `${active?.student.class_name ?? "Your class"} · Admission ${active?.student.admission_number}` : `${list.length} ${list.length === 1 ? "child" : "children"} at school${list.length > 1 ? ` · ${list.map((c) => c.student.first_name).join(", ")}` : ` · ${active?.student.first_name} ${active?.student.last_name}`}`}
             </p>
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            <div className="min-w-28 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur-sm">
-              <p className="text-[11px] tracking-wide text-white/75 uppercase">Fees due</p>
-              <p className="font-heading text-lg font-semibold tabular-nums">{owed > 0 ? money(owed) : "All paid"}</p>
-            </div>
-            <div className="min-w-28 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur-sm">
-              <p className="text-[11px] tracking-wide text-white/75 uppercase">Homework to do</p>
-              <p className="font-heading text-lg font-semibold tabular-nums">{open}</p>
-            </div>
           </div>
         </div>
       </div>
@@ -168,17 +142,18 @@ export function FamilyHome() {
         )}
       </Section>
 
-      <Section title={role === "student" ? "Your school life" : list.length > 1 ? "Your children" : "Your child"}>
+      {role !== "student" && (
+      <Section title={list.length > 1 ? "Your children" : "Your child"}>
         <div className={`grid gap-4 ${list.length > 1 ? "lg:grid-cols-2" : ""}`}>
           {list.map((c, i) => (
             <ChildCard key={c.student.id} card={c} index={i} role={role} onPick={() => setActiveChildId(c.student.id)} />
           ))}
         </div>
       </Section>
+      )}
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-5">
+      {role === "student" && (
         <Section
-          className="lg:col-span-3"
           title={active ? (role === "student" ? "Today at school" : `Today at school · ${active.student.first_name}`) : "Today at school"}
           hint={active ? longDay(active.today) : undefined}
           action={active && <Button variant="outline" size="sm" className="h-9" render={<Link href={recordPath(role, active.student.id, "timetable")}>Full timetable</Link>} nativeButton={false} />}
@@ -216,48 +191,9 @@ export function FamilyHome() {
           </Panel>
         </Section>
 
-        <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
-          <Section title="Coming up" action={<Button variant="ghost" size="sm" className="h-9" render={<Link href="/dashboard/calendar">Calendar</Link>} nativeButton={false} />}>
-            <Panel>
-              {events === undefined ? <p className="py-6 text-center text-sm text-muted-foreground">Loading...</p> : !events || events.length === 0 ? (
-                <Empty icon={<CalendarDays />} title="Nothing scheduled">No events in the next 30 days.</Empty>
-              ) : (
-                <ul className="flex flex-col divide-y">
-                  {events.map((e) => (
-                    <li key={e.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                      <span className="flex w-11 shrink-0 flex-col items-center rounded-lg bg-primary/10 py-1 text-primary">
-                        <span className="text-[10px] font-semibold uppercase">{new Date(e.start_date + "T12:00:00").toLocaleDateString(undefined, { month: "short" })}</span>
-                        <span className="font-heading text-base leading-none font-semibold">{new Date(e.start_date + "T12:00:00").getDate()}</span>
-                      </span>
-                      <div className="min-w-0"><p className="truncate text-sm font-medium">{e.title}</p><p className="text-xs text-muted-foreground capitalize">{e.event_type.replace(/_/g, " ")}</p></div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
-          </Section>
+      )}
 
-          <Section title="From the school" action={<Button variant="ghost" size="sm" className="h-9" render={<Link href="/dashboard/announcements">All notices</Link>} nativeButton={false} />}>
-            <Panel>
-              {notices === undefined ? <p className="py-6 text-center text-sm text-muted-foreground">Loading...</p> : !notices || notices.length === 0 ? (
-                <Empty icon={<Megaphone />} title="No notices">New announcements from the school appear here.</Empty>
-              ) : (
-                <ul className="flex flex-col divide-y">
-                  {notices.map((n) => (
-                    <li key={n.id} className="py-2.5 first:pt-0 last:pb-0">
-                      <Link href="/dashboard/announcements" className="block rounded-md hover:text-primary">
-                        <p className="line-clamp-1 text-sm font-medium">{n.title}</p>
-                        <p className="line-clamp-2 text-xs text-muted-foreground">{n.body}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{shortDay(n.created_at.slice(0, 10))}</p>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
-          </Section>
-        </div>
-      </div>
+      <SchoolFeed schoolId={schoolId} today={active?.today ?? ""} />
     </div>
   );
 }

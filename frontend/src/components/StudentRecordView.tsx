@@ -230,7 +230,6 @@ const NAV: { label: string; items: { id: SectionId; label: string; icon: LucideI
   ] },
   { label: "Daily life", items: [
     { id: "attendance", label: "Attendance", icon: UserCheck },
-    { id: "meals", label: "Meals", icon: UtensilsCrossed },
     { id: "transport", label: "Transport", icon: Bus },
     { id: "pickup", label: "Pickup and drop-off", icon: LogOut, parentOnly: true },
     { id: "activities", label: "Activities", icon: Trophy },
@@ -247,16 +246,6 @@ const SECTION_IDS = NAV.flatMap((g) => g.items.map((i) => i.id));
 
 function Card2({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`min-w-0 rounded-2xl border bg-card p-4 shadow-xs sm:p-5 ${className}`}>{children}</div>;
-}
-
-function Stat({ label, value, sub, tone = "" }: { label: string; value: ReactNode; sub?: string; tone?: string }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5 rounded-2xl border bg-card p-4 shadow-xs">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className={`font-heading text-2xl leading-tight font-semibold tabular-nums ${tone}`}>{value}</span>
-      {sub && <span className="truncate text-xs text-muted-foreground">{sub}</span>}
-    </div>
-  );
 }
 
 function ScoreBar({ score }: { score: number }) {
@@ -341,8 +330,8 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
   }, [token, studentId, user?.school_id]);
 
   const requested = search.get("tab") as SectionId | null;
-  const section: SectionId = requested && SECTION_IDS.includes(requested) && !(requested === "pickup" && !isParent) ? requested : "overview";
-  const go = (id: SectionId) => router.replace(id === "overview" ? pathname : `${pathname}?tab=${id}`, { scroll: false });
+  const section: SectionId = requested && SECTION_IDS.includes(requested) && !(requested === "pickup" && !isParent) ? requested : isStudent ? "timetable" : "overview";
+  const go = (id: SectionId) => router.replace(id === "overview" && !isStudent ? pathname : `${pathname}?tab=${id}`, { scroll: false });
 
   const stats = useMemo(() => {
     const since = new Date(now);
@@ -384,12 +373,6 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
   const content: Record<SectionId, ReactNode> = {
     overview: (
       <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Attendance (30 days)" value={stats.rate != null ? `${stats.rate}%` : "—"} sub={stats.rate == null ? "Nothing recorded yet" : stats.rate >= 90 ? "Excellent" : stats.rate >= 75 ? "Fair" : "Needs attention"} tone={healthTone(stats.rate).text} />
-          <Stat label="Fee balance" value={stats.owed > 0 ? money(stats.owed) : "Paid up"} sub={stats.billed ? `${money(stats.paid)} of ${money(stats.billed)} paid` : "No invoices yet"} tone={stats.owed > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"} />
-          <Stat label="Homework to do" value={stats.todo.length} sub={stats.late.length ? `${stats.late.length} late` : "None late"} tone={stats.late.length ? "text-red-600" : ""} />
-          <Stat label={stats.latestTerm ? `Average, ${stats.latestTerm}` : "Average score"} value={stats.avg != null ? `${stats.avg}%` : "—"} sub={stats.latest.length ? `${stats.latest.length} subjects` : "No results yet"} />
-        </div>
         <div className="grid min-w-0 gap-6 lg:grid-cols-2">
           <Section title="Today's lessons" hint={longDay(todayIso)} action={<Button variant="ghost" size="sm" className="h-9" onClick={() => go("timetable")}>Timetable</Button>}>
             {todaySlots.length === 0 ? <Empty icon={<CalendarClock />} title="No lessons today">Nothing is on the timetable for today.</Empty> : <div className="flex flex-col gap-2">{todaySlots.map(lessonRow)}</div>}
@@ -773,11 +756,11 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
         </div>
       )}
 
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-7">
-        <nav aria-label="Sections" className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+      <div className="grid min-w-0 gap-5">
+        <nav aria-label="Sections" className="min-w-0 lg:hidden">
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-5 lg:overflow-visible lg:px-0 lg:pb-0">
             {NAV.map((g) => {
-              const items = g.items.filter((i) => !i.parentOnly || isParent);
+              const items = g.items.filter((i) => (!i.parentOnly || isParent) && !(isStudent && i.id === "overview"));
               return (
                 <div key={g.label || "top"} className="flex shrink-0 gap-2 lg:flex-col lg:gap-1">
                   {g.label && <p className="hidden px-3 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase lg:block">{g.label}</p>}

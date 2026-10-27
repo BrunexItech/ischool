@@ -930,12 +930,12 @@ def family_overview(db: Session = Depends(get_db), current_user: User = Depends(
                 "unpaid_invoices": len(owed),
             }
         if on("homework") and kid.class_id:
-            hws = db.query(Homework).filter(Homework.school_id == kid.school_id, Homework.class_id == kid.class_id, Homework.due_date >= today - timedelta(days=7)).order_by(Homework.due_date).all()
+            hws = db.query(Homework).filter(Homework.school_id == kid.school_id, Homework.class_id == kid.class_id).order_by(Homework.due_date).all()
             open_ = []
             for hw in hws:
                 sub = db.query(HomeworkSubmission).filter_by(homework_id=hw.id, student_id=kid.id).first()
                 st = sub.status if sub else HomeworkSubmissionStatus.NOT_SUBMITTED
-                if st == HomeworkSubmissionStatus.NOT_SUBMITTED and not hw.given_on_board:
+                if st == HomeworkSubmissionStatus.NOT_SUBMITTED:
                     open_.append({"id": hw.id, "title": hw.title, "subject": hw.subject.name, "due_date": hw.due_date.isoformat(), "overdue": hw.due_date < today})
             card["homework"] = {"open": len(open_), "overdue": sum(1 for h in open_ if h["overdue"]), "next": open_[:3]}
         if on("timetable") and kid.class_id:

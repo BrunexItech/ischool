@@ -66,5 +66,5 @@ export function useFamily() {
 /** Where a section of a learner's record lives for this account. */
 export function recordPath(role: string | undefined, studentId: number | undefined, tab?: string) {
   const base = role === "student" ? "/dashboard/my-records" : studentId ? `/dashboard/children/${studentId}` : "/dashboard/children";
-  return tab && tab !== "overview" ? `${base}?tab=${tab}` : base;
+  return tab && !(tab === "overview" && role !== "student") ? `${base}?tab=${tab}` : base;
 }

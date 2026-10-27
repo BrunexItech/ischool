@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BarChart3, Bus, CalendarClock, Check, ChevronsUpDown, ClipboardList, LayoutGrid, NotebookPen, Users, UserCheck, Video, Wallet } from "lucide-react";
+import { Award, BarChart3, Bus, CalendarClock, Check, ChevronsUpDown, ClipboardList, LayoutGrid, LogOut, MapPin, NotebookPen, ShieldCheck, Trophy, Users, UserCheck, Video, Wallet } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { recordPath, useFamily } from "@/lib/family";
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
@@ -15,12 +15,17 @@ const ITEMS = [
   { tab: "overview", label: "Summary", icon: LayoutGrid },
   { tab: "timetable", label: "Timetable", icon: CalendarClock },
   { tab: "homework", label: "Homework", icon: NotebookPen },
-  { tab: "attendance", label: "Attendance", icon: UserCheck },
-  { tab: "results", label: "Results", icon: BarChart3 },
   { tab: "exams", label: "Exams", icon: ClipboardList },
+  { tab: "results", label: "Results", icon: BarChart3 },
   { tab: "live-classes", label: "Live classes", icon: Video },
-  { tab: "fees", label: "Fees", icon: Wallet },
+  { tab: "attendance", label: "Attendance", icon: UserCheck },
   { tab: "transport", label: "Transport", icon: Bus },
+  { tab: "pickup", label: "Pickup and drop-off", icon: LogOut },
+  { tab: "activities", label: "Activities", icon: Trophy },
+  { tab: "trips", label: "Trips", icon: MapPin },
+  { tab: "fees", label: "Fees", icon: Wallet },
+  { tab: "awards", label: "Awards", icon: Award },
+  { tab: "conduct", label: "Conduct", icon: ShieldCheck },
 ];
 
 function Items({ query, onNavigate }: { query: string; onNavigate: () => void }) {
@@ -30,8 +35,8 @@ function Items({ query, onNavigate }: { query: string; onNavigate: () => void })
   const search = useSearchParams();
   if (!user || !active) return null;
   const isParent = user.role === "parent";
-  const tab = search.get("tab") ?? "overview";
-  const items = ITEMS.filter((i) => !query || i.label.toLowerCase().includes(query));
+  const tab = search.get("tab") ?? (isParent ? "overview" : "timetable");
+  const items = ITEMS.filter((i) => (isParent || (i.tab !== "pickup" && i.tab !== "overview")) && (!query || i.label.toLowerCase().includes(query)));
   if (items.length === 0) return null;
   const idx = list.findIndex((c) => c.student.id === active.student.id);
 

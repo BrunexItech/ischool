@@ -1,41 +1,10 @@
 "use client";
 
+import { SchoolFeed } from "@/components/family/SchoolFeed";
 import { FamilyHome } from "@/components/family/FamilyHome";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Users,
-  ClipboardCheck,
-  Award,
-  Wallet,
-  Wallet2,
-  Boxes,
-  Package,
-  Truck,
-  Video,
-  Megaphone,
-  ArrowRight,
-  Settings2,
-  HeartHandshake,
-  Bus,
-  UserPlus,
-  CalendarDays,
-  ShieldCheck,
-  BedDouble,
-  BookOpenCheck,
-  Map,
-  GraduationCap,
-  UserCheck,
-  MessageSquareWarning,
-  Plus,
-  BellRing,
-  CalendarClock,
-  MapPin,
-  CheckCircle2,
-  AlertTriangle,
-  RotateCw,
-  ClipboardList,
-} from "lucide-react";
+import { ClipboardCheck, Settings2, GraduationCap, UserCheck, Plus, BellRing, CalendarClock, MapPin, CheckCircle2, AlertTriangle, RotateCw, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import {
   api,
@@ -69,37 +38,6 @@ function greet(d: Date = new Date()) {
   if (h < 17) return "Good afternoon";
   return "Good evening";
 }
-
-const QUICK_LINKS = [
-  { href: "/dashboard/staff-attendance", label: "Staff Attendance", description: "Clock in/out and your duties", icon: ClipboardCheck, roles: ["teacher", "staff", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar"] },
-  { href: "/dashboard/students", label: "Students", description: "Enroll and manage student records", icon: Users, roles: ["teacher", "staff"] },
-  { href: "/dashboard/attendance", label: "Attendance", description: "Mark today's attendance by class", icon: ClipboardCheck, roles: ["teacher", "staff"] },
-  { href: "/dashboard/results", label: "Results", description: "Record scores and view grades", icon: Award, roles: ["teacher", "staff"] },
-  { href: "/dashboard/fees", label: "Fees", description: "Invoices, payments, and balances", icon: Wallet, roles: ["staff", "bursar"] },
-  { href: "/dashboard/library", label: "Library", description: "Lend and take back books, and manage the catalogue", icon: BookOpenCheck, roles: ["librarian"] },
-  { href: "/dashboard/library", label: "Library", description: "Books you hold for your class, and find a book", icon: BookOpenCheck, roles: ["teacher", "student", "parent"] },
-  { href: "/dashboard/transport", label: "Transport", description: "Vehicles, routes, and student assignments", icon: Bus, roles: ["staff", "transport_staff"] },
-  { href: "/dashboard/transport", label: "My runs", description: "Check children on and off your vehicle", icon: Bus, roles: ["transport_attendant"] },
-  { href: "/dashboard/calendar", label: "Calendar", description: "Meetings, exams, and school events", icon: CalendarDays, roles: ["teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar"] },
-  { href: "/dashboard/live-classes", label: "Live Classes", description: "Schedule and host video lessons", icon: Video, roles: ["teacher", "staff"] },
-  { href: "/dashboard/announcements", label: "Announcements", description: "Share updates with your school", icon: Megaphone, roles: ["teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar"] },
-  { href: "/dashboard/complaints", label: "Complaints", description: "Raise a concern with the class teacher or principal", icon: MessageSquareWarning, roles: ["teacher", "student", "parent"] },
-  { href: "/dashboard/children", label: "My Children", description: "View attendance, results, and fees", icon: HeartHandshake, roles: ["parent"] },
-  { href: "/dashboard/my-records", label: "My Records", description: "Your attendance, results, and fees", icon: Award, roles: ["student"] },
-  { href: "/dashboard/security", label: "Security", description: "Visitor log, vehicles, and gate incidents", icon: ShieldCheck, roles: ["security"] },
-  { href: "/dashboard/pickup-dropoff", label: "Pickup / Drop-off", description: "Verify and log early pickups", icon: UserPlus, roles: ["security"] },
-  { href: "/dashboard/boarding", label: "Boarding", description: "Roll call, exeats, and sick bay", icon: BedDouble, roles: ["boarding_staff"] },
-  { href: "/dashboard/trips", label: "Trips", description: "Today's routes and trip logs", icon: Map, roles: ["transport_staff"] },
-  { href: "/dashboard/stores", label: "Stores", description: "Requests from classes, issues and stocktakes", icon: Boxes, roles: ["store_keeper"] },
-  { href: "/dashboard/stores", label: "Ask the store", description: "Request items you need for your class or department", icon: Boxes, roles: ["teacher"] },
-  { href: "/dashboard/procurement", label: "Procurement", description: "Purchase requests, orders and deliveries", icon: Package, roles: ["procurement_officer"] },
-  { href: "/dashboard/suppliers", label: "Suppliers", description: "Approved suppliers and their details", icon: Truck, roles: ["procurement_officer"] },
-  { href: "/dashboard/fees", label: "Fees", description: "Invoices, payments, and balances", icon: Wallet, roles: ["accountant"] },
-  { href: "/dashboard/finance", label: "Finance", description: "Expenses and income/expense summary", icon: Wallet2, roles: ["accountant"] },
-  { href: "/dashboard/ledger", label: "Ledger", description: "Chart of accounts and journal entries", icon: BookOpenCheck, roles: ["accountant"] },
-  { href: "/dashboard/finance", label: "Finance", description: "Expenses and income/expense summary", icon: Wallet2, roles: ["bursar"] },
-  { href: "/dashboard/ledger", label: "Ledger", description: "Chart of accounts and journal entries", icon: BookOpenCheck, roles: ["bursar"] },
-];
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -766,7 +704,6 @@ function SimpleDashboard() {
   const { user } = useAuth();
   const [now] = useState(() => new Date());
   if (!user) return null;
-  const links = QUICK_LINKS.filter((l) => l.roles.includes(user.role));
   const hour = now.getHours();
 
   return (
@@ -775,23 +712,10 @@ function SimpleDashboard() {
         <div className="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-white/10 blur-2xl" aria-hidden />
         <p className="relative text-xs font-medium tracking-[0.14em] text-white/75 uppercase">{now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1 className="relative mt-1 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"}, {user.full_name.split(" ")[0]}</h1>
-        <p className="relative mt-1 text-sm text-white/85"><span className="capitalize">{user.role.replace(/_/g, " ")}</span> · Here is where you can get started.</p>
+        <p className="relative mt-1 text-sm text-white/85"><span className="capitalize">{user.role.replace(/_/g, " ")}</span> · Use the menu to open your work.</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {links.map((link) => (
-          <Link key={link.href} href={link.href} className="group flex min-w-0 items-center gap-4 rounded-2xl border bg-card p-4 shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-              <link.icon className="size-5.5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-heading text-base font-semibold">{link.label}</span>
-              <span className="line-clamp-2 text-sm text-muted-foreground">{link.description}</span>
-            </span>
-            <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        ))}
-      </div>
+      <SchoolFeed schoolId={user.school_id} today={now.toLocaleDateString("en-CA")} />
 
       {user.role === "super_admin" && (
         <Card className="border-dashed">
