@@ -30,7 +30,7 @@ const ITEMS = [
 
 function Items({ query, onNavigate }: { query: string; onNavigate: () => void }) {
   const { user } = useAuth();
-  const { list, active } = useFamily();
+  const { cards, list, active } = useFamily();
   const pathname = usePathname();
   const search = useSearchParams();
   if (!user) return null;
@@ -44,6 +44,7 @@ function Items({ query, onNavigate }: { query: string; onNavigate: () => void })
     <SidebarGroup>
       <SidebarGroupLabel className="gap-1.5 text-sidebar-primary/90">{isParent ? "My Child" : "My School Life"}</SidebarGroupLabel>
       <SidebarGroupContent>
+        {isParent && cards === undefined && <div aria-hidden className="mb-2 h-11 animate-pulse rounded-xl bg-black/15 group-data-[collapsible=icon]:hidden" />}
         {isParent && active && list.length > 1 && (
           <div className="mb-2 px-1 group-data-[collapsible=icon]:hidden">
             <DropdownMenu>

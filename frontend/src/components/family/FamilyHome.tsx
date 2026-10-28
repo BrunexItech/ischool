@@ -78,7 +78,7 @@ function ChildCard({ card, index, role, onPick }: { card: FamilyChildCard; index
 
 export function FamilyHome() {
   const { user } = useAuth();
-  const { cards, list, active } = useFamily();
+  const { cards, list, active, detailed } = useFamily();
   const [now] = useState(() => new Date());
   const schoolId = active?.student.school_id ?? user?.school_id ?? null;
 
@@ -88,7 +88,7 @@ export function FamilyHome() {
   const sorted = [...attention].sort((a, b) => rank[a.tone] - rank[b.tone]);
 
   if (!user) return null;
-  if (cards === undefined) return <PageLoader label="Getting your school day ready..." />;
+  if (cards === undefined || (cards !== null && cards.length > 0 && !detailed)) return <PageLoader label="Getting your school day ready..." />;
   if (cards === null || list.length === 0) {
     return (
       <div className="flex flex-col gap-6">

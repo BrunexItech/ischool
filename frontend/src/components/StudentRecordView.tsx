@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SectionBanner, type SectionTheme } from "@/components/family/SectionBanner";
 import { ChildAvatar, Empty, Pill, Section, dueWords, longDay, money, scoreTone, shortDay } from "@/components/family/FamilyUi";
 import { Ring, compactKes, healthTone } from "@/components/group/GroupUi";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -258,7 +259,7 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-export function StudentRecordView({ studentId, student, index = 0, switcher }: { studentId: number; student?: Student | null; index?: number; switcher?: ReactNode }) {
+export function StudentRecordView({ studentId, student, index = 0, switcher }: { studentId: number; student?: Student | null; index?: number; switcher?: (tone: "dark" | "light") => ReactNode }) {
   const { token, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -556,7 +557,6 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
           {total === 0 ? <Empty icon={<UserCheck />} title="No attendance yet">Registers appear here once the teacher has taken them.</Empty> : (
             <>
               <Card2 className="flex flex-wrap items-center gap-5">
-                <Ring value={rate} size={92} stroke={10} label="Attendance"><span className={`font-heading text-xl font-semibold ${healthTone(rate).text}`}>{rate}%</span><span className="text-[10px] text-muted-foreground">present</span></Ring>
                 <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
                   {([["present", "Present", "bg-emerald-500"], ["late", "Late", "bg-amber-400"], ["absent", "Absent", "bg-red-500"], ["excused", "Excused", "bg-sky-400"]] as const).map(([k, l, c]) => (
                     <div key={k} className="flex items-center gap-2.5"><span className={`size-3 rounded-full ${c}`} aria-hidden /><div><p className="font-heading text-xl leading-none font-semibold tabular-nums">{counts[k]}</p><p className="text-xs text-muted-foreground">{l}</p></div></div>
@@ -728,11 +728,35 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
     ),
   };
 
-  const active = NAV.flatMap((g) => g.items).find((i) => i.id === section)!;
+  const first = student?.first_name ?? "";
+  const upcomingExams = exams.filter((e) => e.submission_status === null).length;
+  const gradedExams = exams.filter((e) => e.submission_status === "graded").length;
+  const liveNow = liveClasses.filter((l) => l.status === "live").length;
+  const comingLive = liveClasses.filter((l) => l.status === "scheduled").length;
+  const rateTone = healthTone(stats.rate).hex;
+  const paidPct = stats.billed ? Math.round((stats.paid / stats.billed) * 100) : null;
+  const banners: Record<SectionId, { icon: LucideIcon; theme: SectionTheme; title: string; subtitle?: string; visual?: ReactNode; chips?: { label: string; value: ReactNode }[] }> = {
+    overview: { icon: LayoutGrid, theme: { from: "#A71C20", to: "#7F1D1D" }, title: "Summary" },
+    timetable: { icon: CalendarClock, theme: { from: "#0369A1", to: "#075985" }, title: "Timetable", subtitle: `${isStudent ? "Your" : `${first}'s`} week at school`, chips: [{ label: "Lessons today", value: todaySlots.length }, { label: "Lessons a week", value: timetable.length }] },
+    homework: { icon: NotebookPen, theme: { from: "#B45309", to: "#92400E" }, title: "Homework", subtitle: stats.todo.length ? `${stats.todo.length} to hand in${stats.late.length ? `, ${stats.late.length} late` : ""}` : "All handed in", chips: [{ label: "To do", value: stats.todo.length }, { label: "Late", value: stats.late.length }, { label: "Reviewed", value: homework.filter((h) => h.status === "reviewed").length }] },
+    exams: { icon: ClipboardList, theme: { from: "#B91C1C", to: "#991B1B" }, title: "Exams", subtitle: upcomingExams ? `${upcomingExams} still to sit` : "Nothing waiting", chips: [{ label: "To sit", value: upcomingExams }, { label: "Marked", value: gradedExams }] },
+    results: { icon: BarChart3, theme: { from: "#BE185D", to: "#9D174D" }, title: "Results", subtitle: stats.latestTerm ? `${stats.latestTerm} so far` : "No marks yet", visual: stats.avg != null ? <Ring value={stats.avg} size={72} stroke={8} color="#FFFFFF" track="#FFFFFF" label="Average score"><span className="font-heading text-lg font-semibold">{stats.avg}%</span></Ring> : undefined, chips: [{ label: "Subjects", value: stats.latest.length }] },
+    "live-classes": { icon: Video, theme: { from: "#6D28D9", to: "#4C1D95" }, title: "Live classes", subtitle: liveNow ? "A class is live now" : comingLive ? `${comingLive} coming up` : "None scheduled", chips: [{ label: "Live now", value: liveNow }, { label: "Coming", value: comingLive }] },
+    attendance: { icon: UserCheck, theme: { from: "#047857", to: "#064E3B" }, title: "Attendance", subtitle: stats.rate != null ? "Last 30 days" : "Nothing recorded yet", visual: stats.rate != null ? <Ring value={stats.rate} size={72} stroke={8} color="#FFFFFF" track="#FFFFFF" label="Attendance"><span className="font-heading text-lg font-semibold">{stats.rate}%</span></Ring> : undefined, chips: [{ label: "Days marked", value: attendance.length }, { label: "Absences", value: attendance.filter((r) => r.status === "absent").length }] },
+    meals: { icon: UtensilsCrossed, theme: { from: "#C2410C", to: "#9A3412" }, title: "Meals" },
+    transport: { icon: Bus, theme: { from: "#0369A1", to: "#1E3A8A" }, title: "Transport", subtitle: transport?.assigned ? transport.route_name ?? "On the school bus" : "Not on a bus route", chips: transport?.assigned ? [{ label: "Pickup", value: transport.pickup_time ?? "—" }] : undefined },
+    pickup: { icon: LogOut, theme: { from: "#0891B2", to: "#155E75" }, title: "Pickup and drop-off", subtitle: "Tell the school you are collecting", chips: [{ label: "Records", value: pickupDropoff.length }] },
+    activities: { icon: Trophy, theme: { from: "#C2410C", to: "#7C2D12" }, title: "Activities", subtitle: studentActivities.length ? "Clubs, sports and events" : "None yet", chips: [{ label: "Taken part", value: studentActivities.length }] },
+    trips: { icon: MapPin, theme: { from: "#0D9488", to: "#115E59" }, title: "Trips", subtitle: trips.length ? "School trips" : "No trips", chips: [{ label: "Trips", value: trips.length }] },
+    fees: { icon: Wallet, theme: { from: "#059669", to: "#065F46" }, title: "Fees", subtitle: stats.owed > 0 ? `${money(stats.owed)} to pay` : "Paid up", visual: paidPct != null ? <Ring value={paidPct} size={72} stroke={8} color="#FFFFFF" track="#FFFFFF" label="Fees paid"><span className="font-heading text-lg font-semibold">{paidPct}%</span></Ring> : undefined },
+    awards: { icon: Award, theme: { from: "#D97706", to: "#92400E" }, title: "Awards", subtitle: awards.length ? "Recognition earned" : "None yet", chips: [{ label: "Awards", value: awards.length }] },
+    conduct: { icon: ShieldCheck, theme: { from: "#7C2D12", to: "#431407" }, title: "Conduct", subtitle: conductReports.length ? "Reports on file" : "A clean record", chips: [{ label: "Open", value: stats.openConduct }, { label: "On file", value: conductReports.length }] },
+  };
+  const b = banners[section];
 
   return (
     <div className="flex flex-col gap-5">
-      {student && (
+      {student && section === "overview" && (
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#5e1012] via-[#A71C20] to-[#D9531E] p-5 text-white shadow-md sm:p-6">
           <div className="pointer-events-none absolute -top-16 -right-10 size-52 rounded-full bg-white/10 blur-2xl" aria-hidden />
           <div className="relative flex flex-wrap items-center gap-4">
@@ -747,13 +771,21 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
               <div className="rounded-2xl bg-white/15 px-3.5 py-2 text-center backdrop-blur-sm"><p className="font-heading text-lg leading-tight font-semibold tabular-nums">{stats.owed > 0 ? compactKes(stats.owed).replace("KES ", "") : "Paid"}</p><p className="text-[10px] tracking-wide text-white/75 uppercase">Fees due</p></div>
             </div>
           </div>
-          {switcher && <div className="relative mt-4 border-t border-white/20 pt-3">{switcher}</div>}
+          {switcher && <div className="relative mt-4 border-t border-white/20 pt-3">{switcher("dark")}</div>}
         </div>
       )}
+      {student && section !== "overview" && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          <ChildAvatar first={student.first_name} last={student.last_name} index={index} size={32} />
+          <span className="font-medium">{name}</span>
+          <span className="text-muted-foreground">{student.class_name ?? "No class yet"}</span>
+          {switcher && <span className="ml-auto">{switcher("light")}</span>}
+        </div>
+      )}
+      {section !== "overview" && <SectionBanner icon={b.icon} theme={b.theme} title={b.title} subtitle={b.subtitle} visual={b.visual} chips={b.chips} />}
 
       <div className="grid min-w-0 gap-5">
         <div className="min-w-0">
-          {section !== "overview" && <h2 className="mb-4 flex items-center gap-2 font-heading text-xl font-semibold tracking-tight"><active.icon className="size-5 text-primary" /> {active.label}</h2>}
           {content[section]}
         </div>
       </div>

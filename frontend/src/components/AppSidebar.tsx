@@ -83,8 +83,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { FamilyNav } from "@/components/family/FamilyNav";
 import { moduleTabs } from "@/lib/moduleTabs";
-import { useFamily } from "@/lib/family";
-import { Spinner } from "@/components/Spinner";
 
 const NAV_SECTIONS = [
   {
@@ -290,7 +288,6 @@ export function AppSidebar() {
   const { user, logout, schoolOptions, viewingSchoolId, switchSchool, isGroupView } = useAuth();
   const pathname = usePathname();
   const search = useSearchParams();
-  const family = useFamily();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
   const [query, setQuery] = useState("");
@@ -340,9 +337,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {(user.role === "parent" || user.role === "student") && family.cards === undefined ? (
-          <div role="status" aria-label="Loading your menu" className="flex flex-col items-center gap-3 py-12 text-sidebar-foreground/80 group-data-[collapsible=icon]:hidden"><Spinner size={26} className="text-sidebar-primary" /><span className="text-xs">Getting your menu ready...</span></div>
-        ) : sections.map((section, i) => {
+        {sections.map((section, i) => {
           const SectionIcon = section.label ? SECTION_ICONS[section.label] : null;
           return (
             <Fragment key={section.label ?? `section-${i}`}>

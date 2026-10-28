@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { setActiveChildId, useFamily } from "@/lib/family";
 import { PageLoader } from "@/components/Spinner";
-import { BackButton } from "@/components/BackButton";
 import { StudentRecordView } from "@/components/StudentRecordView";
 import { ChildSwitcher } from "@/components/family/ChildSwitcher";
 import { Empty } from "@/components/family/FamilyUi";
@@ -22,7 +21,7 @@ function ChildRecord({ id }: { id: number }) {
 
   if (cards === undefined) return <PageLoader label="Opening the record..." />;
   if (!card) return <Empty icon={<GraduationCap />} title="We could not find that learner">They may not be linked to your account.</Empty>;
-  return <StudentRecordView key={id} studentId={id} student={card.student} index={index} switcher={<ChildSwitcher cards={list} currentId={id} />} />;
+  return <StudentRecordView key={id} studentId={id} student={card.student} index={index} switcher={(tone) => <ChildSwitcher cards={list} currentId={id} tone={tone} />} />;
 }
 
 export default function ChildDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -36,7 +35,6 @@ export default function ChildDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="flex flex-col gap-4">
-      <BackButton fallback="/dashboard/children" label="My children" />
       <Suspense fallback={<PageLoader />}>
         <ChildRecord id={Number(id)} />
       </Suspense>
