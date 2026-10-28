@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading, schoolOptions, viewingSchoolId, switchSchool } = useAuth();
+  const { user, loading, schoolOptions, viewingSchoolId, switchSchool, schoolName } = useAuth();
   const isSupervisorViewing = user?.role === "group_principal" && viewingSchoolId !== null;
   const viewingSchoolName = schoolOptions.find((s) => s.id === viewingSchoolId)?.name;
 
@@ -46,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger className="size-9 rounded-lg border border-border bg-background shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary" />
           <Separator orientation="vertical" className="mr-2 h-4" />
+          {schoolName && <span className="hidden max-w-[40%] truncate text-sm font-semibold text-foreground sm:inline">{schoolName}<span className="mx-2 text-muted-foreground">·</span></span>}
           <span className="text-sm font-medium text-muted-foreground">
             {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </span>

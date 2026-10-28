@@ -285,7 +285,7 @@ function initials(name: string) {
 }
 
 export function AppSidebar() {
-  const { user, logout, schoolOptions, viewingSchoolId, switchSchool, isGroupView } = useAuth();
+  const { user, logout, schoolOptions, viewingSchoolId, switchSchool, isGroupView, schoolName } = useAuth();
   const pathname = usePathname();
   const search = useSearchParams();
   const router = useRouter();
@@ -481,6 +481,7 @@ export function AppSidebar() {
                       <span className="truncate text-xs text-sidebar-foreground/60 capitalize">
                         {user.role.replace(/_/g, " ")}
                       </span>
+                      {schoolName && <span className="truncate text-[0.7rem] font-medium text-sidebar-primary">{schoolName}</span>}
                     </div>
                     <ChevronRight className="ml-auto size-4 opacity-50" />
                   </SidebarMenuButton>

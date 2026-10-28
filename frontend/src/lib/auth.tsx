@@ -25,6 +25,8 @@ interface AuthState {
   switchSchool: (schoolId: number | null) => void;
   /** True for a group principal looking at all their schools together, not at one school. */
   isGroupView: boolean;
+  /** The name of the school being viewed, for showing who this is. Empty in the group view. */
+  schoolName: string | null;
   loading: boolean;
   login: (email: string, password: string, persist?: boolean) => Promise<User>;
   logout: (announce?: boolean) => void;
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [viewingSchoolId, setViewingSchoolId] = useState<number | null>(null);
   const [schoolOptions, setSchoolOptions] = useState<SchoolOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [schoolName, setSchoolName] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -96,6 +99,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token, realUser]);
 
+  const nameForId = viewingSchoolId ?? realUser?.school_id ?? null;
+  useEffect(() => {
+    let live = true;
+    if (!token || !nameForId) {
+      Promise.resolve().then(() => live && setSchoolName(null));
+      return () => { live = false; };
+    }
+    api.getSchoolBranding(token, nameForId).then((b) => live && setSchoolName(b.name)).catch(() => live && setSchoolName(null));
+    return () => { live = false; };
+  }, [token, nameForId]);
+
   function setSession(newToken: string, newUser: User, persist = true) {
     setToken(newToken);
     setRealUser(newUser);
@@ -141,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, user, schoolOptions, viewingSchoolId, switchSchool, isGroupView, loading, login, logout, setSession }}
+      value={{ token, user, schoolOptions, viewingSchoolId, switchSchool, isGroupView, schoolName, loading, login, logout, setSession }}
     >
       {children}
     </AuthContext.Provider>
