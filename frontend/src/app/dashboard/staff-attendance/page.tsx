@@ -1,6 +1,5 @@
 "use client";
 
-import { useModuleTab } from "@/lib/moduleTabs";
 import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -65,6 +64,18 @@ function fmtDay(d: string) {
 
 function Pill({ status }: { status: string }) {
   return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_PILL[status]}`}>{STATUS_TEXT[status]}</span>;
+}
+
+function Tabs<T extends string>({ value, onChange, items }: { value: T; onChange: (v: T) => void; items: [T, string][] }) {
+  return (
+    <div role="tablist" className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1">
+      {items.map(([key, label]) => (
+        <button key={key} type="button" role="tab" aria-selected={value === key} onClick={() => onChange(key)} className={`h-9 shrink-0 rounded-md px-4 text-sm font-medium transition-colors ${value === key ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
@@ -771,7 +782,7 @@ function DutiesTab() {
 function AdminView() {
   const { token, user } = useAuth();
   const schoolId = user?.school_id ?? null;
-  const tab = (useModuleTab("staff-attendance") || "day") as "day" | "summary" | "leave" | "duties" | "settings";
+  const [tab, setTab] = useState<"day" | "summary" | "leave" | "duties" | "settings">("day");
   const [people, setPeople] = useState<StaffPerson[]>([]);
   const [peopleKey, setPeopleKey] = useState(0);
   const [leaveDialog, setLeaveDialog] = useState<{ open: boolean; userId?: number }>({ open: false });
@@ -791,6 +802,11 @@ function AdminView() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          items={[["day", "Day"], ["summary", "Summary"], ["leave", "Leave"], ["duties", "Duties"], ["settings", "Settings"]]}
+        />
         <Button variant="outline" className="h-10 sm:h-9" onClick={() => token && schoolId && downloadQrSheet(token, schoolId)}><QrCode /> Download QR sheet</Button>
       </div>
       {(tab === "day" || tab === "summary" || tab === "leave") && <CategoryBar people={people} value={category} onChange={setCategory} />}
@@ -816,7 +832,7 @@ function AdminView() {
 function MyView() {
   const { token, user } = useAuth();
   const schoolId = user?.school_id ?? null;
-  const tab = (useModuleTab("staff-attendance") || "today") as "today" | "summary" | "leave";
+  const [tab, setTab] = useState<"today" | "summary" | "leave">("today");
   const [today, setToday] = useState<StaffAttendanceRecord | null>(null);
   const [duties, setDuties] = useState<DutyAssignment[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -842,6 +858,7 @@ function MyView() {
   if (!loaded) return <PageLoader />;
   return (
     <div className="flex flex-col gap-5">
+      <Tabs value={tab} onChange={setTab} items={[["today", "Today"], ["summary", "My attendance"], ["leave", "My leave"]]} />
       {tab === "today" && (
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:p-5">

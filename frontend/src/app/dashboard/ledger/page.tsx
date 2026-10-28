@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 function kes(n: number) {
@@ -342,14 +342,21 @@ function BalanceSheetTab() {
 
 export default function LedgerPage() {
   const { user, loading } = useAuth();
-  const view = useModuleTab("ledger");
+  const urlTab = useModuleTab("ledger");   // set only for staff whose sections live in the sidebar
   if (loading) return <PageLoader />;
   if (!user) return null;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Ledger" description="Chart of accounts, journal entries, trial balance and financial statements." />
-      <Tabs value={view}>
+      <Tabs {...(urlTab ? { value: urlTab } : { defaultValue: "is" })}>
+        <TabsList className={urlTab ? "hidden" : undefined}>
+          <TabsTrigger value="is">Income statement</TabsTrigger>
+          <TabsTrigger value="bs">Balance sheet</TabsTrigger>
+          <TabsTrigger value="tb">Trial balance</TabsTrigger>
+          <TabsTrigger value="jr">Journal</TabsTrigger>
+          <TabsTrigger value="coa">Chart of accounts</TabsTrigger>
+        </TabsList>
         <TabsContent value="is"><IncomeStatementTab /></TabsContent>
         <TabsContent value="bs"><BalanceSheetTab /></TabsContent>
         <TabsContent value="tb"><TrialBalanceTab /></TabsContent>

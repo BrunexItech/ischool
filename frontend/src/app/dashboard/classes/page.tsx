@@ -1,6 +1,5 @@
 "use client";
 
-import { useGoToTab, useModuleTab } from "@/lib/moduleTabs";
 import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -394,8 +393,7 @@ export default function ClassesPage() {
   const [enabled, setEnabled] = useState<Set<number>>(new Set());
   const [teachers, setTeachers] = useState<Staff[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
-  const tab = useModuleTab("classes") as "classes" | "setup";
-  const setTab = useGoToTab() as (k: "classes" | "setup") => void;
+  const [tab, setTab] = useState<"classes" | "setup">("classes");
   const [search, setSearch] = useState("");
   const [level, setLevel] = useState("all");
   const [openId, setOpenId] = useState<number | null>(null);
@@ -441,6 +439,13 @@ export default function ClassesPage() {
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       <PageHead title="Classes" subtitle={`${cards.length} class${cards.length === 1 ? "" : "es"} · ${totalLearners} learners`}>
+        {canManage && (
+          <div role="tablist" className="flex gap-1 rounded-lg bg-muted p-1">
+            {([["classes", "Classes"], ["setup", "Grades and streams"]] as const).map(([k, label]) => (
+              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`h-9 rounded-md px-4 text-sm font-medium transition-colors ${tab === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+            ))}
+          </div>
+        )}
       </PageHead>
 
       {tab === "setup" && canManage ? (

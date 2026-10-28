@@ -1,6 +1,5 @@
 "use client";
 
-import { useModuleTab } from "@/lib/moduleTabs";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api, AcademicTerm, ApiError, GradingBand, MyClass, SchoolClass, Student, Subject } from "@/lib/api";
@@ -206,8 +205,7 @@ export default function ResultsPage() {
   const [fixing, setFixing] = useState<Student | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [loading, setLoading] = useState(true);
-  const tabParam = useModuleTab("results");
-  const view = (tabParam || "performance") as "performance" | "gradebook";
+  const [view, setView] = useState<"performance" | "gradebook">("performance");
 
   const isTeacher = user?.role === "teacher";
   const canConfigure = user?.role === "super_admin" || user?.role === "head_of_institution" || user?.role === "group_principal";
@@ -396,6 +394,14 @@ export default function ResultsPage() {
       <DepartmentPulse dept="results" />
 
       {!canRecord && !isTeacher && <ViewOnly>Teachers record marks for the subjects they teach. You see every mark and the class results boards.</ViewOnly>}
+
+      {canConfigure && (
+        <div role="tablist" className="flex w-fit gap-1 rounded-lg bg-muted p-1">
+          {([["performance", "Class performance"], ["gradebook", "Marks by subject"]] as const).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setView(k)} className={`h-9 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+          ))}
+        </div>
+      )}
       {canConfigure && view === "performance" && user?.school_id && <ClassPerformance schoolId={user.school_id} terms={terms} />}
       {(!canConfigure || view === "gradebook") && (
         <>

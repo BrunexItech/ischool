@@ -1,6 +1,5 @@
 "use client";
 
-import { useModuleTab } from "@/lib/moduleTabs";
 import { EmptyNote } from "@/components/EmptyNote";
 import { ModuleBanner } from "@/components/ModuleBanner";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -367,7 +366,7 @@ function LessonPlansView() {
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState("");
   const [termFilter, setTermFilter] = useState("all");
-  const tabChoice = (useModuleTab("lesson-plans") || null) as "plans" | "coverage" | null;
+  const [tabChoice, setTab] = useState<"plans" | "coverage" | null>(null);
   const [newOpen, setNewOpen] = useState(searchParams.get("new") === "1");
 
   useEffect(() => {
@@ -430,6 +429,28 @@ function LessonPlansView() {
             </Button>
           )}
         </div></ModuleBanner>
+
+      {isAdmin && (
+        <div role="tablist" aria-label="Sections" className="grid w-full max-w-sm grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+          {(
+            [
+              ["coverage", "By teacher"],
+              ["plans", "All plans"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={`h-9 rounded-md text-sm font-medium transition-colors ${tab === key ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {isAdmin && tab === "coverage" ? (
         <CoverageView terms={data.terms} />

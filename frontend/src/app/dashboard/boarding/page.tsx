@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 function studentName(s: Student | undefined) {
@@ -722,7 +722,7 @@ function IncidentsTab() {
 
 export default function BoardingPage() {
   const { user, loading } = useAuth();
-  const view = useModuleTab("boarding");
+  const urlTab = useModuleTab("boarding");   // set only for staff whose sections live in the sidebar
   if (loading) return <PageLoader />;
   if (!user) return null;
   const canEdit = user.role === "head_of_institution" || user.role === "group_principal";
@@ -730,7 +730,14 @@ export default function BoardingPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Boarding" description="Houses, beds, roll calls, leave-outs, sick bay and incidents." />
-      <Tabs value={view}>
+      <Tabs {...(urlTab ? { value: urlTab } : { defaultValue: "houses" })}>
+        <TabsList className={urlTab ? "hidden" : undefined}>
+          <TabsTrigger value="houses">Houses &amp; beds</TabsTrigger>
+          <TabsTrigger value="roll">Roll call</TabsTrigger>
+          <TabsTrigger value="exeats">Leave-outs</TabsTrigger>
+          <TabsTrigger value="sick">Sick bay</TabsTrigger>
+          <TabsTrigger value="incidents">Incidents</TabsTrigger>
+        </TabsList>
         <TabsContent value="houses"><HousesTab canEdit={canEdit} /></TabsContent>
         <TabsContent value="roll"><RollCallTab /></TabsContent>
         <TabsContent value="exeats"><ExeatsTab canApprove={canEdit} /></TabsContent>

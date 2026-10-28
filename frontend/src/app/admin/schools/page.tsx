@@ -434,7 +434,21 @@ function ModulesPanel({ school }: { school: School }) {
   );
 }
 
-function DemoDataPanel({ school }: { school: School }) {
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Starts the sample data for one school and waits for it to finish. Resolves to an error message, or null when done. */
+async function addSampleData(token: string, schoolId: number): Promise<string | null> {
+  await api.generateDemoData(token, schoolId);
+  for (let i = 0; i < 120; i++) {
+    await wait(2500);
+    const st = await api.demoDataStatus(token, schoolId);
+    if (st.state === "done") return null;
+    if (st.state === "error") return st.error ?? "Something went wrong";
+  }
+  return "It is taking longer than expected. Refresh the page in a minute to see whether it finished.";
+}
+
+function DemoDataPanel({ school, onChanged }: { school: School; onChanged?: () => void }) {
   const { token } = useAuth();
   const [hasDemo, setHasDemo] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -453,14 +467,16 @@ function DemoDataPanel({ school }: { school: School }) {
     if (!token) return;
     setBusy(true);
     try {
-      const result = await api.generateDemoData(token, school.id);
-      setHasDemo(true);
-      toast.success(
-        `Added ${result.students} students, ${result.staff} staff, ${result.classes} class. Demo teacher login: ${result.teacher_login.email} / ${result.teacher_login.password}`,
-        { duration: 10000 }
-      );
+      const problem = await addSampleData(token, school.id);
+      if (problem) {
+        toast.error(problem);
+      } else {
+        setHasDemo(true);
+        onChanged?.();
+        toast.success(`Sample data added to ${school.name}. Sign in as any teacher, for example with their first name: eugene@milai.com and @Eugene@#1.`, { duration: 10000 });
+      }
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Failed to generate demo data");
+      toast.error(err instanceof ApiError ? err.message : "Failed to add sample data");
     } finally {
       setBusy(false);
     }
@@ -468,14 +484,15 @@ function DemoDataPanel({ school }: { school: School }) {
 
   async function remove() {
     if (!token) return;
-    if (!window.confirm(`Delete all demo data for ${school.name}? This cannot be undone.`)) return;
+    if (!window.confirm(`Remove all sample data from ${school.name}? Anything you entered by hand is kept.`)) return;
     setBusy(true);
     try {
       await api.deleteDemoData(token, school.id);
       setHasDemo(false);
-      toast.success("Demo data deleted");
+      onChanged?.();
+      toast.success("Sample data removed");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Failed to delete demo data");
+      toast.error(err instanceof ApiError ? err.message : "Failed to remove sample data");
     } finally {
       setBusy(false);
     }
@@ -485,11 +502,50 @@ function DemoDataPanel({ school }: { school: School }) {
 
   return hasDemo ? (
     <Button variant="destructive" size="sm" disabled={busy} onClick={remove}>
-      {busy ? "Deleting..." : "Delete demo data"}
+      {busy ? "Removing..." : "Remove sample data"}
     </Button>
   ) : (
     <Button variant="outline" size="sm" disabled={busy} onClick={generate}>
-      {busy ? "Generating..." : "Generate demo data"}
+      {busy ? <><Spinner size={14} className="text-current" /> Adding sample data...</> : "Add sample data"}
+    </Button>
+  );
+}
+
+function FillAllButton({ schools, onDone }: { schools: School[]; onDone: () => void }) {
+  const { token } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState("");
+
+  async function run() {
+    if (!token) return;
+    if (!window.confirm(`Add sample data to ${schools.length} school${schools.length === 1 ? "" : "s"}? Schools that already have it are skipped. This takes about a minute per school.`)) return;
+    setBusy(true);
+    let failed = 0;
+    for (let i = 0; i < schools.length; i++) {
+      const sc = schools[i];
+      setProgress(`${i + 1} of ${schools.length}: ${sc.name}`);
+      try {
+        const st = await api.demoDataStatus(token, sc.id);
+        if (st.has_demo_data) continue;
+        const problem = await addSampleData(token, sc.id);
+        if (problem) {
+          failed += 1;
+          toast.error(`${sc.name}: ${problem}`);
+        }
+      } catch (err) {
+        failed += 1;
+        toast.error(`${sc.name}: ${err instanceof ApiError ? err.message : "failed"}`);
+      }
+    }
+    setBusy(false);
+    setProgress("");
+    onDone();
+    if (failed === 0) toast.success("Every school now has sample data. Sign in as any teacher with their first name, for example eugene@milai.com and @Eugene@#1.", { duration: 12000 });
+  }
+
+  return (
+    <Button variant="outline" disabled={busy || schools.length === 0} onClick={run}>
+      {busy ? <><Spinner size={16} className="text-current" /> {progress}</> : "Fill every school with sample data"}
     </Button>
   );
 }
@@ -617,7 +673,10 @@ export default function AdminSchoolsPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Schools</h1>
             <p className="text-sm text-muted-foreground">Onboard schools and manage which modules they can use — each one gives its own distinct numbers.</p>
           </div>
-          <OnboardDialog schools={schools} onCreated={(school) => setSchools((s) => [...s, school])} />
+          <div className="flex flex-wrap items-center gap-2">
+            <FillAllButton schools={schools} onDone={() => token && api.listSchools(token).then(setSchools).catch(() => undefined)} />
+            <OnboardDialog schools={schools} onCreated={(school) => setSchools((s) => [...s, school])} />
+          </div>
         </div>
 
         <PlansSection plans={plans} onChanged={handlePlanChanged} />
@@ -654,7 +713,7 @@ export default function AdminSchoolsPage() {
                   <ModulesPanel school={school} />
                   <div className="mt-4 flex items-center justify-between border-t pt-4">
                     <p className="text-sm text-muted-foreground">Sample data for demos</p>
-                    <DemoDataPanel school={school} />
+                    <DemoDataPanel key={`${school.id}-${schools.length}`} school={school} />
                   </div>
                 </CardContent>
               </Card>

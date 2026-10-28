@@ -82,7 +82,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { FamilyNav } from "@/components/family/FamilyNav";
-import { moduleTabs } from "@/lib/moduleTabs";
+import { expandedInSidebar, moduleTabs } from "@/lib/moduleTabs";
 
 const NAV_SECTIONS = [
   {
@@ -301,7 +301,7 @@ export function AppSidebar() {
   const q = query.trim().toLowerCase();
   const sections = (isGroupView ? GROUP_SECTIONS : NAV_SECTIONS).map((section) => ({
     ...section,
-    items: section.items.filter((item) => item.roles.includes(user.role) && (!q || item.label.toLowerCase().includes(q) || moduleTabs(item.href.split("/")[2] ?? "", user.role).some(([, l]) => l.toLowerCase().includes(q)))),
+    items: section.items.filter((item) => item.roles.includes(user.role) && (!q || item.label.toLowerCase().includes(q) || (expandedInSidebar(user.role, item.href.split("/")[2] ?? "") && moduleTabs(item.href.split("/")[2] ?? "", user.role).some(([, l]) => l.toLowerCase().includes(q))))),
   })).filter((section) => section.items.length > 0);
 
   const isPrincipal = user.role === "group_principal";
@@ -352,7 +352,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                   {section.items.map((item) => {
                     const seg = item.href.split("/")[2] ?? "";
-                    const tabs = isGroupView ? [] : moduleTabs(seg, user.role);
+                    const tabs = !isGroupView && expandedInSidebar(user.role, seg) ? moduleTabs(seg, user.role) : [];
                     const onModule = pathname === item.href;
                     if (tabs.length > 1) {
                       const asked = search.get("tab");
@@ -372,7 +372,7 @@ export function AppSidebar() {
                             }
                           />
                           <SidebarMenuSub>
-                            {shown.map(([key, label]) => {
+                            {shown.map(([key, label, TabIcon]) => {
                               const on = onModule && current === key;
                               return (
                                 <SidebarMenuSubItem key={key}>
@@ -381,6 +381,7 @@ export function AppSidebar() {
                                     className={on ? "h-8 bg-sidebar-primary font-semibold text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground" : "h-8"}
                                     render={
                                       <Link href={`${item.href}?tab=${key}`} onClick={closeOnMobile}>
+                                        <TabIcon />
                                         <span>{label}</span>
                                       </Link>
                                     }

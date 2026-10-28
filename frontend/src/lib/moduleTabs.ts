@@ -1,81 +1,77 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  AlertTriangle, ArrowLeftRight, BookMarked, BookText, BookOpenCheck, Boxes, Bus, Car, ClipboardCheck, ClipboardList, DoorOpen, FileText, Footprints,
+  History, Home, LayoutGrid, Layers, ListChecks, ListTree, MapPin, Receipt, Route, Scale, ShoppingCart, Stethoscope, TrendingUp, Truck, Users, Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
-export type TabDef = [key: string, label: string];
+export type TabDef = [key: string, label: string, icon: LucideIcon];
 
-const HEADS = ["head_of_institution", "group_principal", "super_admin"];
-const STORE_VIEWERS = ["store_keeper", "staff", "super_admin", "head_of_institution", "group_principal", "procurement_officer", "bursar", "accountant"];
+// The staff whose whole day is spent inside one busy module get its sections in the sidebar, each with its own
+// icon. Everyone else (heads, principals, teachers...) keeps the module exactly as it always was: one link and the
+// original tabs inside the page.
+const IN_SIDEBAR: Record<string, string[]> = {
+  security: ["security"],
+  boarding_staff: ["boarding"],
+  transport_staff: ["transport"],
+  librarian: ["library"],
+  store_keeper: ["stores"],
+  bursar: ["fees", "ledger", "procurement"],
+  accountant: ["fees", "ledger", "procurement"],
+  procurement_officer: ["procurement", "stores"],
+};
 
-/** The sections inside a module, for one role. The sidebar lists them and the page shows the chosen one,
- *  so nothing important hides behind a tab bar. Returns [] when a module has no sections for that role. */
+export function expandedInSidebar(role: string | undefined, module: string): boolean {
+  return !!role && (IN_SIDEBAR[role] ?? []).includes(module) && moduleTabs(module, role).length > 1;
+}
+
+/** The sections inside a module, for one role. */
 export function moduleTabs(module: string, role: string | undefined): TabDef[] {
   if (!role) return [];
   switch (module) {
     case "security":
-      return [["visitors", "Visitors"], ["passes", "Gate passes and pick-ups"], ["vehicles", "Vehicles"], ["incidents", "Incidents"], ["patrols", "Patrols"]];
+      return [["visitors", "Visitors", Users], ["passes", "Gate passes", ClipboardCheck], ["vehicles", "Vehicles", Car], ["incidents", "Incidents", AlertTriangle], ["patrols", "Patrols", Footprints]];
     case "boarding":
-      return [["houses", "Houses and beds"], ["roll", "Roll call"], ["exeats", "Leave-outs"], ["sick", "Sick bay"], ["incidents", "Incidents"]];
+      return [["houses", "Houses and beds", Home], ["roll", "Roll call", ClipboardCheck], ["exeats", "Leave-outs", DoorOpen], ["sick", "Sick bay", Stethoscope], ["incidents", "Incidents", AlertTriangle]];
     case "ledger":
-      return [["is", "Income statement"], ["bs", "Balance sheet"], ["tb", "Trial balance"], ["jr", "Journal"], ["coa", "Chart of accounts"]];
-    case "payroll":
-      return [["runs", "Pay runs"], ["profiles", "Staff and salaries"]];
+      return [["is", "Income statement", TrendingUp], ["bs", "Balance sheet", Scale], ["tb", "Trial balance", ListChecks], ["jr", "Journal", BookText], ["coa", "Chart of accounts", ListTree]];
     case "procurement":
-      return [["requisitions", "Requisitions"], ["orders", "Purchase orders"]];
+      return [["requisitions", "Requisitions", FileText], ["orders", "Purchase orders", ShoppingCart]];
     case "fees":
-      return role === "secretary" ? [] : [["balances", "Balances and arrears"], ["structure", "Fee structure"], ["invoices", "Invoices and payments"]];
-    case "classes":
-      return ["head_of_institution", "super_admin", "group_principal", "secretary"].includes(role) ? [["classes", "Classes"], ["setup", "Grades and streams"]] : [];
-    case "results":
-      return HEADS.includes(role) ? [["performance", "Class performance"], ["gradebook", "Marks by subject"]] : [];
-    case "lesson-plans":
-      return HEADS.includes(role) ? [["coverage", "By teacher"], ["plans", "All plans"]] : [];
-    case "homework":
-      return HEADS.includes(role) ? [["week", "This week"], ["list", "All homework"]] : [];
-    case "timetable":
-      return [["week", "Weekly timetable"], ["day", "School day"]];
+      return role === "secretary" ? [] : [["balances", "Balances and arrears", Wallet], ["structure", "Fee structure", Layers], ["invoices", "Invoices and payments", Receipt]];
     case "library":
-      if (role === "librarian") return [["desk", "Lend and return"], ["catalogue", "Catalogue"], ["loans", "Who has what"], ["overview", "Overview"]];
-      if (HEADS.includes(role)) return [["overview", "Overview"], ["loans", "Who has what"], ["catalogue", "Catalogue"]];
-      if (role === "teacher") return [["shelf", "My class books"], ["catalogue", "Catalogue"]];
-      if (role === "student" || role === "parent") return [["mine", role === "parent" ? "My child's books" : "My books"], ["catalogue", "Catalogue"]];
-      return [["catalogue", "Catalogue"]];
+      if (role === "librarian") return [["desk", "Lend and return", ArrowLeftRight], ["catalogue", "Catalogue", BookMarked], ["loans", "Who has what", BookOpenCheck], ["overview", "Overview", LayoutGrid]];
+      return [];
     case "stores": {
       const keeper = ["store_keeper", "staff", "super_admin"].includes(role);
-      const head = ["head_of_institution", "group_principal"].includes(role);
-      const stock = STORE_VIEWERS.includes(role);
+      const stock = ["store_keeper", "staff", "super_admin", "head_of_institution", "group_principal", "procurement_officer", "bursar", "accountant"].includes(role);
       return [
-        ...(stock ? ([["stock", "Stock"]] as TabDef[]) : []),
-        ["requests", keeper || head ? "Requests" : "My requests"],
-        ...(keeper ? ([["count", "Stocktake"]] as TabDef[]) : []),
-        ...(stock ? ([["history", "Movements"]] as TabDef[]) : []),
+        ...(stock ? ([["stock", "Stock", Boxes]] as TabDef[]) : []),
+        ["requests", keeper ? "Requests" : "My requests", ClipboardList],
+        ...(keeper ? ([["count", "Stocktake", ClipboardCheck]] as TabDef[]) : []),
+        ...(stock ? ([["history", "Movements", History]] as TabDef[]) : []),
       ];
     }
-    case "transport": {
-      if (role === "transport_attendant") return [];
-      const overseer = ["head_of_institution", "group_principal", "super_admin"].includes(role);
-      return [...(overseer ? ([["movement", "Arrivals and departures"]] as TabDef[]) : []), ["runs", "Today's runs"], ["fleet", "Fleet"], ["routes", "Routes and learners"]];
-    }
-    case "staff-attendance":
-      return HEADS.includes(role)
-        ? [["day", "Day"], ["summary", "Summary"], ["leave", "Leave"], ["duties", "Duties"], ["settings", "Settings"]]
-        : [["today", "Today"], ["summary", "My attendance"], ["leave", "My leave"]];
+    case "transport":
+      return role === "transport_staff" ? [["runs", "Today's runs", Bus], ["fleet", "Fleet", Truck], ["routes", "Routes and learners", Route]] : [];
     default:
       return [];
   }
 }
 
-/** The section the page should show: the one in the address, else the first the role has. */
+/** The section the address asks for, when this role's sections are in the sidebar; else "" (the page keeps its own tabs). */
 export function useModuleTab(module: string): string {
   const { user } = useAuth();
   const params = useSearchParams();
+  if (!expandedInSidebar(user?.role, module)) return "";
   const tabs = moduleTabs(module, user?.role);
   const asked = params.get("tab");
   return tabs.find(([k]) => k === asked)?.[0] ?? tabs[0]?.[0] ?? "";
 }
 
-/** Opens another section of the current page (used by "go and set this up" buttons inside a page). */
 export function useGoToTab(): (key: string) => void {
   const router = useRouter();
   const pathname = usePathname();

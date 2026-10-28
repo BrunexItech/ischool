@@ -2172,17 +2172,13 @@ export const api = {
     ),
 
   demoDataStatus: (token: string, schoolId: number) =>
-    request<{ has_demo_data: boolean }>(`/schools/${schoolId}/demo-data`, {}, token),
+    request<{ has_demo_data: boolean; state: "idle" | "running" | "done" | "error"; error: string | null; result: { classes: number; students: number; staff: number; teacher_login: { email: string; password: string } } | null }>(`/schools/${schoolId}/demo-data`, {}, token),
 
   generateDemoData: (token: string, schoolId: number) =>
-    request<{ classes: number; students: number; staff: number; teacher_login: { email: string; password: string } }>(
-      `/schools/${schoolId}/demo-data`,
-      { method: "POST" },
-      token
-    ),
+    request<{ started: boolean }>(`/schools/${schoolId}/demo-data`, { method: "POST" }, token),
 
   deleteDemoData: (token: string, schoolId: number) =>
-    request<{ students: number; classes: number; staff: number; users: number }>(
+    request<Record<string, number>>(
       `/schools/${schoolId}/demo-data`,
       { method: "DELETE" },
       token

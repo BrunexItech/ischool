@@ -4,6 +4,10 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.chart_of_accounts import seed_chart_of_accounts
+import logging
+import threading
+
+from app.core.database import SessionLocal
 from app.core.demo_data import delete_demo_data, has_demo_data, seed_demo_data
 from app.core.deps import ensure_school_access, get_current_user, require_roles
 from app.core.security import ensure_password_strength, hash_password
@@ -262,21 +266,42 @@ def toggle_module(
     return module
 
 
+_SAMPLE_JOBS: dict[int, dict] = {}   # one backend process keeps these; a campus takes under a minute
+
+
+def _run_sample_job(school_id: int) -> None:
+    db = SessionLocal()
+    try:
+        school = db.get(School, school_id)
+        _SAMPLE_JOBS[school_id] = {"state": "done", "result": seed_demo_data(db, school)}
+    except ValueError as err:
+        db.rollback()
+        _SAMPLE_JOBS[school_id] = {"state": "error", "error": str(err)}
+    except Exception:
+        db.rollback()
+        logging.getLogger(__name__).exception("Sample data failed for school %s", school_id)
+        _SAMPLE_JOBS[school_id] = {"state": "error", "error": "Something went wrong while adding the sample data. Nothing was kept; please try again."}
+    finally:
+        db.close()
+
+
 @router.post(
     "/{school_id}/demo-data",
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
 )
 def generate_demo_data(school_id: int, db: Session = Depends(get_db)):
-    """Populate an otherwise-empty school with a small set of sample
-    students/staff/classes for demoing the product. Everything it creates is
-    tagged is_demo=True so it can be wiped with one click."""
+    """Fill a school with a full, CBC-aligned sample population (teachers, learners, parents, timetable, homework,
+    exams, lesson plans, fees, library, transport, finance and more). It runs in the background; poll the status."""
     school = db.get(School, school_id)
     if school is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "School not found")
-    try:
-        return seed_demo_data(db, school)
-    except ValueError as err:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err))
+    if _SAMPLE_JOBS.get(school_id, {}).get("state") == "running":
+        return {"started": True}
+    if has_demo_data(db, school_id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This school already has sample data. Delete it first.")
+    _SAMPLE_JOBS[school_id] = {"state": "running"}
+    threading.Thread(target=_run_sample_job, args=(school_id,), daemon=True).start()
+    return {"started": True}
 
 
 @router.get(
@@ -284,7 +309,8 @@ def generate_demo_data(school_id: int, db: Session = Depends(get_db)):
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
 )
 def demo_data_status(school_id: int, db: Session = Depends(get_db)):
-    return {"has_demo_data": has_demo_data(db, school_id)}
+    job = _SAMPLE_JOBS.get(school_id, {})
+    return {"has_demo_data": has_demo_data(db, school_id), "state": job.get("state", "idle"), "error": job.get("error"), "result": job.get("result")}
 
 
 @router.delete(

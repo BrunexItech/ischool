@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 function kes(n: number) {
@@ -254,7 +254,7 @@ function PurchaseOrdersTab({ purchaseOrders, suppliers, onUpdated }: { purchaseO
 
 export default function ProcurementPage() {
   const { user, token, loading } = useAuth();
-  const view = useModuleTab("procurement");
+  const urlTab = useModuleTab("procurement");   // set only for staff whose sections live in the sidebar
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
@@ -276,7 +276,11 @@ export default function ProcurementPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Procurement" description="Requisitions, approvals and purchase orders." />
-      <Tabs value={view}>
+      <Tabs {...(urlTab ? { value: urlTab } : { defaultValue: "requisitions" })}>
+        <TabsList className={urlTab ? "hidden" : undefined}>
+          <TabsTrigger value="requisitions">Requisitions</TabsTrigger>
+          <TabsTrigger value="orders">Purchase orders</TabsTrigger>
+        </TabsList>
         <TabsContent value="requisitions"><RequisitionsTab suppliers={suppliers} onPoIssued={upsertPo} /></TabsContent>
         <TabsContent value="orders"><PurchaseOrdersTab purchaseOrders={purchaseOrders} suppliers={suppliers} onUpdated={upsertPo} /></TabsContent>
       </Tabs>

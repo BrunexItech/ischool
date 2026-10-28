@@ -1,6 +1,5 @@
 "use client";
 
-import { useModuleTab } from "@/lib/moduleTabs";
 import { EmptyNote } from "@/components/EmptyNote";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -16,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 function kes(n: number) {
@@ -275,14 +274,17 @@ function RunsTab() {
 
 export default function PayrollPage() {
   const { user, loading } = useAuth();
-  const view = useModuleTab("payroll");
   if (loading) return <PageLoader />;
   if (!user) return null;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Payroll" description="Staff salaries and Kenya statutory deductions (PAYE, NSSF, SHIF, housing levy)." />
-      <Tabs value={view}>
+      <Tabs defaultValue="runs">
+        <TabsList>
+          <TabsTrigger value="runs">Pay runs</TabsTrigger>
+          <TabsTrigger value="profiles">Staff &amp; salaries</TabsTrigger>
+        </TabsList>
         <TabsContent value="runs"><RunsTab /></TabsContent>
         <TabsContent value="profiles"><ProfilesTab /></TabsContent>
       </Tabs>

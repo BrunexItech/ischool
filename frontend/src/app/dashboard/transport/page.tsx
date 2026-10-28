@@ -22,7 +22,8 @@ export default function TransportPage() {
   const isAttendant = user?.role === "transport_attendant";
   const isOverseer = !!user && OVERSEERS.includes(user.role);
   const canManage = !!user && MANAGERS.includes(user.role);
-  const tabParam = useModuleTab("transport") as Tab;
+  const urlTab = useModuleTab("transport");
+  const [tab, setTab] = useState<Tab | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [routes, setRoutes] = useState<TransportRoute[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -78,12 +79,17 @@ export default function TransportPage() {
     ["fleet", "Fleet"],
     ["routes", "Routes and learners"],
   ];
-  const view = tabParam || tabs[0][0];
+  const view = urlTab ? (urlTab as Tab) : (tab ?? tabs[0][0]);
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       <PageHead title="Transport" subtitle={isOverseer ? "How children arrive and leave, the bus runs, and the state of the fleet." : "Vehicles, routes, learners and the daily runs."} />
       {isOverseer && <ViewOnly label="Oversight">The transport office and the attendants keep these records. Pick any date to see how each class was picked up and dropped.</ViewOnly>}
+      <div role="tablist" className={`${urlTab ? "hidden " : ""}flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1`}>
+        {tabs.map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setTab(k)} className={`h-9 shrink-0 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+        ))}
+      </div>
       {view === "movement" && <ClassMovement schoolId={schoolId} classes={classes} />}
       {view === "runs" && <RunsBoard runs={runs} schoolId={schoolId} />}
       {view === "fleet" && <FleetPanel schoolId={schoolId} vehicles={vehicles} setVehicles={setVehicles} alerts={alerts} canManage={canManage} />}

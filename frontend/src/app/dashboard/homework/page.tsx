@@ -1,6 +1,5 @@
 "use client";
 
-import { useModuleTab } from "@/lib/moduleTabs";
 import { EmptyNote } from "@/components/EmptyNote";
 import { ModuleBanner } from "@/components/ModuleBanner";
 import { useEffect, useMemo, useState } from "react";
@@ -1237,12 +1236,17 @@ function HomeworkWeek() {
 export default function HomeworkPage() {
   const { user } = useAuth();
   const isHead = user?.role === "head_of_institution" || user?.role === "group_principal" || user?.role === "super_admin";
-  const tabParam = useModuleTab("homework");
+  const [choice, setChoice] = useState<"week" | "list" | null>(null);
   if (!isHead) return <HomeworkListView />;
-  const view = (tabParam || "week") as "week" | "list";
+  const view = choice ?? "week";
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       <ModuleBanner title="Homework" description="Whether homework is being given, class by class. Teachers record it; you can see it here." />
+      <div role="tablist" className="flex w-fit gap-1 rounded-lg bg-muted p-1">
+        {([["week", "This week"], ["list", "All homework"]] as const).map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setChoice(k)} className={`h-9 rounded-md px-4 text-sm font-medium transition-colors ${view === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+        ))}
+      </div>
       {view === "week" ? <HomeworkWeek /> : <HomeworkListView />}
     </div>
   );

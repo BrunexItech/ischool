@@ -25,13 +25,23 @@ _STUDENTS = [
 
 
 def has_demo_data(db: Session, school_id: int) -> bool:
-    return (
+    from app.seed.run import has_sample_data
+
+    return has_sample_data(db, school_id) or (
         db.query(Student.id).filter_by(school_id=school_id, is_demo=True).first() is not None
         or db.query(StaffProfile.id).filter_by(school_id=school_id, is_demo=True).first() is not None
     )
 
 
 def seed_demo_data(db: Session, school: School) -> dict:
+    """The full sample school: terms, the standard school day, CBC learning areas, teachers, classes, learners,
+    parents, timetable, homework, exams, lesson plans, attendance, marks, fees and events. See app/seed."""
+    from app.seed.run import seed_school
+
+    return seed_school(db, school)
+
+
+def _legacy_seed_demo_data(db: Session, school: School) -> dict:
     if has_demo_data(db, school.id):
         raise ValueError("This school already has demo data. Delete it first.")
 
@@ -98,6 +108,15 @@ def seed_demo_data(db: Session, school: School) -> dict:
 
 
 def delete_demo_data(db: Session, school_id: int) -> dict:
+    from app.seed.run import remove_school_sample
+
+    removed = remove_school_sample(db, school_id)["removed"]
+    counts = _legacy_delete_demo_data(db, school_id)
+    counts["sample_rows"] = removed
+    return counts
+
+
+def _legacy_delete_demo_data(db: Session, school_id: int) -> dict:
     counts = {
         "students": db.query(Student).filter_by(school_id=school_id, is_demo=True).delete(),
         "classes": db.query(SchoolClass).filter_by(school_id=school_id, is_demo=True).delete(),
