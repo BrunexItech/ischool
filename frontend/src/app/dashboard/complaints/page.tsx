@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DepartmentPulse } from "@/components/DepartmentPulse";
 
-const ROLES_ALLOWED = ["student", "parent", "teacher", "head_of_institution", "super_admin", "group_principal"];
+const ROLES_ALLOWED = ["student", "parent", "teacher", "head_of_institution", "group_principal"];
 
 function RespondBox({ complaint, canRespond, onResponded }: { complaint: Complaint; canRespond: boolean; onResponded: (c: Complaint) => void }) {
   const { token, user } = useAuth();
@@ -76,7 +76,11 @@ export default function ComplaintsPage() {
   }, [loading, user, router]);
 
   function reload() {
-    if (!token || !user?.school_id) return;
+    if (!token) return;
+    if (!user?.school_id) {
+      Promise.resolve().then(() => setDataLoading(false));   // no school to read from: show the empty page, never spin forever
+      return;
+    }
     api.listComplaints(token, user.school_id).then(setComplaints).finally(() => setDataLoading(false));
   }
   useEffect(reload, [token, user?.school_id]);

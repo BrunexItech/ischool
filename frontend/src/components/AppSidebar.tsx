@@ -159,7 +159,7 @@ const NAV_SECTIONS = [
     items: [
       { href: "/dashboard/meetings", label: "Staff Meetings", icon: Presentation, roles: ["head_of_institution", "group_principal", "teacher"] },
       { href: "/dashboard/announcements", label: "Announcements", icon: Megaphone, roles: ["head_of_institution", "teacher", "staff", "student", "parent", "security", "boarding_staff", "transport_staff", "transport_attendant", "librarian", "store_keeper", "accountant", "procurement_officer", "bursar", "group_principal", "secretary"] },
-      { href: "/dashboard/complaints", label: "Complaints", icon: MessageSquareWarning, roles: ["head_of_institution", "teacher", "student", "parent", "super_admin", "group_principal"] },
+      { href: "/dashboard/complaints", label: "Complaints", icon: MessageSquareWarning, roles: ["head_of_institution", "teacher", "student", "parent", "group_principal"] },
       { href: "/dashboard/communication-settings", label: "Communication Settings", icon: MessageSquare, roles: ["head_of_institution", "group_principal"] },
     ],
   },
