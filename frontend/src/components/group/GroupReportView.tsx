@@ -98,7 +98,7 @@ export function GroupReportView() {
 
   return (
     <div className="flex flex-col gap-6 sm:gap-7">
-      <header className="relative overflow-hidden rounded-3xl p-5 text-white shadow-md sm:p-8" style={{ background: "linear-gradient(125deg, #0B1B3F 0%, #1D3B7A 55%, #8B1A1D 130%)" }}>
+      <header className="relative overflow-hidden rounded-3xl p-5 text-white shadow-md sm:p-8" style={{ background: "linear-gradient(125deg, #4a0d10 0%, #8B1A1D 60%, #C2410C 130%)" }}>
         <span className="pointer-events-none absolute -top-20 -right-12 size-64 rounded-full bg-white/[0.06]" aria-hidden />
         <div className="relative flex flex-col gap-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -109,7 +109,7 @@ export function GroupReportView() {
             </div>
             <div className="flex flex-wrap gap-2 print:hidden">
               <Button className="h-10 border border-white/30 bg-white/10 text-white hover:bg-white/20" onClick={email} disabled={emailing}>{emailing ? <Spinner size={16} className="text-current" /> : <Mail />} Email it to me</Button>
-              <Button className="h-10 bg-white text-[#0B1B3F] hover:bg-white/90" onClick={() => window.print()}><Printer /> Print or save as PDF</Button>
+              <Button className="h-10 bg-white text-[#7F1D1D] hover:bg-white/90" onClick={() => window.print()}><Printer /> Print or save as PDF</Button>
             </div>
           </div>
           <p className="min-h-12 rounded-xl border-l-4 border-[#FFC857] bg-white/10 px-4 py-3 text-[0.95rem] leading-snug font-semibold">{headline ?? <InlineWorking label="Reading each school's week..." />}</p>

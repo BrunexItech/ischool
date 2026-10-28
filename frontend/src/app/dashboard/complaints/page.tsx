@@ -121,7 +121,7 @@ export default function ComplaintsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f3d4a] via-[#0E7490] to-[#2aa6b8] p-5 text-white shadow-md sm:p-7">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4A0E10] via-[#7F1D1D] to-[#B91C1C] p-5 text-white shadow-md sm:p-7">
         <div className="pointer-events-none absolute -top-14 -right-10 size-52 rounded-full bg-white/10 blur-2xl" aria-hidden />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
