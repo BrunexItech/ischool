@@ -2177,6 +2177,9 @@ export const api = {
   generateDemoData: (token: string, schoolId: number) =>
     request<{ started: boolean }>(`/schools/${schoolId}/demo-data`, { method: "POST" }, token),
 
+  demoDataAccounts: (token: string, schoolId: number) =>
+    request<{ role: string; name: string; email: string; password: string }[]>(`/schools/${schoolId}/demo-data/accounts`, {}, token),
+
   deleteDemoData: (token: string, schoolId: number) =>
     request<Record<string, number>>(
       `/schools/${schoolId}/demo-data`,

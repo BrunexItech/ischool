@@ -8,8 +8,8 @@ from app.seed.academics import Ctx
 from app.seed.core import Seeder
 
 PER_CLASS = 10   # a campus with many streams gets fewer learners in each
-PARENT_LOGINS_PER_CLASS = 4
-STUDENT_LOGINS_PER_CLASS = 2
+PARENT_LOGINS_PER_CLASS = 2
+STUDENT_LOGINS_PER_CLASS = 1
 
 
 def _grade_age(sort_order: int) -> int:

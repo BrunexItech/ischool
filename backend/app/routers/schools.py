@@ -313,6 +313,18 @@ def demo_data_status(school_id: int, db: Session = Depends(get_db)):
     return {"has_demo_data": has_demo_data(db, school_id), "state": job.get("state", "idle"), "error": job.get("error"), "result": job.get("result")}
 
 
+@router.get(
+    "/{school_id}/demo-data/accounts",
+    dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],
+)
+def demo_data_accounts(school_id: int, db: Session = Depends(get_db)):
+    """Every sample login for the school: the email and the password, which is always @FirstName@#1."""
+    order = ["teacher", "secretary", "bursar", "accountant", "procurement_officer", "store_keeper", "librarian", "security", "boarding_staff", "transport_staff", "transport_attendant", "parent", "student"]
+    rows = db.query(User).filter_by(school_id=school_id, is_demo=True).order_by(User.id).all()
+    rows.sort(key=lambda u: (order.index(u.role.value) if u.role.value in order else 99, u.id))
+    return [{"role": u.role.value, "name": u.full_name, "email": u.email, "password": f"@{u.full_name.split()[0]}@#1"} for u in rows]
+
+
 @router.delete(
     "/{school_id}/demo-data",
     dependencies=[Depends(require_roles(UserRole.SUPER_ADMIN))],

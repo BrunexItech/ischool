@@ -1,5 +1,6 @@
 import random
 import re
+import zlib
 from datetime import date, timedelta
 
 from sqlalchemy import text
@@ -28,7 +29,7 @@ class Seeder:
         self.db = db
         self.school = school
         self.sid = school.id
-        self.rng = random.Random(school.id * 7919 + 13)
+        self.rng = random.Random(zlib.crc32(school.slug.encode()))   # the same campus always gets the same cast
         self.today: date = school_today(db, school.id)
         self.created: list = []
         self._emails = {e.lower() for (e,) in db.query(User.email)}
@@ -64,7 +65,7 @@ class Seeder:
     # ---- people -----------------------------------------------------------------------------------------------
     def person(self, female: bool | None = None, unique_first: bool = False) -> dict:
         female = self.rng.random() < 0.5 if female is None else female
-        pool = names.FEMALE_FIRST if female else names.MALE_FIRST
+        pool = names.first_names(self.school.slug, female)
         if unique_first:
             free = [n for n in pool if n.lower() not in self._firsts_in_use]
             first = self.rng.choice(free or pool)

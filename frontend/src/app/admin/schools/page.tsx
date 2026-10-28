@@ -448,6 +448,43 @@ async function addSampleData(token: string, schoolId: number): Promise<string | 
   return "It is taking longer than expected. Refresh the page in a minute to see whether it finished.";
 }
 
+function SampleLogins({ school }: { school: School }) {
+  const { token } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<{ role: string; name: string; email: string; password: string }[] | null>(null);
+
+  function show() {
+    setOpen(true);
+    if (token && rows === null) api.demoDataAccounts(token, school.id).then(setRows).catch(() => setRows([]));
+  }
+
+  const groups = rows ? [...new Set(rows.map((r) => r.role))] : [];
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={show}>Sample logins</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader><DialogTitle>Sample logins: {school.name}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Every password is the first name written as <span className="font-mono">@Name@#1</span>.</p>
+          {rows === null ? <Spinner size={20} /> : groups.map((g) => (
+            <div key={g} className="flex flex-col gap-1">
+              <h3 className="mt-2 text-sm font-semibold capitalize">{g.replace(/_/g, " ")}</h3>
+              <ul className="divide-y rounded-lg border text-sm">
+                {rows.filter((r) => r.role === g).slice(0, g === "parent" || g === "student" ? 6 : 40).map((r) => (
+                  <li key={r.email} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 px-3 py-2">
+                    <span className="min-w-0 truncate">{r.name}</span>
+                    <span className="font-mono text-xs break-all">{r.email} · {r.password}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function DemoDataPanel({ school, onChanged }: { school: School; onChanged?: () => void }) {
   const { token } = useAuth();
   const [hasDemo, setHasDemo] = useState(false);
@@ -501,13 +538,55 @@ function DemoDataPanel({ school, onChanged }: { school: School; onChanged?: () =
   if (loading) return null;
 
   return hasDemo ? (
-    <Button variant="destructive" size="sm" disabled={busy} onClick={remove}>
-      {busy ? "Removing..." : "Remove sample data"}
-    </Button>
+    <div className="flex flex-wrap items-center gap-2">
+      <SampleLogins school={school} />
+      <Button variant="destructive" size="sm" disabled={busy} onClick={remove}>
+        {busy ? "Removing..." : "Remove sample data"}
+      </Button>
+    </div>
   ) : (
     <Button variant="outline" size="sm" disabled={busy} onClick={generate}>
       {busy ? <><Spinner size={14} className="text-current" /> Adding sample data...</> : "Add sample data"}
     </Button>
+  );
+}
+
+function AllLogins({ schools }: { schools: School[] }) {
+  const { token } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<{ school: School; rows: { role: string; name: string; email: string; password: string }[] }[] | null>(null);
+
+  function show() {
+    setOpen(true);
+    if (!token || data !== null) return;
+    Promise.all(schools.map((sc) => api.demoDataAccounts(token, sc.id).then((rows) => ({ school: sc, rows })).catch(() => ({ school: sc, rows: [] })))).then(setData);
+  }
+
+  return (
+    <>
+      <Button variant="outline" onClick={show}>Sample logins</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader><DialogTitle>Sample logins for every school</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Demonstration only. The password is the first name written as <span className="font-mono">@Name@#1</span>. Two logins per role are shown for each school.</p>
+          {data === null ? <Spinner size={20} /> : data.map(({ school, rows }) => (
+            <div key={school.id} className="flex flex-col gap-1">
+              <h3 className="mt-3 font-heading text-base font-semibold">{school.name}</h3>
+              {rows.length === 0 ? <p className="text-sm text-muted-foreground">No sample data yet.</p> : (
+                <ul className="divide-y rounded-lg border text-sm">
+                  {[...new Set(rows.map((r) => r.role))].flatMap((role) => rows.filter((r) => r.role === role).slice(0, 2)).map((r) => (
+                    <li key={r.email} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 px-3 py-2">
+                      <span className="min-w-0"><span className="mr-2 rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold capitalize">{r.role.replace(/_/g, " ")}</span>{r.name}</span>
+                      <span className="font-mono text-xs break-all">{r.email} · {r.password}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -674,6 +753,7 @@ export default function AdminSchoolsPage() {
             <p className="text-sm text-muted-foreground">Onboard schools and manage which modules they can use — each one gives its own distinct numbers.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <AllLogins schools={schools} />
             <FillAllButton schools={schools} onDone={() => token && api.listSchools(token).then(setSchools).catch(() => undefined)} />
             <OnboardDialog schools={schools} onCreated={(school) => setSchools((s) => [...s, school])} />
           </div>

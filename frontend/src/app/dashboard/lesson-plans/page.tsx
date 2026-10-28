@@ -191,7 +191,7 @@ function CoverageView({ terms }: { terms: AcademicTerm[] }) {
     };
   }, [token, schoolId, term, key]);
 
-  const loading = !data || data.key !== key;
+  const loading = !!term && (!data || data.key !== key);   // with no term to look at there is nothing to wait for
   const aggs = useMemo<TeacherAgg[]>(() => {
     const map = new Map<string, TeacherAgg>();
     for (const r of data?.coverage?.rows ?? []) {
@@ -252,6 +252,8 @@ function CoverageView({ terms }: { terms: AcademicTerm[] }) {
 
       {loading ? (
         <PageLoader />
+      ) : !term ? (
+        <EmptyNote>No academic term is set up yet. Add one under Academic Terms and the lesson plan figures appear here.</EmptyNote>
       ) : data?.coverage === null ? (
         <ErrorBox message="We couldn't load the lesson plan figures." onRetry={() => setReloadKey((k) => k + 1)} />
       ) : aggs.length === 0 ? (
