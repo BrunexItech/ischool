@@ -25,8 +25,7 @@ def _utc(d, h=8, m=0):
 
 def seed_homework(s: Seeder, ctx: Ctx):
     declared = 0
-    for g in ctx.grades:
-        c = ctx.classes[g.code]
+    for g, c in ctx.class_list:
         subjects = [n for n in ctx.class_subjects[c.id] if n in ctx.subjects]
         s.rng.shuffle(subjects)
         picks = subjects[: len(HOMEWORK_PLAN)]
@@ -67,10 +66,9 @@ def seed_homework(s: Seeder, ctx: Ctx):
 def seed_exams(s: Seeder, ctx: Ctx):
     """Online multiple-choice exams for the classes that sit them (Grade 1 upwards), some already marked."""
     now = datetime.now(timezone.utc)
-    for g in ctx.grades:
-        if g.code in ("PP1", "PP2"):
+    for g, c in ctx.class_list:
+        if g.level_group.value == "pre_primary":
             continue
-        c = ctx.classes[g.code]
         made = 0
         for subject in ctx.class_subjects[c.id]:
             bank = banks.bank_for(subject, s.rng, max(1, g.sort_order - 2))
@@ -99,8 +97,7 @@ def seed_exams(s: Seeder, ctx: Ctx):
                     pick = qn.correct_option_index if correct else (qn.correct_option_index + s.rng.randint(1, 3)) % len(qn.options)
                     s.add(ExamAnswer(submission_id=sub.id, question_id=qn.id, answer_text=str(pick), awarded_marks=2.0 if correct else 0.0))
     # And a printable paper (PDF) for the end-of-term exam in the highest classes of the campus.
-    for g in ctx.grades[-2:]:
-        c = ctx.classes[g.code]
+    for g, c in ctx.class_list[-2:]:
         subject = ctx.class_subjects[c.id][2 if len(ctx.class_subjects[c.id]) > 2 else 0]
         teacher = ctx.subject_teacher[(c.id, subject)]
         url = save_sample_pdf(s.sid, "exams", f"{g.code.lower()}-end-term-paper", f"{subject} End Term Paper - {g.display_name}",
@@ -116,8 +113,7 @@ def seed_lesson_plans(s: Seeder, ctx: Ctx):
     start = (term_row.start_date if term_row else None) or (s.today - timedelta(days=70))
     weeks_done = max(0, min(11, (s.today - start).days // 7))
     plans = {}
-    for g in ctx.grades:
-        c = ctx.classes[g.code]
+    for g, c in ctx.class_list:
         for subject in ctx.class_subjects[c.id]:
             teacher = ctx.subject_teacher[(c.id, subject)]
             plan = s.add(LessonPlan(school_id=s.sid, class_id=c.id, subject_id=ctx.subjects[subject].id, term=ctx.term, created_by=teacher.id))

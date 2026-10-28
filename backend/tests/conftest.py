@@ -37,6 +37,8 @@ from app.models.user import User, UserRole
 engine = create_engine(TEST_DATABASE_URL)
 
 GRADES = [
+    ("DC", "Daycare", LevelGroup.PRE_PRIMARY, -1),
+    ("PG", "Playgroup", LevelGroup.PRE_PRIMARY, 0),
     ("PP1", "PP1", LevelGroup.PRE_PRIMARY, 1),
     ("PP2", "PP2", LevelGroup.PRE_PRIMARY, 2),
     ("G1", "Grade 1", LevelGroup.PRIMARY, 3),

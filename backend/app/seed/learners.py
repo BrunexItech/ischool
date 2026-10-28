@@ -7,7 +7,7 @@ from app.models.user import UserRole
 from app.seed.academics import Ctx
 from app.seed.core import Seeder
 
-PER_CLASS = 10
+PER_CLASS = 10   # a campus with many streams gets fewer learners in each
 PARENT_LOGINS_PER_CLASS = 4
 STUDENT_LOGINS_PER_CLASS = 2
 
@@ -19,10 +19,10 @@ def _grade_age(sort_order: int) -> int:
 def seed_learners(s: Seeder, ctx: Ctx, tag: str):
     year = s.today.year
     seq = 0
-    for g in ctx.grades:
-        c = ctx.classes[g.code]
+    per_class = PER_CLASS if len(ctx.class_list) <= 14 else 8
+    for g, c in ctx.class_list:
         learners = []
-        for i in range(PER_CLASS):
+        for i in range(per_class):
             seq += 1
             has_login = i < STUDENT_LOGINS_PER_CLASS
             child = s.person(unique_first=has_login)
@@ -86,8 +86,7 @@ def seed_results(s: Seeder, ctx: Ctx):
     sittings = [(ctx.term, "CAT 1"), (ctx.term, "Mid Term")]
     if prev:
         sittings.append((prev, "End Term"))
-    for g in ctx.grades:
-        c = ctx.classes[g.code]
+    for g, c in ctx.class_list:
         for st in ctx.students[c.id]:
             ability = s.rng.gauss(62, 13)
             for subject in ctx.class_subjects[c.id]:

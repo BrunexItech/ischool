@@ -14,6 +14,7 @@ from app.models.teacher_assignment import TeacherAssignment
 from app.models.timetable import TimetableSlot
 from app.models.user import UserRole
 from app.seed import cbc
+from app.seed.classes import classes_for
 from app.seed.core import Seeder
 
 TEACHABLE = ("lesson",)
@@ -22,7 +23,8 @@ TEACHABLE = ("lesson",)
 @dataclass
 class Ctx:
     grades: list = field(default_factory=list)          # enabled GradeLevel rows, in order
-    classes: dict = field(default_factory=dict)         # grade code -> SchoolClass
+    classes: dict = field(default_factory=dict)         # grade code -> the first SchoolClass of that grade
+    class_list: list = field(default_factory=list)      # [(GradeLevel, SchoolClass)] for every class, in grade order
     subjects: dict = field(default_factory=dict)        # subject name -> Subject
     class_subjects: dict = field(default_factory=dict)  # class id -> list of subject names
     periods: dict = field(default_factory=dict)         # level group -> [SchoolPeriod]
@@ -114,10 +116,12 @@ def seed_teachers_and_classes(s: Seeder, ctx: Ctx, tag: str):
 
     # One class per enabled grade.
     for g in ctx.grades:
-        c = s.add(SchoolClass(school_id=s.sid, name=g.display_name, grade_level=g.display_name, grade_level_id=g.id, is_demo=True))
-        s.flush()
-        ctx.classes[g.code] = c
-        ctx.class_subjects[c.id] = list(cbc.BY_GRADE[g.code])
+        for name in classes_for(s.school.slug, g.code, g.display_name):
+            c = s.add(SchoolClass(school_id=s.sid, name=name, grade_level=g.display_name, grade_level_id=g.id, is_demo=True))
+            s.flush()
+            ctx.classes.setdefault(g.code, c)
+            ctx.class_list.append((g, c))
+            ctx.class_subjects[c.id] = list(cbc.BY_GRADE[g.code])
 
     # Specialists first, so class teachers can come from them in junior and senior school.
     wanted = []
@@ -135,8 +139,7 @@ def seed_teachers_and_classes(s: Seeder, ctx: Ctx, tag: str):
     junior_cycle = [specialists[k] for k in ("j_languages", "j_mathematics", "j_sciences", "j_humanities") if k in specialists]
     senior_cycle = [specialists[k] for k in ("s_languages", "s_mathematics", "s_sciences", "s_humanities") if k in specialists]
     ji = si = 0
-    for g in ctx.grades:
-        c = ctx.classes[g.code]
+    for g, c in ctx.class_list:
         grp = _group(g)
         if grp == "junior_school" and junior_cycle:
             teacher = junior_cycle[ji % len(junior_cycle)]
@@ -157,8 +160,7 @@ def seed_teachers_and_classes(s: Seeder, ctx: Ctx, tag: str):
         _staff(s, ctx, tag, n, "Support teacher")
 
     # Who teaches each learning area in each class.
-    for g in ctx.grades:
-        c = ctx.classes[g.code]
+    for g, c in ctx.class_list:
         grp = _group(g)
         for subject in ctx.class_subjects[c.id]:
             teacher = ctx.homeroom[c.id]
@@ -183,8 +185,7 @@ def seed_teachers_and_classes(s: Seeder, ctx: Ctx, tag: str):
 
 def seed_timetable(s: Seeder, ctx: Ctx):
     busy: set = set()   # (teacher id, day, start time)
-    for g in ctx.grades:
-        c = ctx.classes[g.code]
+    for g, c in ctx.class_list:
         grp = _group(g)
         lessons = [p for p in ctx.periods[grp] if p.kind in TEACHABLE]
         quota = dict(cbc.BY_GRADE[g.code])

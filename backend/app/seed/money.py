@@ -34,9 +34,8 @@ def seed_fees(s: Seeder, ctx: Ctx):
     s.flush()
 
     methods = ["M-Pesa", "M-Pesa", "M-Pesa", "Bank", "Cash"]
-    for g in ctx.grades:
+    for g, c in ctx.class_list:
         grp = g.level_group.value
-        c = ctx.classes[g.code]
         for idx, st in enumerate(ctx.students[c.id]):
             for term in terms:
                 is_current = term == ctx.term

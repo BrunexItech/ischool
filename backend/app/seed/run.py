@@ -78,7 +78,7 @@ def seed_school(db: Session, school: School) -> dict:
     db.commit()
     first_teacher = ctx.teachers[0][0]
     return {
-        "classes": len(ctx.classes),
+        "classes": len(ctx.class_list),
         "students": sum(len(v) for v in ctx.students.values()),
         "staff": len(ctx.teachers),
         "teacher_login": {"email": first_teacher.email, "password": f"@{ctx.teachers[0][1]['first']}@#1"},

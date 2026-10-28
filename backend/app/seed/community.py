@@ -45,7 +45,7 @@ def seed_activities_and_awards(s: Seeder, ctx: Ctx):
     for st, (title, cat) in zip(learners, titles):
         s.add(Award(school_id=s.sid, scope="student", student_id=st.id, title=title, description=f"Awarded to {st.first_name} for outstanding performance this term.", category=cat,
                     date_awarded=s.today - timedelta(days=s.rng.randint(2, 40)), term=ctx.term, awarded_by=pe.id))
-    c = list(ctx.classes.values())[-1]
+    c = [c for _, c in ctx.class_list][-1]
     s.add(Award(school_id=s.sid, scope="class", class_id=c.id, title="Cleanest class of the term", category="character", date_awarded=s.today - timedelta(days=6), term=ctx.term, awarded_by=head.id if head else None))
     s.add(Award(school_id=s.sid, scope="staff", staff_user_id=ctx.teachers[0][0].id, title="Teacher of the term", category="staff", date_awarded=s.today - timedelta(days=3), term=ctx.term, awarded_by=head.id if head else None))
     s.add(Award(school_id=s.sid, scope="school", title="Best overall performance in the zone", category="school", date_awarded=s.today - timedelta(days=15), term=ctx.term, awarded_by=head.id if head else None))
@@ -54,7 +54,7 @@ def seed_activities_and_awards(s: Seeder, ctx: Ctx):
 
 def seed_conduct_and_complaints(s: Seeder, ctx: Ctx):
     head = _head(s)
-    classes = list(ctx.classes.values())
+    classes = [c for _, c in ctx.class_list]
     for i, (cat, desc, action, status) in enumerate([
         (ConductCategory.DISRUPTION, "Talking continuously during the lesson after repeated warnings.", "Spoken to and moved to the front.", ConductStatus.REVIEWED),
         (ConductCategory.DRESS_CODE, "Came to school without the school sweater on three days.", "Parent informed by phone.", ConductStatus.OPEN),
@@ -88,7 +88,7 @@ def seed_trips(s: Seeder, ctx: Ctx):
     head = _head(s)
     teacher = ctx.teachers[0][0]
     vehicle = s.db.query(Vehicle).filter_by(school_id=s.sid).first()
-    classes = list(ctx.classes.values())
+    classes = [c for _, c in ctx.class_list]
     for i, (title, dest, status, start, ttype, cost) in enumerate([
         ("Nairobi National Museum", "Nairobi", TripStatus.APPROVED, s.today + timedelta(days=6), "educational", 85000),
         ("Kaptagat Forest nature walk", "Kaptagat", TripStatus.REQUESTED, s.today + timedelta(days=12), "educational", 24000),
@@ -113,8 +113,8 @@ STRANDS = {
 def seed_competency(s: Seeder, ctx: Ctx):
     levels = [PerformanceLevel.EXCEEDING_EXPECTATION, PerformanceLevel.MEETING_EXPECTATION, PerformanceLevel.MEETING_EXPECTATION, PerformanceLevel.APPROACHING_EXPECTATION, PerformanceLevel.BELOW_EXPECTATION]
     notes = ["Participates eagerly and helps classmates.", "Needs encouragement to speak in class.", "Shows real curiosity during practical work.", "Works well in groups and finishes tasks on time."]
-    for g in ctx.grades[:5]:   # the early years, where competency assessment is the main record
-        c = ctx.classes[g.code]
+    early = [(g, c) for g, c in ctx.class_list if g.level_group.value == "pre_primary" or g.code in ("G1", "G2", "G3")][:12]
+    for g, c in early:   # the early years, where competency assessment is the main record
         subjects = [n for n in ctx.class_subjects[c.id] if n in STRANDS][:3] or ctx.class_subjects[c.id][:2]
         for st in ctx.students[c.id]:
             for subject in subjects:
@@ -158,8 +158,8 @@ def seed_remarks_feedback_crm(s: Seeder, ctx: Ctx):
 def seed_live_and_meetings(s: Seeder, ctx: Ctx):
     head = _head(s)
     now = datetime.now(timezone.utc)
-    for i, (g, subject, delta, status) in enumerate([(ctx.grades[-1], None, 1, LiveClassStatus.SCHEDULED), (ctx.grades[min(3, len(ctx.grades) - 1)], None, -1, LiveClassStatus.ENDED)]):
-        c = ctx.classes[g.code]
+    picks = [(ctx.class_list[-1], 1, LiveClassStatus.SCHEDULED), (ctx.class_list[min(3, len(ctx.class_list) - 1)], -1, LiveClassStatus.ENDED)]
+    for i, ((g, c), delta, status) in enumerate(picks):
         subject = ctx.class_subjects[c.id][0]
         teacher = ctx.subject_teacher[(c.id, subject)]
         s.add(LiveClass(school_id=s.sid, class_id=c.id, title=f"{subject} revision: {g.display_name}", scheduled_start=now + timedelta(days=delta, hours=3), status=status,

@@ -111,3 +111,20 @@ def test_a_full_boarding_campus_fills_every_module_and_every_page_still_loads(cl
         if r.status_code >= 500:
             bad.append(f"{p}: {r.status_code} {r.text[:120]}")
     assert not bad, "\n".join(bad)
+
+
+def test_a_campus_uses_the_class_names_it_gave(db_session, school):
+    school.slug = "milai-elgon-view"
+    db_session.commit()
+    _enable(db_session, school, ["DC", "PG", "PP1", "PP2", "G1", "G2", "G3"])
+    result = seed_school(db_session, school)
+
+    names = {c.name for c in db_session.query(SchoolClass).filter_by(school_id=school.id)}
+    assert {"Daycare A (Malaika)", "Playgroup B (Upendo)", "PP1 C (Rehema)", "PP2 A (Imani)", "Grade 1 B (Shukrani)", "Grade 3 C (Hodari)"} <= names
+    assert result["classes"] == 19 and len(names) == 19
+    assert result["students"] == 19 * 8      # many streams, so fewer learners in each
+    seen = set()
+    for slot in db_session.query(TimetableSlot).filter_by(school_id=school.id):
+        key = (slot.teacher_user_id, slot.day_of_week, slot.start_time)
+        assert key not in seen
+        seen.add(key)

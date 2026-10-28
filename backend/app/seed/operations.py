@@ -102,7 +102,7 @@ def seed_library(s: Seeder, ctx: Ctx, tag: str):
     cs = copies[0]
     if cs.id not in taken:
         teacher = teachers[0]
-        s.add(Loan(school_id=s.sid, copy_id=cs.id, teacher_user_id=teacher.id, for_class_id=list(ctx.classes.values())[-1].id, issued_by=librarian.id if librarian else None,
+        s.add(Loan(school_id=s.sid, copy_id=cs.id, teacher_user_id=teacher.id, for_class_id=[c for _, c in ctx.class_list][-1].id, issued_by=librarian.id if librarian else None,
                    issued_at=_at(s.today - timedelta(days=9), 9), due_date=s.today + timedelta(days=20), note="Class reader for the term"))
         cs.status = "on_loan"
     s.flush()
@@ -211,10 +211,10 @@ def seed_boarding(s: Seeder, ctx: Ctx):
     s.flush()
     beds = {"male": 0, "female": 0}
     boarders = []
-    for g in ctx.grades:
+    for g, c in ctx.class_list:
         if g.sort_order < 6:   # boarding from Grade 4 upwards
             continue
-        for idx, st in enumerate(ctx.students[ctx.classes[g.code].id]):
+        for idx, st in enumerate(ctx.students[c.id]):
             if idx % 3 != 0:
                 continue
             gender = st.gender or "male"
