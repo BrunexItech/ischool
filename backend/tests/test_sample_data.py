@@ -128,3 +128,11 @@ def test_a_campus_uses_the_class_names_it_gave(db_session, school):
         key = (slot.teacher_user_id, slot.day_of_week, slot.start_time)
         assert key not in seen
         seen.add(key)
+
+
+def test_worksheets_are_written_on_request_with_real_questions(client):
+    r = client.get("/sample-worksheets/worksheet.pdf", params={"subject": "Mathematics", "grade": "Grade 6", "kind": "homework", "title": "Mathematics: practice exercise"})
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
+    assert r.content.startswith(b"%PDF") and b"Mathematics" in r.content and b"What is" in r.content
+    other = client.get("/sample-worksheets/worksheet.pdf", params={"subject": "Performing Arts", "grade": "Grade 9", "kind": "exam"})
+    assert other.status_code == 200 and b"In your own words" in other.content

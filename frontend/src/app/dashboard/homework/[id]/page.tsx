@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CheckCircle2, Circle, Clock, ExternalLink, FileUp } from "lucide-react";
+import { WorksheetViewer } from "@/components/WorksheetViewer";
 import { api, ApiError, HomeworkDetail, HomeworkSubmissionRow } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
@@ -92,7 +93,7 @@ function ReviewDialog({
   );
 }
 
-function AttachmentCard({ hw, onAttached }: { hw: HomeworkDetail; onAttached: (url: string) => void }) {
+function AttachmentCard({ hw, onAttached, canEdit }: { hw: HomeworkDetail; onAttached: (url: string) => void; canEdit: boolean }) {
   const { token } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -118,19 +119,17 @@ function AttachmentCard({ hw, onAttached }: { hw: HomeworkDetail; onAttached: (u
         <div className="flex items-center gap-2 text-sm">
           <FileUp className="size-4 text-muted-foreground" />
           {hw.attachment_url ? (
-            <a href={hw.attachment_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-primary hover:underline">
-              Worksheet attached <ExternalLink className="size-3.5" />
-            </a>
+            <WorksheetViewer url={hw.attachment_url} title={hw.title} label="Open the worksheet" />
           ) : (
             <span className="text-muted-foreground">No worksheet attached yet</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        {canEdit && <div className="flex items-center gap-2">
           <Input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-9 w-56 text-xs" />
           <Button size="sm" variant="outline" disabled={uploading || !file} onClick={handleUpload}>
             {uploading ? <Spinner size={14} className="text-current" /> : <FileUp />} {hw.attachment_url ? "Replace" : "Attach file"}
           </Button>
-        </div>
+        </div>}
       </CardContent>
     </Card>
   );
@@ -187,7 +186,7 @@ export default function HomeworkDetailPage({ params }: { params: Promise<{ id: s
         <Card><CardContent className="pt-6 text-sm text-muted-foreground">{hw.instructions}</CardContent></Card>
       )}
 
-      {canRecord && <AttachmentCard hw={hw} onAttached={(url) => setHw((h) => (h ? { ...h, attachment_url: url } : h))} />}
+      <AttachmentCard canEdit={canRecord} hw={hw} onAttached={(url) => setHw((h) => (h ? { ...h, attachment_url: url } : h))} />
 
       <Card>
         <Table>

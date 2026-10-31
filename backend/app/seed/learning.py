@@ -8,7 +8,7 @@ from app.models.lesson_plan import LessonPlan, LessonPlanEntry, LessonPlanEntryS
 from app.seed import banks
 from app.seed.academics import Ctx
 from app.seed.core import Seeder
-from app.seed.pdfs import save_sample_pdf
+from app.seed.pdfs import worksheet_url
 
 HOMEWORK_PLAN = [
     # (type, title template, instructions, give a PDF worksheet?, due in days)
@@ -34,11 +34,7 @@ def seed_homework(s: Seeder, ctx: Ctx):
             title = title_t.format(subject=subject)
             attachment = None
             if pdf:
-                attachment = save_sample_pdf(
-                    s.sid, "homework", f"{g.code.lower()}-{subject.lower().replace(' ', '-')}", f"{subject} - {g.display_name}",
-                    [f"Worksheet for {g.display_name}", "", "Name: ______________________   Date: ______________", ""]
-                    + [f"{i}. ________________________________________________" for i in range(1, 11)],
-                )
+                attachment = worksheet_url(subject, g.display_name, "homework", title)
             due = s.today + timedelta(days=due_days - 3)   # some already past, so the lists show late work too
             hw = s.add(Homework(
                 school_id=s.sid, class_id=c.id, subject_id=ctx.subjects[subject].id, title=title, homework_type=htype,
@@ -100,8 +96,7 @@ def seed_exams(s: Seeder, ctx: Ctx):
     for g, c in ctx.class_list[-2:]:
         subject = ctx.class_subjects[c.id][2 if len(ctx.class_subjects[c.id]) > 2 else 0]
         teacher = ctx.subject_teacher[(c.id, subject)]
-        url = save_sample_pdf(s.sid, "exams", f"{g.code.lower()}-end-term-paper", f"{subject} End Term Paper - {g.display_name}",
-                              ["Time: 1 hour 30 minutes", "", "Answer ALL questions in the spaces provided."] + [f"{i}. ______________________________________________ (5 marks)" for i in range(1, 9)])
+        url = worksheet_url(subject, g.display_name, "exam", f"{subject}: End Term paper")
         s.add(Exam(school_id=s.sid, subject_id=ctx.subjects[subject].id, class_id=c.id, title=f"{subject}: End Term paper", exam_type="End Term", term=ctx.term,
                    duration_minutes=90, is_published=True, opens_at=now + timedelta(days=1), closes_at=now + timedelta(days=6), paper_file_url=url, created_by=teacher.id))
     s.flush()

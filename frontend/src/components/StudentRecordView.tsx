@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { WorksheetViewer } from "@/components/WorksheetViewer";
 import { SectionBanner, type SectionTheme } from "@/components/family/SectionBanner";
 import { ChildAvatar, Empty, Pill, Section, dueWords, longDay, money, scoreTone, shortDay } from "@/components/family/FamilyUi";
 import { Ring, compactKes, healthTone } from "@/components/group/GroupUi";
@@ -465,7 +466,7 @@ export function StudentRecordView({ studentId, student, index = 0, switcher }: {
                 {hw.teacher_comment && <div className="rounded-lg bg-muted/50 p-2.5 text-sm"><span className="text-xs font-medium text-muted-foreground">Teacher&apos;s comment</span><p>{hw.teacher_comment}</p></div>}
                 <div className="flex flex-wrap items-center gap-2">
                   {hw.score != null && <Pill tone="good">Score {hw.score}</Pill>}
-                  {hw.attachment_url && <Button variant="outline" size="sm" className="h-10 gap-1.5" render={<a href={hw.attachment_url} target="_blank" rel="noreferrer"><FileText /> Worksheet</a>} nativeButton={false} />}
+                  {hw.attachment_url && <WorksheetViewer url={hw.attachment_url} title={`${hw.title} (${hw.subject_name})`} label="Open the worksheet" />}
                   {hw.file_url && <Button variant="outline" size="sm" className="h-10 gap-1.5" render={<a href={hw.file_url} target="_blank" rel="noreferrer"><ExternalLink /> My submission</a>} nativeButton={false} />}
                   {isStudent && hw.allow_digital_submission && hw.status !== "reviewed" && (
                     <SubmitHomeworkDialog studentId={studentId} homework={hw} onSubmitted={(updated) => setHomework((h) => h.map((x) => (x.id === updated.id ? updated : x)))} />

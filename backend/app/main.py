@@ -24,6 +24,7 @@ import app.core.day_structure  # noqa: F401  (registers the bell-schedule approv
 import app.core.weekly_menu  # noqa: F401  (registers the meal-menu approval)
 import app.routers.fee_structure  # noqa: F401  (registers the fee-structure approval)
 from app.routers import (
+    sample_files,
     academic_terms,
     academics,
     activities,
@@ -153,6 +154,7 @@ app.include_router(transport_runs.router)
 app.include_router(staff_attendance.router)
 app.include_router(supervisors.router)
 app.include_router(homework.router)
+app.include_router(sample_files.router)
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
